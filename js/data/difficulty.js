@@ -52,5 +52,5 @@ export function sanitizeSettings(s) {
 export const START_KITS = {
   bare: { pickaxe_wood: 1 },
   standard: { pickaxe_wood: 1, sword_wood: 1, berries: 6, wood: 10 },
-  generous: { pickaxe_stone: 1, sword_stone: 1, berries: 12, wood: 60, stone: 40, fiber: 30, plank: 20, rope: 6, torch: 0 },
+  generous: { pickaxe_stone: 1, sword_stone: 1, berries: 12, wood: 60, stone: 40, fiber: 30, plank: 20, rope: 6 },
 };

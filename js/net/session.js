@@ -38,7 +38,7 @@ export async function startHosting(app, game) {
   try {
     const { peer, code } = await openHostPeer(sim.world.shared.flags.room, {
       onConnection: (conn) => hl.attach(conn),
-      onStatus: (s) => { if (!hl.clientCount) st.status = s; st.sig++; },
+      onStatus: (s) => { if (!hl.clientCount && st.status !== s) { st.status = s; st.sig++; } },
       onFatal: (e) => { st.status = 'Connection problem: ' + (e.message || e.type); st.sig++; },
     });
     st.peer = peer; st.code = code; sim.world.shared.flags.room = code; st.status = 'Waiting for your partner…'; st.sig++;
@@ -55,7 +55,7 @@ function manualHostBlock(hh, st, hl, game) {
   const ansBox = hh('textarea', { class: 'sdp', placeholder: "2) Paste your partner's answer code here" });
   ansBox.addEventListener('focus', () => { game.input.typing = true; }); ansBox.addEventListener('blur', () => { game.input.typing = false; });
   const note = hh('div', { class: 'small', style: 'min-height:18px' });
-  const make = hh('button', { class: 'btn small', onclick: async () => { note.textContent = 'Making a code…'; try { st.offer = await manualHostOffer(); offerBox.value = st.offer.code; note.textContent = 'Send this code to your partner (Messages, AirDrop, anything).'; } catch (e) { note.textContent = 'Could not make a code: ' + e.message; } } }, 'Make invite code');
+  const make = hh('button', { class: 'btn small', onclick: async () => { note.textContent = 'Making a code…'; try { if (st.offer) st.offer.cancel(); st.offer = await manualHostOffer(); offerBox.value = st.offer.code; note.textContent = 'Send this code to your partner (Messages, AirDrop, anything).'; } catch (e) { note.textContent = 'Could not make a code: ' + e.message; } } }, 'Make invite code');
   const copy = hh('button', { class: 'btn small', onclick: () => { offerBox.select(); navigator.clipboard && navigator.clipboard.writeText(offerBox.value); note.textContent = 'Copied!'; } }, 'Copy');
   const go = hh('button', { class: 'btn small good', onclick: async () => { if (!st.offer) { note.textContent = 'Make an invite code first.'; return; } note.textContent = 'Connecting…'; try { const conn = await st.offer.accept(ansBox.value); hl.attach(conn); note.textContent = 'Connected!'; st.offer = null; } catch (e) { note.textContent = 'That did not work: ' + e.message; } } }, 'Connect');
   return hh('details', { style: 'margin-top:6px' }, hh('summary', { style: 'cursor:pointer;font-weight:700' }, 'Manual pairing (no internet server)'), hh('div', { class: 'col', style: 'gap:6px;margin-top:6px' }, make, offerBox, copy, ansBox, go, note));

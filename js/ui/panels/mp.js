@@ -3,6 +3,8 @@ import { h, ic, clear } from '../dom.js';
 
 export function mpPanel(g, data, ui) {
   const body = h('div', { class: 'col', style: 'min-width:min(88vw,400px);max-width:480px;gap:10px' });
+  // the manual-pairing block holds half-typed codes and an open/closed <details>: build it once and re-attach it on re-renders
+  let manualEl = null, manualNet = null;
   function render() {
     clear(body);
     const net = g.net;
@@ -28,7 +30,7 @@ export function mpPanel(g, data, ui) {
     const list = h('div', { class: 'col', style: 'gap:4px' });
     for (const p of g.world.players.values()) if (p.online) list.append(h('div', { class: 'row' }, ic('ui_people', 1), h('b', null, p.name), p.pid === g.localPid ? h('span', { class: 'muted small' }, ' (you)') : h('span', { class: 'chip ok' }, 'connected')));
     body.append(h('div', { class: 'sep' }), h('b', null, 'Players'), list);
-    if (net.manual) body.append(net.manual(h));
+    if (net.manual) { if (manualNet !== net) { manualEl = net.manual(h); manualNet = net; } body.append(manualEl); }
   }
   render();
   return { title: 'Play together', icon: 'ui_people', body, sig: () => `${g.net ? g.net.sig : 'x'}:${[...g.world.players.values()].filter((p) => p.online).length}:${g.net ? g.net.code : ''}`, refresh: render };

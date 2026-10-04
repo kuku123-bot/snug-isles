@@ -9,17 +9,26 @@ export function makeCode(n = 5) {
   return [...a].map((b) => ALPHABET[b % ALPHABET.length]).join('');
 }
 
+// Only servers that were verified to answer. (The old public "openrelay" TURN and several others no longer work, so there is
+// deliberately no built-in relay: most home networks connect directly. A TURN server can be added with ?turn=… — see turnServer().)
 const ICE = [
-  { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' },
-  // public relay as a last resort for strict networks (traffic stays DTLS-encrypted end to end)
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.nextcloud.com:443' },
 ];
+/** Optional relay for very strict networks: ?turn=turn:host:3478&turnuser=…&turncred=… (remembered on this device). */
+function turnServer() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('turn')) localStorage.setItem('snug.turn', JSON.stringify({ urls: q.get('turn'), username: q.get('turnuser') || undefined, credential: q.get('turncred') || undefined }));
+    if (q.get('turn') === '') localStorage.removeItem('snug.turn');
+    const t = JSON.parse(localStorage.getItem('snug.turn') || 'null');
+    return t && t.urls ? t : null;
+  } catch (e) { return null; }
+}
+function iceServers() { const t = turnServer(); return t ? [...ICE, t] : ICE; }
 
 export function peerOptions() {
   const q = new URLSearchParams(location.search);
-  const o = { debug: +(q.get('peerdebug') || 0), config: { iceServers: ICE, iceCandidatePoolSize: 2 } };
+  const o = { debug: +(q.get('peerdebug') || 0), config: { iceServers: iceServers(), iceCandidatePoolSize: 2 } };
   if (q.get('peerhost')) { o.host = q.get('peerhost'); o.port = +q.get('peerport') || 9000; o.path = q.get('peerpath') || '/'; o.secure = q.get('peersecure') === '1'; }
   return o;
 }
@@ -62,12 +71,17 @@ export class RtcConn extends BaseConn {
 /** Register a PeerJS peer under snugisles-<code>. Retries with a new code if the id is taken. Resolves {peer, code}. */
 export function openHostPeer(preferredCode, { onConnection, onStatus = () => {}, onFatal = () => {} }) {
   return new Promise((resolve, reject) => {
-    let code = preferredCode || makeCode(), tries = 0, settled = false;
+    let code = preferredCode || makeCode(), tries = 0, settled = false, backoff = 1000;
     const attempt = () => {
       const peer = new Peer(ROOM_PREFIX + code, peerOptions());
-      peer.on('open', () => { settled = true; onStatus('Waiting for your partner…'); resolve({ peer, code }); });
+      peer.on('open', () => { settled = true; backoff = 1000; onStatus('Waiting for your partner…'); resolve({ peer, code }); });
       peer.on('connection', (dc) => { dc.on('open', () => onConnection(new PeerConn(dc))); });
-      peer.on('disconnected', () => { onStatus('Reconnecting to the matchmaking server…'); try { peer.reconnect(); } catch (e) { /* ignore */ } });
+      // the signaling server dropped us (existing partner connections keep working): retry gently, never in a tight loop
+      peer.on('disconnected', () => {
+        if (settled) onStatus('Reconnecting to the matchmaking server…');
+        const wait = backoff; backoff = Math.min(backoff * 2, 15000);
+        setTimeout(() => { if (peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch (e) { /* ignore */ } } }, wait);
+      });
       peer.on('error', (err) => {
         if (err.type === 'unavailable-id' && !settled && tries < 6) { tries++; code = makeCode(); try { peer.destroy(); } catch (e) { /* ignore */ } attempt(); return; }
         if (!settled) { reject(err); return; }
@@ -127,7 +141,6 @@ export async function connectToHost(code, { onStatus = () => {}, timeoutMs = 900
 }
 
 // ------------------------------------------------------------------ manual (serverless) pairing
-const RTC_CFG = { iceServers: ICE.slice(0, 3) };
 async function deflate(str) {
   if (typeof CompressionStream === 'undefined') return 'R' + btoa(unescape(encodeURIComponent(str)));
   const cs = new CompressionStream('deflate-raw'); const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(str)); w.close();
@@ -154,23 +167,29 @@ function gathered(pc) {
 }
 /** Host: creates an invite code. accept(answerCode) resolves an RtcConn once the partner pastes their answer. */
 export async function manualHostOffer() {
-  const pc = new RTCPeerConnection(RTC_CFG);
+  const pc = new RTCPeerConnection({ iceServers: iceServers() });
   const dc = pc.createDataChannel('snug', { ordered: true });
   await pc.setLocalDescription(await pc.createOffer());
   await gathered(pc);
   const code = await deflate(JSON.stringify({ type: pc.localDescription.type, sdp: pc.localDescription.sdp }));
-  const opened = new Promise((resolve, reject) => { dc.onopen = () => resolve(new RtcConn(dc, pc)); setTimeout(() => reject(new Error('Timed out waiting for the connection')), 120000); });
-  return {
-    code,
-    async accept(answerCode) { const d = JSON.parse(await inflate(answerCode)); await pc.setRemoteDescription(d); return opened; },
+  // humans relay these codes between devices, which takes minutes: the clock only starts once the partner's answer is pasted
+  const accept = async (answerCode) => {
+    const d = JSON.parse(await inflate(answerCode));
+    const opened = new Promise((resolve, reject) => {
+      const t = setTimeout(() => { try { pc.close(); } catch (e) { /* ignore */ } reject(new Error('The devices could not reach each other. Make the invite code again and retry (same Wi-Fi works best).')); }, 45000);
+      dc.onopen = () => { clearTimeout(t); resolve(new RtcConn(dc, pc)); };
+    });
+    await pc.setRemoteDescription(d);
+    return opened;
   };
+  return { code, accept, cancel() { try { pc.close(); } catch (e) { /* ignore */ } } };
 }
 /** Guest: takes the host's invite code, returns {answerCode, conn: Promise<RtcConn>} */
 export async function manualGuestAnswer(offerCode) {
-  const pc = new RTCPeerConnection(RTC_CFG);
+  const pc = new RTCPeerConnection({ iceServers: iceServers() });
   const conn = new Promise((resolve, reject) => {
     pc.ondatachannel = (e) => { const dc = e.channel; const go = () => resolve(new RtcConn(dc, pc)); if (dc.readyState === 'open') go(); else dc.onopen = go; };
-    setTimeout(() => reject(new Error('Timed out waiting for the host')), 180000);
+    setTimeout(() => reject(new Error('Timed out waiting for the host to paste your answer. Start again.')), 600000);
   });
   await pc.setRemoteDescription(JSON.parse(await inflate(offerCode)));
   await pc.setLocalDescription(await pc.createAnswer());
