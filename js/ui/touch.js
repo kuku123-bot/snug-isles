@@ -91,6 +91,7 @@ export class TouchControls {
     this.root.style.display = g.ui.blocking ? 'none' : '';
     if (!me) return;
     const building = g.builder.active;
+    this.zone.classList.toggle('compact', !!building); // while building, only a corner is the joystick so the rest of the screen can paint
     this.actionBtn.style.display = building ? 'none' : '';
     this.dashBtn.style.display = building ? 'none' : '';
     this.prevBtn.style.display = this.nextBtn.style.display = building ? 'none' : '';

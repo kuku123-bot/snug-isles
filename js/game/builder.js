@@ -109,11 +109,15 @@ export class Builder {
     this.tiles = multi ? null : [[tx, ty]];
     this.okAt = (x, y) => (this.remove || !this.def ? this.checkAt(x, y) : this.checkAt(x, y) && this.affordable());
     if (ptr.pressed) { this.painted.clear(); }
-    if (ptr.down) {
+    const touch = ptr.touch, hot = ptr.down || ptr.pressed; // a tap shorter than one frame still counts
+    if (hot) {
       const key = tx + ',' + ty;
-      if (multi) { if (ptr.pressed) this.commitTiles([[tx, ty]]); }
+      // furniture: mouse places on press; a finger can slide the ghost around and places on lift
+      if (multi) { if (!touch && ptr.pressed) this.commitTiles([[tx, ty]]); }
       else if (!this.painted.has(key)) { this.painted.add(key); this.commitTiles([[tx, ty]]); }
-    } else if (ptr.released) this.painted.clear();
+    }
+    if (multi && touch && ptr.released) this.commitTiles([[tx, ty]]);
+    if (!hot && ptr.released) this.painted.clear();
   }
 
   commitTiles(list) {

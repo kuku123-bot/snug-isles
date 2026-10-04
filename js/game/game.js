@@ -542,7 +542,7 @@ export class Game {
     let down = ptr.down && ptr.type !== 'mouse' || (this.input.mouse.down), pressed = ptr.pressed, released = ptr.released;
     if (ptr.type === 'mouse' && this.input.mouse.right && b.def) { /* temporary remove with RMB */ }
     if (this.input.lastInputKind === 'pad') { const a = this.aimWorld(); ptr.wx = a[0]; ptr.wy = a[1]; ptr.valid = true; down = this.input.useHeld; }
-    b.update(dt, { wx: ptr.wx, wy: ptr.wy, down, pressed, released, valid: ptr.valid });
+    b.update(dt, { wx: ptr.wx, wy: ptr.wy, down, pressed, released, valid: ptr.valid, touch: ptr.type !== 'mouse' && ptr.type !== 'pen' });
     if (ptr.type === 'mouse' && this.input.mouse.right && ptr.pressed === false && this._rmbT === undefined) this._rmbT = 0;
   }
 

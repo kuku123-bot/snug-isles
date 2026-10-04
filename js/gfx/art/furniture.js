@@ -35,6 +35,20 @@ function patternFill(pm, x, y, w, h, st, base) {
   pm.hline(x, y, w, c1[1]); pm.hline(x, y + h - 1, w, c1[3]);
 }
 
+// the chair back is only 6x5 px: the full-size patterns read as a little face there, so it gets subtle stitching instead
+function chairBack(pm, st) {
+  const P = STYLE_PAL[st], c = P.cloth, c2 = P.cloth2;
+  pm.rect(5, 3, 6, 5, c[2]); pm.hline(5, 3, 6, c[1]); pm.hline(5, 7, 6, c[3]);
+  switch (P.pat) {
+    case 'check': for (const [x, y] of [[5, 4], [10, 4], [5, 6], [10, 6]]) pm.set(x, y, c2[2]); break; // quilted corners
+    case 'flower': pm.set(8, 5, hex('#ffd84a')); pm.set(7, 5, c2[1]); pm.set(9, 5, c2[1]); pm.set(8, 4, c2[1]); pm.set(8, 6, c2[1]); break;
+    case 'stripe': pm.vline(8, 4, 3, c[3]); break;
+    case 'trim': pm.hline(5, 3, 6, c2[2]); pm.set(8, 4, c2[1]); pm.set(8, 6, c2[1]); break; // tufted buttons
+    case 'rainbow': { const cols = ['#ff9fd0', '#ffe48a', '#9ff0e0']; for (let i = 0; i < 3; i++) pm.hline(5, 4 + i, 6, hex(cols[i])); break; }
+    case 'stars': pm.set(6, 4, c2[0]); pm.set(9, 6, c2[0]); pm.set(8, 4, c2[1]); break;
+  }
+}
+
 function legs(pm, p, xs, y, h) { for (const x of xs) { pm.rect(x, y, 2, h, p[3]); pm.set(x, y, p[2]); } }
 
 const D = {};
@@ -61,7 +75,7 @@ D.chair = (st) => {
   legs(pm, w, [4, 10], 14, 5);
   pm.rect(3, 9, 10, 5, P.cloth[2]); pm.rect(3, 9, 10, 1, P.cloth[1]); pm.rect(3, 13, 10, 1, P.cloth[3]);
   pm.rect(4, 1, 8, 9, w[2]); pm.rect(4, 1, 8, 1, w[0]); pm.rect(4, 1, 1, 9, w[1]); pm.rect(11, 1, 1, 9, w[3]);
-  patternFill(pm, 5, 3, 6, 5, st);
+  chairBack(pm, st);
   if (st === 'elegant' || st === 'celestial' || st === 'rainbow') { pm.set(6, 0, P.trim[2]); pm.set(9, 0, P.trim[2]); }
   pm.outline(null, { amt: 0.7 }); groundShadow(pm, 8, 19, 6, 1.5, 60);
   return pm;
