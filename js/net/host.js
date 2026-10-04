@@ -2,16 +2,17 @@
 // Transport-agnostic: a "conn" is { send(str), close(), onmessage, onclose, open, buffered }.
 import { clamp, TILE } from '../util.js';
 import { serializeWorld } from '../sim/serialize.js';
-import { PROTOCOL, MAX_PLAYERS, ST_HZ, EV_HZ, sendMsg, Reader, packJSON, buildStateMsg, buildPrivateMsg, publicPlayer, interpolate } from './protocol.js';
+import { PROTOCOL, BUILD_ID, MAX_PLAYERS, ST_HZ, EV_HZ, sendMsg, Reader, packJSON, buildStateMsg, buildPrivateMsg, publicPlayer, interpolate } from './protocol.js';
 
 const BACKUP_EVERY = 240;
 const TIMEOUT = 14;
+const ASK_TIMEOUT = 90; // seconds the host has to let a new player in
 
 export class HostLink {
   constructor(sim, o = {}) {
     this.sim = sim;
     this.world = sim.world;
-    this.o = { localPid: null, saveName: 'Our Isles', worldId: null, now: () => performance.now() / 1000, onJoin() {}, onLeave() {}, onStatus() {}, ...o };
+    this.o = { localPid: null, saveName: 'Our Isles', worldId: null, now: () => performance.now() / 1000, onJoin() {}, onLeave() {}, onStatus() {}, approve: null, onMismatch() {}, ...o };
     this.links = new Map();
     this.pending = new Set();
     this.evAcc = 0; this.stAcc = 0; this.backupAcc = 0;
@@ -37,29 +38,27 @@ export class HostLink {
       case 'hello': {
         if (m.v !== PROTOCOL) return this.kick(link, 'Your two devices run different versions of the game. Reload the page on both and try again.');
         if (typeof m.pid !== 'string' || m.pid.length < 4) return this.kick(link, 'Bad player id.');
-        const existing = this.links.get(m.pid);
-        if (!existing && this.links.size + 1 >= MAX_PLAYERS) return this.kick(link, 'This world is full.');
-        if (existing && existing !== link) { this.links.delete(m.pid); try { existing.conn.close(); } catch (e) { /* ignore */ } }
         if (m.pid === this.o.localPid) return this.kick(link, 'You are already in this world on another device — close it first.');
-        this.flush(); // drain events so the snapshot below is consistent with what existing clients have
-        const p = sim.addPlayer(m.pid, String(m.name || 'Friend').slice(0, 14), m.look);
-        p.online = true; p.shield = 3;
-        if (!w.boxFree(p.x, p.y - 3, 4, 3)) { const host = w.players.get(this.o.localPid); p.x = (host ? host.x : sim.spawn.x) + 12; p.y = host ? host.y : sim.spawn.y; }
-        link.pid = m.pid; link.ready = false; link.backlog = [];
-        this.pending.delete(link); this.links.set(m.pid, link);
-        const data = serializeWorld(sim);
-        data.worldId = this.o.worldId; data.name = this.o.saveName; data.online = [...w.players.values()].filter((q) => q.online).map((q) => q.pid);
-        const host = w.players.get(this.o.localPid);
-        w.emit(['pj', publicPlayer(p)]);
-        packJSON(data).then((pk) => {
-          if (link.conn.open === false) return;
-          this.send(link, { t: 'welcome', pid: p.pid, entity: p.id, host: host ? host.name : 'Host', protocol: PROTOCOL });
-          this.send(link, { t: 'snap', ...pk });
-          link.ready = true;
-          if (link.backlog.length) { this.send(link, { t: 'ev', e: link.backlog }); link.backlog = []; }
-          this.o.onStatus(`${p.name} joined`);
-          this.o.onJoin(p);
-        });
+        if (link.asking || link.pid) return;
+        // strangers must be let in by the host (room codes are short); players already in this world walk straight back in
+        if (!w.players.has(m.pid) && this.o.approve) {
+          if (this.links.size + 1 >= MAX_PLAYERS && !this.links.has(m.pid)) return this.kick(link, 'This world is full.');
+          link.asking = true;
+          this.send(link, { t: 'wait' });
+          const claim = [...w.players.values()].filter((q) => !q.online && q.pid !== this.o.localPid).map((q) => ({ pid: q.pid, name: q.name, level: q.level }));
+          let done = false;
+          const finish = (d) => {
+            if (done) return; done = true; clearTimeout(timer); link.asking = false; link.cancelAsk = null;
+            if (!d || !d.allow) return this.kick(link, 'Your partner did not let you in this time.');
+            if (link.conn.open === false) return;
+            this.admit(link, m, d.as);
+          };
+          const timer = setTimeout(() => finish(null), ASK_TIMEOUT * 1000);
+          link.cancelAsk = () => { if (done) return; done = true; clearTimeout(timer); link.asking = false; link.cancelAsk = null; if (this.o.onAskCancel) this.o.onAskCancel(link); };
+          this.o.approve({ name: String(m.name || 'Friend').slice(0, 14), look: m.look || {}, claim }, finish, link);
+          return;
+        }
+        this.admit(link, m, null);
         break;
       }
       case 'pos': {
@@ -85,6 +84,45 @@ export class HostLink {
     }
   }
 
+  /** let a player in: create/resume their character, send the world */
+  admit(link, m, as) {
+    const sim = this.sim, w = this.world;
+    const existing = this.links.get(m.pid);
+    if (!existing && this.links.size + 1 >= MAX_PLAYERS) return this.kick(link, 'This world is full.');
+    if (existing && existing !== link) { this.links.delete(m.pid); try { existing.conn.close(); } catch (e) { /* ignore */ } }
+    if (as && !w.players.has(m.pid)) this.adopt(as, m.pid);
+    this.flush(); // drain events so the snapshot below is consistent with what existing clients have
+    const p = sim.addPlayer(m.pid, String(m.name || 'Friend').slice(0, 14), m.look);
+    p.online = true; p.shield = 3;
+    if (!w.boxFree(p.x, p.y - 3, 4, 3)) { const host = w.players.get(this.o.localPid); p.x = (host ? host.x : sim.spawn.x) + 12; p.y = host ? host.y : sim.spawn.y; }
+    link.pid = m.pid; link.ready = false; link.backlog = [];
+    this.pending.delete(link); this.links.set(m.pid, link);
+    const data = serializeWorld(sim);
+    data.worldId = this.o.worldId; data.name = this.o.saveName; data.online = [...w.players.values()].filter((q) => q.online).map((q) => q.pid);
+    const host = w.players.get(this.o.localPid);
+    w.emit(['pj', publicPlayer(p)]);
+    packJSON(data).then((pk) => {
+      if (link.conn.open === false) return;
+      this.send(link, { t: 'welcome', pid: p.pid, entity: p.id, host: host ? host.name : 'Host', protocol: PROTOCOL, build: BUILD_ID });
+      this.send(link, { t: 'snap', ...pk });
+      link.ready = true;
+      if (link.backlog.length) { this.send(link, { t: 'ev', e: link.backlog }); link.backlog = []; }
+      this.o.onStatus(`${p.name} joined`);
+      this.o.onJoin(p);
+      if (m.build && m.build !== BUILD_ID) this.o.onMismatch(m.build, BUILD_ID);
+    });
+  }
+
+  /** a returning partner on a fresh device takes over their old (offline) character */
+  adopt(oldPid, newPid) {
+    const w = this.world, p = w.players.get(oldPid);
+    if (!p || p.online || oldPid === this.o.localPid) return false;
+    w.players.delete(oldPid); p.pid = newPid; w.players.set(newPid, p);
+    for (const t of w.things.values()) if (t.s && t.s.by === oldPid) t.s.by = newPid;
+    w.emit(['prk', oldPid, newPid]);
+    return true;
+  }
+
   kick(link, reason) {
     this.send(link, { t: 'kick', reason });
     this.pending.delete(link);
@@ -93,6 +131,7 @@ export class HostLink {
 
   drop(link) {
     this.pending.delete(link);
+    if (link.cancelAsk) link.cancelAsk();
     if (link.pid && this.links.get(link.pid) === link) {
       this.links.delete(link.pid);
       const p = this.world.players.get(link.pid);

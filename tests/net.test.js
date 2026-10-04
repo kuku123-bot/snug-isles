@@ -157,3 +157,74 @@ test('wrong protocol version is refused politely; reconnect gets a fresh snapsho
   assert.ok(sim.world.players.get('guest-0002').online, 'back online after rejoin');
   assert.ok(j2.world.players.get('guest-0002').online);
 });
+
+test('join approval: strangers wait for the host; known players walk straight back in', async () => {
+  const { sim, host, clock } = setup();
+  const asked = [];
+  host.o.approve = (info, decide) => { asked.push(info); setImmediate(() => decide({ allow: true })); };
+  const waits = [];
+  const [hc, cc] = connPair();
+  host.attach(hc);
+  let world = null;
+  const link = new ClientLink(cc, { pid: 'guest-0007', name: 'Gigi', look: { hair: 1 }, now: () => clock.t, onWait: () => waits.push(1), onSnapshot: (d) => { world = restoreWorld(d, { withSim: false }).world; link.attachWorld(world); } });
+  link.start();
+  await waitFor(() => world, 5000);
+  assert.equal(asked.length, 1, 'the host was asked once');
+  assert.equal(asked[0].name, 'Gigi');
+  assert.equal(waits.length, 1, 'the guest was told to wait');
+  assert.ok(world && world.players.get('guest-0007'), 'then let in');
+  // leave and come back: no second question
+  cc.close(); await pump(6);
+  const again = await join(sim, clock, 'Gigi', 'guest-0007');
+  assert.equal(asked.length, 1, 'a known player is not asked again');
+  assert.ok(again.world.players.get('guest-0007').online);
+});
+
+test('join approval: the host can say no, and a dropped request disappears', async () => {
+  const { sim, host, clock } = setup();
+  let decideLater = null, cancelled = 0;
+  host.o.approve = (info, decide) => { decideLater = decide; };
+  host.o.onAskCancel = () => { cancelled++; };
+  // deny
+  let kicked = null;
+  const [hc, cc] = connPair(); host.attach(hc);
+  const link = new ClientLink(cc, { pid: 'stranger-1', name: 'Nope', now: () => clock.t, onKick: (r) => { kicked = r; } });
+  link.start(); await waitFor(() => decideLater, 2000);
+  assert.ok(!sim.world.players.has('stranger-1'), 'not in the world while waiting');
+  decideLater(null);
+  await waitFor(() => kicked, 2000);
+  assert.ok(/did not let you in/i.test(kicked), 'polite refusal: ' + kicked);
+  assert.ok(!sim.world.players.has('stranger-1'), 'never added');
+  // the guest gives up while the host is still deciding
+  decideLater = null;
+  const [hc2, cc2] = connPair(); host.attach(hc2);
+  const l2 = new ClientLink(cc2, { pid: 'stranger-2', name: 'Bye', now: () => clock.t });
+  l2.start(); await waitFor(() => decideLater, 2000);
+  cc2.close(); await pump(6);
+  assert.equal(cancelled, 1, "the host's prompt was withdrawn");
+  decideLater({ allow: true }); await pump(6); // a late "yes" does nothing
+  assert.ok(!sim.world.players.has('stranger-2'), 'late approval ignored');
+});
+
+test('join approval: a returning partner on a new device gets their old character back', async () => {
+  const { sim, host, clock } = setup();
+  const w = sim.world;
+  // first life of the partner
+  const first = await join(sim, clock, 'Gigi', 'old-device-1');
+  const gp = w.players.get('old-device-1');
+  give(gp, 'gem_ruby', 3); gp.level = 7; gp.xp = 123;
+  // a farm plot she owns
+  const [fx, fy] = freeSpot(sim, gp, 8);
+  const plot = w.addThing('farm_plot', fx, fy); plot.s = { c: null, g: 0, st: 0, by: 'old-device-1' };
+  first.conn.close(); await pump(6);
+  assert.ok(!gp.online);
+  // she comes back from a phone with a fresh profile
+  host.o.approve = (info, decide) => { assert.deepEqual(info.claim.map((c) => c.name), ['Gigi']); setImmediate(() => decide({ allow: true, as: 'old-device-1' })); };
+  const back = await join(sim, clock, 'Gigi', 'new-device-2');
+  assert.ok(!w.players.has('old-device-1'), 'old identity retired');
+  const np = w.players.get('new-device-2');
+  assert.equal(np.level, 7, 'level kept');
+  assert.equal(np.inv.filter((s) => s && s.id === 'gem_ruby').reduce((a, s) => a + s.n, 0), 3, 'inventory kept');
+  assert.equal(plot.s.by, 'new-device-2', 'her farm still counts as hers');
+  assert.ok(back.world.players.get('new-device-2') && !back.world.players.has('old-device-1'), 'her device sees the same');
+});

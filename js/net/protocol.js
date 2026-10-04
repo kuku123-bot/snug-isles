@@ -4,7 +4,9 @@ import { TILE, clamp } from '../util.js';
 import { b64ToBytes } from '../sim/sim.js';
 import { MOBS } from '../data/mobs.js';
 
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
+/** identifies the exact build so two devices on different versions can be told so (see tools/build.mjs) */
+export const BUILD_ID = typeof __BUILD__ === 'undefined' ? 'dev' : __BUILD__;
 export const MAX_PLAYERS = 4;
 export const CHUNK = 12000; // characters per chunk (safe for every browser's SCTP message limit)
 export const ST_HZ = 15, EV_HZ = 20, POS_HZ = 20;
@@ -144,6 +146,7 @@ export function applyEvent(world, ev, ctx = {}) {
     case 'wake': break;
     case 'pj': ensurePlayer(world, ev[1]); break; // [pj, {pid,id,name,look}]
     case 'pl': { const p = world.players.get(ev[1]); if (p) p.online = false; break; }
+    case 'prk': { const p = world.players.get(ev[1]); if (p) { world.players.delete(ev[1]); p.pid = ev[2]; world.players.set(ev[2], p); } break; } // a returning partner on a new device
     case 'name': { const p = world.players.get(ev[1]); if (p) { p.name = ev[2]; p.look = ev[3]; } break; }
     default: break;
   }

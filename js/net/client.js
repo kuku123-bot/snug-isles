@@ -1,13 +1,13 @@
 // Client side of a multiplayer session: mirrors the host's world. Own movement is local (client-authoritative); everything
 // else (inventory, world changes, creatures) comes from the host.
-import { PROTOCOL, POS_HZ, sendMsg, Reader, unpackJSON, applyEvent, applyState, applyPrivate, interpolate } from './protocol.js';
+import { PROTOCOL, BUILD_ID, POS_HZ, sendMsg, Reader, unpackJSON, applyEvent, applyState, applyPrivate, interpolate } from './protocol.js';
 
 const TIMEOUT = 10;
 
 export class ClientLink {
   constructor(conn, o = {}) {
     this.conn = conn;
-    this.o = { pid: '', name: 'Friend', look: {}, now: () => performance.now() / 1000, onSnapshot() {}, onKick() {}, onClose() {}, onBackup() {}, onHostLeft() {}, onStatus() {}, ...o };
+    this.o = { pid: '', name: 'Friend', look: {}, now: () => performance.now() / 1000, onSnapshot() {}, onKick() {}, onClose() {}, onBackup() {}, onHostLeft() {}, onStatus() {}, onWait() {}, onMismatch() {}, ...o };
     this.reader = new Reader();
     this.world = null; this.game = null;
     this.pendingEv = [];
@@ -21,11 +21,12 @@ export class ClientLink {
     conn.onmessage = (s) => { this.lastRx = this.o.now(); const m = this.reader.feed(s); if (m) { try { this.handle(m); } catch (e) { console.error('client handle error', e); } } };
     conn.onclose = () => { if (!this.closed) { this.closed = true; this.o.onClose(); } };
   }
-  start() { sendMsg(this.conn, { t: 'hello', v: PROTOCOL, pid: this.o.pid, name: this.o.name, look: this.o.look }); }
+  start() { sendMsg(this.conn, { t: 'hello', v: PROTOCOL, build: BUILD_ID, pid: this.o.pid, name: this.o.name, look: this.o.look }); }
 
   handle(m) {
     switch (m.t) {
-      case 'welcome': this.info = m; this.hostName = m.host; this.status = 'Loading the world…'; this.sig++; break;
+      case 'wait': this.status = 'Waiting for your partner to let you in…'; this.sig++; this.o.onWait(); break;
+      case 'welcome': this.info = m; this.hostName = m.host; this.status = 'Loading the world…'; this.sig++; if (m.build && m.build !== BUILD_ID) this.o.onMismatch(m.build, BUILD_ID); break;
       case 'snap': unpackJSON(m).then((data) => this.o.onSnapshot(data, this.info)).catch((e) => this.o.onKick('Could not read the world: ' + e.message)); break;
       case 'ev':
         if (!this.world) { this.pendingEv.push(...m.e); break; }

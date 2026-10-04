@@ -38,7 +38,8 @@ export function settingsPanel(g, data, ui) {
       toggle('Left-handed layout', 'leftHanded', 'Swap the joystick and buttons.', () => g.touch.layout()),
       choice('Zoom', 'zoomBias', [[-1, 'Out'], [0, 'Normal'], [1, 'In'], [2, 'Closer']], () => { g.view.bias = s.zoomBias; g.view.resize(); }),
       choice('Menu size', 'uiScale', [[0.9, 'Small'], [1, 'Normal'], [1.15, 'Large'], [1.3, 'Huge']], () => app.applyUiScale()),
-      toggle('Keep screen awake', 'wakeLock', 'Stops the iPad from sleeping while you play.'));
+      toggle('Keep screen awake', 'wakeLock', 'Stops the iPad from sleeping while you play.'),
+      toggle('Ask before new players join', 'approveJoins', 'When you host: someone new using your room code must be let in by you first.'));
   }
   redraw();
   return { title: 'Settings', icon: 'ui_gear', body, sig: () => '' };

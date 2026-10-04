@@ -1,5 +1,6 @@
 // App orchestrator: boot, screens, starting/saving games, main loop.
 import { buildBook } from './gfx/art/index.js';
+import { spawnMob } from './sim/combat.js';
 import { Sprites } from './gfx/sprites.js';
 import { setSprites } from './ui/dom.js';
 import { View } from './engine/view.js';
@@ -17,7 +18,7 @@ import { strHash } from './util.js';
 import { DEFAULT_LOOK } from './sim/player.js';
 
 export const VERSION = '0.1.0';
-const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true };
+const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true, approveJoins: true };
 
 export class App {
   constructor() {
@@ -60,6 +61,7 @@ export class App {
     requestAnimationFrame((t) => this.loop(t));
     console.log(`Snug Isles ${VERSION} booted in ${(performance.now() - t0).toFixed(0)}ms, ${this.book.names().length} sprites`);
     window.__snug = this;
+    this.dbg = { spawnMob }; // test/debug helpers (perf scene, e2e)
     this.handleUrl();
     if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.search.includes('nosw') && !/localhost|127\.0\.0\.1/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(() => {});
   }

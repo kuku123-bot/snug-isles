@@ -12,11 +12,16 @@ const DIST = path.join(ROOT, 'dist');
 export async function build({ dev = false, outdir = DIST, version } = {}) {
   fs.rmSync(outdir, { recursive: true, force: true });
   fs.mkdirSync(outdir, { recursive: true });
+  // identifies this exact source tree, so a host and a guest running different builds can be told so
+  const src = crypto.createHash('sha1');
+  const walkSrc = (d) => { for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walkSrc(p) : src.update(fs.readFileSync(p)); } };
+  walkSrc(path.join(ROOT, 'js')); walkSrc(path.join(ROOT, 'css')); src.update(fs.readFileSync(path.join(ROOT, 'index.html')));
+  const buildId = src.digest('hex').slice(0, 7);
   const result = await esbuild.build({
     entryPoints: { app: path.join(ROOT, 'js/main.js') },
     outdir, bundle: true, format: 'esm', splitting: true, minify: !dev, sourcemap: dev ? 'inline' : false,
     target: ['es2022', 'safari16', 'chrome110', 'firefox110'], metafile: true, legalComments: 'none', logLevel: 'warning',
-    define: { 'process.env.NODE_ENV': dev ? '"development"' : '"production"' },
+    define: { 'process.env.NODE_ENV': dev ? '"development"' : '"production"', __BUILD__: JSON.stringify(buildId) },
   });
   // static files
   const copy = (src, dst) => { fs.mkdirSync(path.dirname(path.join(outdir, dst)), { recursive: true }); fs.cpSync(path.join(ROOT, src), path.join(outdir, dst), { recursive: true }); };

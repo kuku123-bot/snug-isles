@@ -13,6 +13,9 @@ export async function startHosting(app, game) {
   const st = { code: null, status: 'Opening your world…', sig: 0, peer: null, offer: null, closed: false };
   const hl = new HostLink(sim, {
     localPid: game.localPid, saveName: game.saveName, worldId: game.saveId,
+    approve: game.settings.approveJoins === false ? null : (info, decide, link) => game.hud.askJoin(info, decide, link),
+    onAskCancel: (link) => game.hud.cancelJoin(link),
+    onMismatch: (theirs, mine) => game.toast(`Your partner's game is a different version (${theirs} vs ${mine}). If anything acts strange, reload both devices.`, 'warn'),
     onJoin: (p) => { game.toast(`${p.name} joined your world!`, 'good'); game.audio.play('join'); st.status = `${p.name} is here!`; st.sig++; },
     onLeave: (p) => { game.toast(`${p.name} left.`, 'info'); st.status = 'Waiting for your partner…'; st.sig++; },
   });
@@ -80,17 +83,20 @@ export async function manualJoin(app, offerCode, onStatus) {
 function finishJoin(app, conn, ctx) {
   const profile = app.profile;
   return new Promise((resolve, reject) => {
-    let started = false;
+    let started = false, timer = null;
+    const arm = (ms, msg) => { clearTimeout(timer); timer = setTimeout(() => { if (started) return; reject(new Error(msg)); try { conn.close(); } catch (e) { /* ignore */ } }, ms); };
     const link = new ClientLink(conn, {
       pid: profile.pid, name: profile.name, look: profile.look,
-      onSnapshot: (data) => { started = true; beginClient(app, data, link, ctx); resolve(); },
-      onKick: (reason) => { if (!started) reject(new Error(reason)); else lost(app, link, ctx, reason, true); },
-      onClose: () => { if (!started) reject(new Error('The connection closed before the world loaded.')); else lost(app, link, ctx, 'Connection lost'); },
+      onSnapshot: (data) => { started = true; clearTimeout(timer); beginClient(app, data, link, ctx); resolve(); },
+      onKick: (reason) => { clearTimeout(timer); if (!started) reject(new Error(reason)); else lost(app, link, ctx, reason, true); },
+      onClose: () => { clearTimeout(timer); if (!started) reject(new Error('The connection closed before the world loaded.')); else lost(app, link, ctx, 'Connection lost'); },
       onBackup: (data) => app.saveClientCopy(data),
       onHostLeft: () => lost(app, link, ctx, 'Your partner closed the world.', true),
+      onWait: () => { if (ctx.onStatus) ctx.onStatus('Waiting for your partner to let you in…'); arm(110000, 'Your partner did not answer in time.'); },
+      onMismatch: (theirs, mine) => { ctx.mismatch = [theirs, mine]; },
     });
     link.start();
-    setTimeout(() => { if (!started) { reject(new Error('Loading the world took too long.')); try { conn.close(); } catch (e) { /* ignore */ } } }, 30000);
+    arm(30000, 'Loading the world took too long.');
   });
 }
 
@@ -106,6 +112,7 @@ function beginClient(app, data, link, ctx) {
   const world = buildMirror(data, app.profile.pid);
   app.beginClientGame(world, link, data.name || 'Our Isles', ctx);
   app.saveClientCopy(data);
+  if (ctx.mismatch && app.game) app.game.toast(`Your partner's game is a different version (${ctx.mismatch[0]} vs ${ctx.mismatch[1]}). If anything acts strange, reload both devices.`, 'warn');
 }
 
 // ------------------------------------------------------------------ connection loss + auto reconnect

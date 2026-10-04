@@ -72,15 +72,23 @@ export class Game {
     this.attachPointer();
     const me = this.me;
     if (me) { this.cam.x = me.x - this.view.w / 2; this.cam.y = me.y - this.view.h / 2 - 8; }
-    this.onVis = () => { if (document.hidden) { this.save(); } };
+    this.onVis = () => {
+      if (document.hidden) { this.save(); return; }
+      this.requestWake(); // the browser drops the screen lock whenever the tab is hidden
+      this.audio.unlock();
+    };
     document.addEventListener('visibilitychange', this.onVis);
     this.onHide = () => this.save();
     window.addEventListener('pagehide', this.onHide);
     this.audio.startMusic();
-    if (this.settings.wakeLock && navigator.wakeLock) navigator.wakeLock.request('screen').then((l) => { this.wake = l; }).catch(() => {});
+    this.requestWake();
     this.view.onResize(() => { this.touch && this.touch.layout(); });
     this.hud.refreshAll();
     this.touch.layout();
+  }
+  requestWake() {
+    if (this.destroyed || !this.settings.wakeLock || !navigator.wakeLock || (this.wake && !this.wake.released)) return;
+    navigator.wakeLock.request('screen').then((l) => { this.wake = l; if (this.destroyed) { try { l.release(); } catch (e) { /* ignore */ } } }).catch(() => {});
   }
   destroy() {
     this.destroyed = true;

@@ -36,6 +36,12 @@ await guest.waitForTimeout(1200);
 await guest.evaluate(() => { __snug.profile.name = 'Gigi'; __snug.profile.look = { skin: 2, hair: 0, hairColor: 1, outfit: 1, accessory: 0 }; __snug.saveProfile(); });
 const joinMsg = [];
 await guest.evaluate((c) => { window.__joinStatus = []; __snug.joinGame(c, (m) => window.__joinStatus.push(m)); }, code);
+// a stranger knocks: the host has to let them in (room codes are short)
+const knock = host.getByRole('button', { name: 'Let them in' });
+await knock.waitFor({ timeout: 20000 }).catch(() => {});
+ok(await knock.isVisible().catch(() => false), 'host sees a "wants to join" card');
+if (process.env.SHOTS) { await host.waitForTimeout(500); await host.screenshot({ path: '.scratch/mp-knock.png' }); }
+await knock.click({ timeout: 5000 }).catch((e) => { console.log('CLICK FAILED:', String(e.message).split('\n').slice(0, 8).join('\n')); });
 await guest.waitForFunction(() => __snug.game && __snug.game.mode === 'client', null, { timeout: 30000 }).catch(() => {});
 const gmode = await guest.evaluate(() => __snug.game && __snug.game.mode);
 if (gmode !== 'client') console.log('join status:', await guest.evaluate(() => window.__joinStatus));

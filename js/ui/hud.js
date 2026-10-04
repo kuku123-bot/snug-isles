@@ -77,10 +77,32 @@ export class HUD {
     this.bossName = h('div', { class: 'nm' }); this.bossFill = h('i');
     this.bossEl = h('div', { class: 'bossbar', style: 'display:none' }, this.bossName, h('div', { class: 'bar' }, this.bossFill));
     this.buildBar = h('div', { class: 'buildbar', style: 'display:none' });
+    // join requests live above every panel (the "Play together" window would otherwise cover them)
+    let jr = document.getElementById('joinreqs');
+    if (!jr) { jr = h('div', { id: 'joinreqs', class: 'joinreqs' }); document.getElementById('app').appendChild(jr); }
+    jr.replaceChildren(); this.joinReqs = jr;
     root.append(tl, tc, tr, this.pickups, this.statusRow, this.bossEl, this.buildBar, hot);
     this.last = {};
     this.refreshAll();
   }
+
+  /** host: someone new knocks. decide({allow, as}) answers; `as` hands them a returning player's old character */
+  askJoin(info, decide, link) {
+    const g = this.g;
+    g.audio.play('join');
+    let card = null;
+    const answer = (d) => { if (card) card.remove(); decide(d); };
+    const claim = (info.claim || []).map((c) => h('button', { class: 'btn small blue', onclick: () => answer({ allow: true, as: c.pid }) }, `This is ${c.name} (level ${c.level || 1}) — keep their character`));
+    card = h('div', { class: 'joinreq panel' },
+      h('div', { class: 'row' }, ic('ui_people', 2), h('div', { class: 'grow' }, h('b', null, info.name), ' wants to join your world')),
+      h('div', { class: 'small muted' }, 'Only let in someone you invited.'),
+      h('div', { class: 'col', style: 'gap:6px' },
+        h('button', { class: 'btn small good', onclick: () => answer({ allow: true }) }, claim.length ? 'Let in as a new player' : 'Let them in'), ...claim,
+        h('button', { class: 'btn small red', onclick: () => answer(null) }, 'Not now')));
+    card._link = link;
+    this.joinReqs.append(card);
+  }
+  cancelJoin(link) { for (const c of [...this.joinReqs.children]) if (c._link === link) c.remove(); }
 
   logPickup(item, n) {
     const it = ITEMS[item]; if (!it) return;
