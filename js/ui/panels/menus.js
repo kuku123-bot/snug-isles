@@ -79,3 +79,20 @@ export function deadPanel(g, data, ui) {
   const p = { title: '', shell: el, passive: true, sig: () => '', tick: () => { const me = g.me; if (me && me.dead <= 0) ui.close(true); } };
   return p;
 }
+
+export function lostPanel(g, data, ui) {
+  const st = data.state;
+  const msg = h('div', { style: 'font-size:18px;text-align:center;min-height:50px' });
+  const btns = h('div', { class: 'row', style: 'justify-content:center;flex-wrap:wrap' });
+  function render() {
+    msg.textContent = st.msg;
+    clear(btns);
+    if (st.final) {
+      btns.append(h('div', { class: 'small muted', style: 'width:100%;text-align:center' }, 'A copy of the world is saved on this device. You can host it yourself from Play together → Host a world.'),
+        h('button', { class: 'btn red', onclick: () => g.app.quitToTitle() }, ic('ui_cross', 2), 'Back to title'));
+    } else btns.append(h('button', { class: 'btn', onclick: () => { st.stop = true; g.app.quitToTitle(); } }, 'Leave'));
+  }
+  render();
+  const body = h('div', { class: 'col', style: 'min-width:min(86vw,360px);gap:12px' }, msg, btns);
+  return { title: 'Connection lost', icon: 'ui_link', body, noClose: true, noScrimClose: true, sig: () => `${st.msg}:${st.final}`, refresh: render };
+}

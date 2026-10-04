@@ -126,7 +126,7 @@ export class HUD {
         const v = p.hp - i * 4;
         const name = v >= 3 ? 'ui_heart' : v >= 1 ? 'ui_heart_half' : 'ui_heart_empty';
         const el = this.heartsEl.children[i];
-        if (el.dataset.k !== name) { el.dataset.k = name; el.replaceWith(Object.assign(ic(name, 2), { dataset: { k: name } })); }
+        if (el.dataset.k !== name) { const ne = ic(name, 2); ne.dataset.k = name; el.replaceWith(ne); }
       }
     }
     if (force || L.xp !== Math.floor(p.xp) || L.lv !== p.level) {

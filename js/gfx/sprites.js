@@ -37,7 +37,7 @@ export class Sprites {
     first.getContext('2d').putImageData(new ImageData(pixmap.bytes(), pixmap.w, pixmap.h), 0, 0);
     this.staticCanvas = first;
     this.staticPage = { canvas: first };
-    for (const [name, r] of rects) this.map.set(name, { page: this.staticPage, x: r.x, y: r.y, w: r.w, h: r.h });
+    for (const [name, r] of rects) this.map.set(name, { page: this.staticPage, x: r.x, y: r.y, w: r.w, h: r.h, pm: book.sprites.get(name) });
     this.dynPages = [new Page()];
     this.dynCount = 0;
     this.urlCache = null;
@@ -67,7 +67,7 @@ export class Sprites {
       const pos = page.alloc(pm.w, pm.h);
       if (pos) {
         page.put(pm, pos.x, pos.y);
-        const s = { page, x: pos.x, y: pos.y, w: pm.w, h: pm.h };
+        const s = { page, x: pos.x, y: pos.y, w: pm.w, h: pm.h, pm };
         this.map.set(key, s);
         this.dynCount++;
         return s;
@@ -106,14 +106,7 @@ export class Sprites {
     if (s) return s;
     return this.addPixmap(key, this.pixmapOf(this.get(name)).silhouette(color));
   }
-  pixmapOf(s) {
-    const c = s.page.canvas;
-    const ctx = c.getContext('2d');
-    const d = ctx.getImageData(s.x, s.y, s.w, s.h);
-    const pm = new Pixmap(s.w, s.h);
-    pm.d.set(new Uint32Array(d.data.buffer));
-    return pm;
-  }
+  pixmapOf(s) { return s.pm; }
 
   /** CSS helpers for DOM icons: returns {url, x, y, w, h, W, H} for static sprites only */
   async prepareDom() {

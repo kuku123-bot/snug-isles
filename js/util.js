@@ -131,3 +131,14 @@ export const clone = (o) => JSON.parse(JSON.stringify(o));
 
 /** Title-case helper for ids ("copper_ingot" -> "Copper Ingot"). */
 export const prettyId = (id) => id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+export function timeAgo(ts) {
+  if (!ts) return 'never played';
+  const d = Math.max(0, Date.now() - ts), m = Math.floor(d / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const hr = Math.floor(m / 60);
+  if (hr < 24) return `${hr} hour${hr > 1 ? 's' : ''} ago`;
+  const dd = Math.floor(hr / 24);
+  return dd === 1 ? 'yesterday' : `${dd} days ago`;
+}

@@ -96,6 +96,16 @@ export class Game {
     this.input.joy.x = this.input.joy.y = 0;
   }
 
+  /** replace the world mirror after a reconnect */
+  swapWorld(world, link) {
+    this.world = world;
+    world.hooks.fx = (k, x, y, a, b, c) => this.fx.onEvent(k, x, y, a, b, c);
+    world.hooks.tell = (pid, ev) => { if (pid === this.localPid) this.onTell(ev); };
+    this.renderer.setWorld(world);
+    this.net = link; link.attach(this);
+    this.landRevSeen = -1; this.pstates.clear(); this.hover = null;
+    this.hud.refreshAll();
+  }
   get me() { return this.world.players.get(this.localPid); }
   partner() { for (const p of this.world.players.values()) if (p.pid !== this.localPid && p.online) return p; return null; }
   pstate(pid) {

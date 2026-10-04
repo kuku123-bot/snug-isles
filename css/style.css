@@ -187,3 +187,15 @@ textarea.sdp { width: 100%; height: 90px; border: 3px solid var(--ink); border-r
   .slot { width: 44px; height: 44px; }
   .win-head h2 { font-size: 20px; }
 }
+
+.flipx { transform: scaleX(-1); }
+.chip.warn { background: rgba(255,216,74,.4); }
+.tipbox { background: var(--ink); color: #fff; border-radius: 10px; padding: 6px 10px; font-size: 14px; max-width: 250px; line-height: 1.25; box-shadow: 0 3px 0 rgba(0,0,0,.3); }
+.ghost { opacity: .3; filter: grayscale(1); }
+
+@media (min-aspect-ratio: 6/5) {
+  .title-wrap { align-items: flex-start; padding-left: clamp(18px, 6vw, 90px); background: linear-gradient(90deg, rgba(29,21,48,.55) 0%, rgba(29,21,48,.25) 38%, rgba(29,21,48,0) 55%); }
+  .title-wrap .menu { width: min(36vw, 340px); }
+  .logo { text-align: left; }
+}
+.title-wrap { overflow: hidden; }

@@ -1,0 +1,42 @@
+// Screenshot every panel/screen. node tools/tour.mjs [width] [height] [engine]
+import { chromium, webkit } from 'playwright';
+import { startServer } from './serve.mjs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const [W = '1180', H = '820', engine = 'chromium'] = process.argv.slice(2);
+const { server, url } = await startServer(path.join(ROOT, 'dist'));
+const browser = await (engine === 'webkit' ? webkit : chromium).launch();
+const ctx = await browser.newContext({ viewport: { width: +W, height: +H }, deviceScaleFactor: 2 });
+const page = await ctx.newPage();
+const logs = [];
+page.on('console', (m) => { if (['error'].includes(m.type())) logs.push(m.type() + ': ' + m.text()); });
+page.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 5).join('\n')));
+await page.goto(url + '?quick=dreamy', { waitUntil: 'load' });
+await page.waitForTimeout(1500);
+// give the player lots of stuff & unlock a few techs so panels have content
+await page.evaluate(() => {
+  const g = __snug.game, w = g.world, me = g.me;
+  for (const t of ['stonecraft', 'weaving', 'carpentry', 'cottage_style', 'smelting', 'glassmaking', 'masonry', 'metalworking', 'gardening', 'cooking', 'storage', 'lighting', 'kitchen', 'trade']) w.techs.add(t);
+  w.shared.flags.statsRev = 1;
+  const add = (id, n) => { const inv = me.inv; for (let i = 0; i < inv.length; i++) if (!inv[i]) { inv[i] = { id, n }; return; } };
+  for (const [id, n] of [['iron_ingot', 20], ['copper_ingot', 10], ['gem_ruby', 3], ['honey', 5], ['coal', 40], ['glass', 20], ['brick', 20], ['cloth', 20], ['petal_pink', 20], ['bone', 5], ['potion_health_s', 3], ['hat_cloth', 1], ['charm_speed', 1]]) add(id, n);
+  me.rev++; w.coins = 480; w.rev++;
+});
+const shot = async (name, fn) => { if (fn) await page.evaluate(fn); await page.waitForTimeout(450); await page.screenshot({ path: `.scratch/tour/${name}.png` }); };
+await shot('01-inventory', () => __snug.game.ui.open('inventory'));
+await shot('02-craft', () => __snug.game.ui.open('craft'));
+await shot('03-build-walls', () => __snug.game.ui.open('build'));
+await shot('04-build-furniture', () => { __snug.game.lastBuildCat = 'furniture'; __snug.game.ui.open('build'); __snug.game.ui.cur.refresh && 0; });
+await shot('05-tech', () => __snug.game.ui.open('tech'));
+await shot('06-skills', () => { __snug.game.me.sp = 5; __snug.game.me.rev++; __snug.game.ui.open('skills'); });
+await shot('07-map', () => __snug.game.ui.open('map'));
+await shot('08-pause', () => __snug.game.ui.open('pause'));
+await shot('09-settings', () => __snug.game.ui.open('settings'));
+await shot('10-help', () => __snug.game.ui.open('help'));
+await shot('11-rules', () => __snug.game.ui.open('rules'));
+await shot('12-emote', () => __snug.game.ui.open('emote'));
+await shot('13-landbuy', () => __snug.game.ui.open('landbuy', { gx: 4, gy: 3 }));
+await shot('14-mp', () => __snug.game.ui.open('mp'));
+console.log('logs:', logs.length ? '\n' + logs.join('\n') : 'none');
+await browser.close(); server.close();
