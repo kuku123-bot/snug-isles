@@ -155,9 +155,10 @@ export function placeCheck(sim, p, def, tx, ty) {
   return null;
 }
 
-function refund(sim, p, def, mult) {
-  const items = {};
-  for (const k in def.cost) { const n = Math.floor(def.cost[k] * mult); if (n > 0) items[k] = n; }
+/** Give back exactly what building it costs the player right now, so discounts can never be farmed by build/remove cycles. */
+function refund(sim, p, def) {
+  const mult = buildMult(sim, p, def), items = {};
+  for (const k in def.cost) { const n = Math.ceil(def.cost[k] * mult - 1e-9); if (n > 0) items[k] = n; }
   giveAll(sim, p, items);
 }
 
@@ -184,14 +185,13 @@ function doBuild(sim, p, cmd, quiet = false) {
   if (def.kind === 'floor' && w.floor[i] === floorCodeOf(def.id)) return;
   if (def.kind === 'walldeco' && w.deco[i] === decoCodeOf(def.id)) return;
   if (mult > 0) spendAll(sim, src, def.cost, mult);
-  const rate = mult > 0 ? 1 : 0;
   const cx = (tx + (def.w || 1) / 2) * TILE, cy = (ty + (def.h || 1)) * TILE;
   if (def.kind === 'wall') {
-    if (w.wall[i]) refund(sim, p, BUILD[wallDefOf(w.wall[i]).id], rate);
+    if (w.wall[i]) refund(sim, p, BUILD[wallDefOf(w.wall[i]).id]);
     clearSoftNodes(sim, def, tx, ty);
     w.setWall(tx, ty, wallCodeOf(def.id), 0);
   } else if (def.kind === 'floor') {
-    if (w.floor[i]) refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])], rate);
+    if (w.floor[i]) refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])]);
     clearSoftNodes(sim, def, tx, ty);
     w.setFloor(tx, ty, floorCodeOf(def.id));
   } else if (def.kind === 'walldeco') {
@@ -236,28 +236,27 @@ function doUnbuild(sim, p, cmd, quiet = false) {
   const placed = thing && BUILD[thing.type] && !BUILD[thing.type].hidden ? thing : null;
   if (!layer) layer = w.deco[i] ? 'deco' : placed ? 'thing' : w.wall[i] ? 'wall' : w.floor[i] ? 'floor' : null;
   if (!layer) return;
-  const rate = w.settings.buildCost === 0 ? 0 : 1;
   const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
   if (layer === 'deco' && w.deco[i]) {
     const id = require_deco(w.deco[i]);
-    if (id) refund(sim, p, BUILD[id], rate);
+    if (id) refund(sim, p, BUILD[id]);
     w.setDeco(tx, ty, 0);
   } else if (layer === 'thing' && placed) {
     const d = BUILD[placed.type];
     if (d.conf && d.conf.grave) { const any = placed.s && placed.s.inv && placed.s.inv.some(Boolean); if (any) return sim.toast(p.pid, 'Empty the gravestone first.', 'info'); }
     spillThing(sim, placed);
-    refund(sim, p, d, rate);
+    refund(sim, p, d);
     // anyone sitting/sleeping on it gets up
     for (const q of w.players.values()) if (q.sit && q.sit.id === placed.id) q.sit = null;
     w.removeThing(placed.id);
   } else if (layer === 'wall' && w.wall[i]) {
     const wd = wallDefOf(w.wall[i]);
-    if (w.deco[i]) { const id = require_deco(w.deco[i]); if (id) refund(sim, p, BUILD[id], rate); }
-    refund(sim, p, BUILD[wd.id], rate);
+    if (w.deco[i]) { const id = require_deco(w.deco[i]); if (id) refund(sim, p, BUILD[id]); }
+    refund(sim, p, BUILD[wd.id]);
     w.setWall(tx, ty, 0, 0);
     sim.openDoors.delete(i);
   } else if (layer === 'floor' && w.floor[i]) {
-    refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])], rate);
+    refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])]);
     w.setFloor(tx, ty, 0);
   } else return;
   w.fx('unbuild', cx, cy, 0);
