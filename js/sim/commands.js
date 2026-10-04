@@ -56,7 +56,7 @@ function giveAll(sim, p, items) { for (const id in items) sim.award(p, id, items
 const near = (p, px, py, tiles) => Math.hypot(p.x - px, p.y - 6 - py) <= tiles * TILE;
 const center = (t) => [(t.x + t.w / 2) * TILE, (t.y + t.h / 2) * TILE];
 
-function stationNear(sim, p, key) {
+export function stationNear(sim, p, key) {
   const w = sim.world;
   if (key === 'hand') return true;
   const r = 5.5 * TILE;
@@ -84,6 +84,8 @@ export function exec(sim, pid, cmd) {
     case 'sel': p.sel = clamp(cmd.i | 0, 0, HOTBAR - 1); return;
     case 'craft': return doCraft(sim, p, cmd);
     case 'build': return doBuild(sim, p, cmd);
+    case 'buildMany': { const list = Array.isArray(cmd.tiles) ? cmd.tiles.slice(0, 220) : []; for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip }, true); return; }
+    case 'unbuildMany': { const list = Array.isArray(cmd.tiles) ? cmd.tiles.slice(0, 220) : []; for (const t of list) doUnbuild(sim, p, { tx: t[0], ty: t[1], layer: cmd.layer }, true); return; }
     case 'unbuild': return doUnbuild(sim, p, cmd);
     case 'buyLand': return doBuyLand(sim, p, cmd);
     case 'research': return doResearch(sim, p, cmd);
@@ -95,6 +97,7 @@ export function exec(sim, pid, cmd) {
     case 'door': return doDoor(sim, p, cmd);
     case 'warp': return doWarp(sim, p, cmd);
     case 'wake': p.sleeping = false; p.sit = null; touch(p); return;
+    case 'dash': { const st = calcStats(w, p); if (p.energy >= 25 && p.dashCd <= 0) { p.energy -= 25; p.dashCd = st.dashCd; p.shield = Math.max(p.shield, 0.2); w.fx('dashpuff', p.x, p.y, p.id); touch(p); } return; }
     case 'emote': w.fx('emote', p.x, p.y - 22, p.id, cmd.e | 0); return;
     case 'pet': return doPet(sim, p, cmd);
     case 'sort': compact(p.inv); touch(p); return;
@@ -137,7 +140,7 @@ function clearSoftNodes(sim, def, tx, ty) {
     if (t) { const nd = NODES[t.type]; if (nd && nd.kind === 'node' && (!nd.solid || t.dep)) w.removeThing(t.id); }
   }
 }
-function placeCheck(sim, p, def, tx, ty) {
+export function placeCheck(sim, p, def, tx, ty) {
   const w = sim.world;
   // allow building over soft nodes (grass, flowers, stumps)
   const softOnly = (x, y) => { const t = w.thingAt(x, y); if (!t) return true; const nd = NODES[t.type]; return !!(nd && nd.kind === 'node' && (!nd.solid || t.dep)); };
@@ -158,7 +161,7 @@ function refund(sim, p, def, mult) {
   giveAll(sim, p, items);
 }
 
-function doBuild(sim, p, cmd) {
+function doBuild(sim, p, cmd, quiet = false) {
   const w = sim.world;
   const def = BUILD[cmd.bid];
   if (!def || def.hidden) return;
@@ -221,7 +224,7 @@ function spillThing(sim, t) {
   if (s.c) sim.spawnDrop('seed_' + s.c, 1, cx, cy);
 }
 
-function doUnbuild(sim, p, cmd) {
+function doUnbuild(sim, p, cmd, quiet = false) {
   const w = sim.world;
   const tx = cmd.tx | 0, ty = cmd.ty | 0;
   if (!w.inb(tx, ty) || !w.isTileOwned(tx, ty)) return;

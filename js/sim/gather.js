@@ -110,7 +110,7 @@ export function useItem(sim, p, slot, ax, ay) {
     const reach = item.reach + st.reachBonus;
     const tgt = pickTarget(sim, p, ax, ay, reach);
     p.cd = SWING_CD.pick / st.toolSpeed;
-    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100));
+    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id);
     if (!tgt) return true;
     if (tgt.kind === 'mob') {
       hurtMob(sim, tgt.ref, item.power * st.toolDmg * 0.7, p.x, p.y, p, { knock: 50 });
@@ -136,7 +136,7 @@ export function useItem(sim, p, slot, ax, ay) {
 
   if (item.weapon === 'sword') {
     p.cd = Math.max(0.2, item.cd) / (1 + (st.toolSpeed - 1) * 0.5);
-    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), 1);
+    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id);
     meleeAttack(sim, p, item, ax, ay);
     // swords also slice through grass, flowers and bushes within reach
     const tgt = pickTarget(sim, p, ax, ay, item.reach, { plantsOnly: true, nodesOnly: true });
@@ -149,18 +149,18 @@ export function useItem(sim, p, slot, ax, ay) {
     return true;
   }
   if (item.weapon === 'bow') {
-    if (fireBow(sim, p, item, ax, ay)) { p.cd = item.cd / (1 + (st.toolSpeed - 1) * 0.5); w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), 2); }
+    if (fireBow(sim, p, item, ax, ay)) { p.cd = item.cd / (1 + (st.toolSpeed - 1) * 0.5); w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id); }
     return true;
   }
   if (item.weapon === 'staff') {
     castStaff(sim, p, item, ax, ay);
     p.cd = item.cd / (1 + (st.toolSpeed - 1) * 0.5);
-    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), 3);
+    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id);
     return true;
   }
   if (item.tool === 'shovel') {
     p.cd = SWING_CD.shovel;
-    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), 4);
+    w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id);
     const spot = w.thingsNear(clamp(ax, p.x - 40, p.x + 40), clamp(ay, p.y - 40, p.y + 40), 14).find((t) => NODES[t.type] && NODES[t.type].kind === 'dig');
     if (!spot) { sim.toast(p.pid, 'Dig where you see an X!', 'info'); return true; }
     const cx = (spot.x + 0.5) * TILE, cy = (spot.y + 0.5) * TILE;

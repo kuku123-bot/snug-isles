@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { makeSim, step, give, freeSpot } from './helpers.js';
+import { serializeWorld, restoreWorld } from '../js/sim/serialize.js';
+import { TILE } from '../js/util.js';
+import { invCount } from '../js/sim/inventory.js';
+
+test('save round trip preserves the world, builds, players and tech', () => {
+  const sim = makeSim('dreamy');
+  const w = sim.world;
+  const p = sim.addPlayer('a', 'Alice', { hair: 2 });
+  w.techs.add('stonecraft'); w.techs.add('smelting'); w.techs.add('cottage_style');
+  const [fx, fy] = freeSpot(sim, p, 8);
+  p.x = (fx + 0.5) * TILE; p.y = (fy + 3) * TILE;
+  give(p, 'plank', 30); give(p, 'copper_ore', 5);
+  sim.exec('a', { c: 'build', bid: 'wall_brick', tx: fx, ty: fy });
+  sim.exec('a', { c: 'build', bid: 'door_plank', tx: fx + 1, ty: fy });
+  sim.exec('a', { c: 'build', bid: 'floor_carpet_pink', tx: fx, ty: fy + 1 });
+  sim.exec('a', { c: 'build', bid: 'cottage_bed', tx: fx + 2, ty: fy + 1 });
+  sim.exec('a', { c: 'build', bid: 'chest', tx: fx + 4, ty: fy + 1 });
+  sim.exec('a', { c: 'buyLand', gx: 4, gy: 3 });
+  step(sim, 5);
+  const chest = w.thingAt(fx + 4, fy + 1);
+  chest.s.inv[0] = { id: 'wood', n: 17 };
+  const data = JSON.parse(JSON.stringify(serializeWorld(sim)));
+  const { world: w2, sim: sim2 } = restoreWorld(data);
+  assert.equal(w2.nextId, w.nextId);
+  assert.equal(w2.ownedCount(), w.ownedCount());
+  assert.equal(w2.things.size, w.things.size);
+  const same = (a, b) => { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; };
+  assert.ok(same(w2.wall, w.wall), 'wall'); assert.ok(same(w2.floor, w.floor), 'floor'); assert.ok(same(w2.ground, w.ground), 'ground'); assert.ok(same(w2.solid, w.solid), 'solid');
+  assert.equal(w2.coins, w.coins);
+  assert.ok(w2.techs.has('cottage_style'));
+  const p2 = w2.players.get('a');
+  assert.equal(p2.name, 'Alice');
+  assert.equal(invCount(p2.inv, 'plank'), invCount(p.inv, 'plank'));
+  assert.equal(w2.thingAt(fx + 4, fy + 1).s.inv[0].n, 17);
+  // the restored sim keeps running and the player can rejoin
+  sim2.addPlayer('a');
+  step(sim2, 10);
+  assert.ok(p2.online);
+});

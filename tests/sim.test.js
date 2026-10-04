@@ -19,6 +19,15 @@ test('world creation: start land owned, resources present, spawn is walkable', (
   assert.ok(p.inv.some((s) => s && s.id === 'pickaxe_wood'));
 });
 
+test('open sea is blocked: the player cannot walk off the island', () => {
+  const sim = makeSim();
+  const w = sim.world, p = sim.addPlayer('a', 'Alice');
+  assert.ok(!w.boxFree(2 * TILE, 2 * TILE, 4, 3), 'far water is solid');
+  const r = w.moveBox(sim.spawn.x, sim.spawn.y, 2000, 0, 4, 3);
+  assert.ok(w.isTileOwned(Math.floor(r.x / TILE), Math.floor(r.y / TILE)), 'stopped inside owned land');
+  assert.ok(r.x < w.pxW() / 2 + 12 * TILE, 'did not run off to sea');
+});
+
 test('chopping a tree drops wood, grants xp, and the tree regrows', () => {
   const sim = makeSim();
   const w = sim.world;

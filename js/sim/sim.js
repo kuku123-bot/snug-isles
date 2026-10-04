@@ -13,6 +13,7 @@ import { updateMobs, spawnTick, updateProjectiles, hurtPlayer } from './combat.j
 import { updateMachines, MACHINE_BEHAVIORS } from './machines.js';
 import { depleteNode } from './gather.js';
 import { exec as execCommand } from './commands.js';
+import { nightness } from './daynight.js';
 
 export const PICKUP_DELAY = 0.45;
 
@@ -190,15 +191,7 @@ export class Sim {
 
   // ------------------------------------------------------------------ time, weather, sleep
   dayPhase() { return (this.world.time % this.world.settings.dayLength) / this.world.settings.dayLength; }
-  /** 0 = bright day, 1 = deep night. day 0.06-0.60, dusk 0.60-0.70, night 0.70-0.96, dawn 0.96-1.06 (wraps). */
-  static nightness(phase) {
-    if (phase >= 0.96) return 1 - (phase - 0.96) / 0.1;
-    if (phase < 0.06) return 1 - (phase + 0.04) / 0.1;
-    if (phase < 0.6) return 0;
-    if (phase < 0.7) return (phase - 0.6) / 0.1;
-    return 1;
-  }
-  nightness() { return Sim.nightness(this.dayPhase()); }
+  nightness() { return nightness(this.dayPhase()); }
   isNight() { return this.nightness() > 0.6; }
 
   _weatherTick() {

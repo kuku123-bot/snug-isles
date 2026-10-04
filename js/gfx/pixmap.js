@@ -188,6 +188,19 @@ export class Pixmap {
     }
     return this;
   }
+  /** Nearest-neighbour rotation about the centre; output is large enough to hold the whole sprite. angle in radians (clockwise on screen). */
+  rotated(angle) {
+    const diag = Math.ceil(Math.hypot(this.w, this.h)) + 1;
+    const out = new Pixmap(diag, diag);
+    const cs = Math.cos(angle), sn = Math.sin(angle);
+    const cx = this.w / 2, cy = this.h / 2, ox = diag / 2, oy = diag / 2;
+    for (let y = 0; y < diag; y++) for (let x = 0; x < diag; x++) {
+      const dx = x + 0.5 - ox, dy = y + 0.5 - oy;
+      const sx = Math.floor(cx + dx * cs + dy * sn), sy = Math.floor(cy - dx * sn + dy * cs);
+      if (sx >= 0 && sy >= 0 && sx < this.w && sy < this.h) out.d[y * diag + x] = this.d[sy * this.w + sx];
+    }
+    return out;
+  }
   flipX() {
     const p = new Pixmap(this.w, this.h);
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) p.d[y * this.w + (this.w - 1 - x)] = this.d[y * this.w + x];

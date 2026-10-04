@@ -1,0 +1,81 @@
+// In-game menus: pause, settings, help, rules editor, emote wheel, fainted overlay.
+import { h, ic, clear, itemIc } from '../dom.js';
+import { optionsEditor } from '../options.js';
+import { sanitizeSettings } from '../../data/difficulty.js';
+
+export function pausePanel(g, data, ui) {
+  if (g.mode === 'solo') g.paused = true;
+  const b = (label, icon, fn, cls = '') => h('button', { class: 'btn ' + cls, style: 'width:100%;font-size:19px;justify-content:flex-start', onclick: () => { g.audio.play('click'); fn(); } }, ic(icon, 2), label);
+  const body = h('div', { class: 'col', style: 'min-width:min(80vw,320px);gap:10px' },
+    b('Back to the game', 'ui_check', () => ui.close(), 'good'),
+    b('How to play', 'ui_book', () => ui.open('help')),
+    b('Settings', 'ui_gear', () => ui.open('settings')),
+    g.mode !== 'client' ? b('World rules', 'ui_sword', () => ui.open('rules')) : null,
+    b(g.mode === 'solo' ? 'Play together' : g.mode === 'host' ? 'Invite / players' : 'Connection', 'ui_people', () => ui.open('mp'), 'blue'),
+    g.mode !== 'client' ? b('Save now', 'ui_bag', () => { g.save().then(() => g.toast('Saved!', 'good')); }) : null,
+    b(g.mode === 'client' ? 'Leave world' : 'Save & quit to title', 'ui_cross', () => { g.app.quitToTitle(); }, 'red'));
+  return { title: g.saveName || 'Paused', icon: 'ui_gear', body, onClose: () => { if (g.mode === 'solo') g.paused = false; }, sig: () => '' };
+}
+
+export function settingsPanel(g, data, ui) {
+  const s = g.settings, app = g.app;
+  const slider = (label, key, apply) => h('div', { class: 'field' }, h('label', null, label), h('input', { type: 'range', min: 0, max: 1, step: 0.05, value: s[key], oninput: (e) => { s[key] = +e.target.value; apply && apply(); app.saveSettings(); } }));
+  const toggle = (label, key, desc, after) => {
+    const el = h('div', { class: 'row', style: 'cursor:pointer;padding:4px 0', onclick: () => { s[key] = !s[key]; app.saveSettings(); after && after(); redraw(); } }, h('div', { class: 'grow' }, h('b', null, label), desc ? h('div', { class: 'small muted' }, desc) : null), h('div', { class: 'seg', style: 'min-width:92px' }, h('button', { class: s[key] ? '' : 'on' }, 'Off'), h('button', { class: s[key] ? 'on' : '' }, 'On')));
+    return el;
+  };
+  const choice = (label, key, opts, after) => h('div', { class: 'field' }, h('label', null, label), h('div', { class: 'seg' }, ...opts.map(([v, l]) => h('button', { class: s[key] === v ? 'on' : '', onclick: () => { s[key] = v; app.saveSettings(); after && after(); redraw(); } }, l))));
+  const body = h('div', { class: 'col scroll', style: 'max-height:66vh;min-width:min(86vw,420px);gap:10px' });
+  function redraw() {
+    clear(body);
+    body.append(
+      slider('Master volume', 'master', () => app.audio.setVolumes(s.master, s.sfx, s.music)), slider('Music', 'music', () => app.audio.setVolumes(s.master, s.sfx, s.music)), slider('Sound effects', 'sfx', () => app.audio.setVolumes(s.master, s.sfx, s.music)),
+      h('div', { class: 'sep' }),
+      toggle('Smart tools', 'smartTools', 'Automatically picks the best pickaxe / sword / bow for what you hit.'),
+      toggle('See-through walls', 'fadeWalls', 'Walls near you fade so you never get hidden behind them.'),
+      toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
+      choice('Touch controls', 'touchControls', [['auto', 'Auto'], ['on', 'Always'], ['off', 'Never']], () => g.touch.layout()),
+      toggle('Left-handed layout', 'leftHanded', 'Swap the joystick and buttons.', () => g.touch.layout()),
+      choice('Zoom', 'zoomBias', [[-1, 'Out'], [0, 'Normal'], [1, 'In'], [2, 'Closer']], () => { g.view.bias = s.zoomBias; g.view.resize(); }),
+      choice('Menu size', 'uiScale', [[0.9, 'Small'], [1, 'Normal'], [1.15, 'Large'], [1.3, 'Huge']], () => app.applyUiScale()),
+      toggle('Keep screen awake', 'wakeLock', 'Stops the iPad from sleeping while you play.'));
+  }
+  redraw();
+  return { title: 'Settings', icon: 'ui_gear', body, sig: () => '' };
+}
+
+export function helpPanel(g, data, ui) {
+  const row = (k, t) => h('div', { class: 'row small', style: 'align-items:flex-start' }, h('span', { class: 'chip', style: 'min-width:92px;justify-content:center;font-weight:700' }, k), h('span', null, t));
+  const body = h('div', { class: 'col scroll', style: 'max-height:66vh;min-width:min(88vw,520px);gap:6px' },
+    h('b', { style: 'font-size:18px' }, 'Keyboard & mouse (Mac)'),
+    row('WASD', 'Move'), row('Mouse', 'Aim; hold left-click to mine, chop, fight'), row('Space', 'Dash'), row('E / F', 'Interact (open, sit, sleep, open doors)'), row('1-8 / Wheel', 'Choose hotbar item'),
+    row('I · C · B', 'Bag · Craft · Build'), row('T · K · M', 'Research · Skills · Map'), row('R / X', 'Flip piece / Remove tool in build mode'), row('G', 'Emotes'), row('Esc', 'Menu'),
+    h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Touch (iPad)'),
+    row('Left thumb', 'Drag anywhere in the lower-left to walk'), row('Big button', 'Hold to mine / chop / fight (it auto-aims!)'), row('Hand button', 'Interact with what is nearby'), row('Tap things', 'Tap doors, chests, stations, animals, and land tags'),
+    row('Building', 'Pick a piece, then tap or drag over the ground. "Rect" fills whole rooms in one swipe.'),
+    h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Tips'),
+    h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall to buy new lands (follow the glowing price tags).'),
+    h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more.'),
+    h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows — sleeping in a bed skips the night!'),
+    h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));
+  return { title: 'How to play', icon: 'ui_book', body, sig: () => '' };
+}
+
+export function rulesPanel(g, data, ui) {
+  const w = g.world;
+  const ed = optionsEditor(w.settings, { lockLocked: true, onChange: (s) => { Object.assign(w.settings, sanitizeSettings({ ...w.settings, ...s })); if (g.net) g.net.broadcastSettings(); } });
+  const body = h('div', { class: 'scroll', style: 'max-height:68vh;min-width:min(90vw,640px)' }, ed.el);
+  return { title: 'World rules', icon: 'ui_sword', body, sig: () => '' };
+}
+
+export function emotePanel(g, data, ui) {
+  const list = [['heart', 0], ['bang', 1], ['ask', 2], ['note', 3], ['star', 4], ['sweat', 5], ['zzz', 6], ['happy', 7]];
+  const body = h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap;justify-content:center;min-width:min(80vw,380px)' }, ...list.map(([n, i]) => h('div', { class: 'hbtn', style: 'width:64px;height:64px', onclick: () => { g.cmd({ c: 'emote', e: i }); ui.close(); } }, ic('emote_' + n, 4))));
+  return { title: 'Emote', icon: 'ui_smile', body, sig: () => '' };
+}
+
+export function deadPanel(g, data, ui) {
+  const el = h('div', { class: 'scrim clear' }, h('div', { class: 'panel', style: 'position:absolute;top:24%;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;padding:14px 26px' }, h('h2', null, 'You fainted…'), h('div', null, 'You will wake up in a moment.')));
+  const p = { title: '', shell: el, passive: true, sig: () => '', tick: () => { const me = g.me; if (me && me.dead <= 0) ui.close(true); } };
+  return p;
+}

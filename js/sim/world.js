@@ -44,7 +44,7 @@ export class World {
     this.deco = new Uint8Array(n);
     this.occ = new Int32Array(n); // thing id covering the tile (solid-ish things and nodes)
     this.occFlat = new Int32Array(n); // flat decor (rugs) id
-    this.solid = new Uint8Array(n); // bit0 blocks walkers, bit1 blocks flyers
+    this.solid = new Uint8Array(n).fill(1); // bit0 blocks walkers, bit1 blocks flyers (everything starts as open sea = blocked)
     this.owned = new Uint8Array(this.gw * this.gh);
     this.biomeMap = new Array(this.gw * this.gh).fill('meadow');
     this.things = new Map();
@@ -89,9 +89,9 @@ export class World {
 
   // ---------------------------------------------------------------- events
   emit(ev) { if (this.record) this.events.push(ev); }
-  fx(kind, x, y, a, b) {
-    if (this.hooks.fx) this.hooks.fx(kind, x, y, a, b);
-    if (this.record) this.events.push(['fx', kind, Math.round(x * 10) / 10, Math.round(y * 10) / 10, a === undefined ? 0 : a, b === undefined ? 0 : b]);
+  fx(kind, x, y, a, b, c) {
+    if (this.hooks.fx) this.hooks.fx(kind, x, y, a, b, c);
+    if (this.record) this.events.push(['fx', kind, Math.round(x * 10) / 10, Math.round(y * 10) / 10, a === undefined ? 0 : a, b === undefined ? 0 : b, c === undefined ? 0 : c]);
   }
   /** message/ui event for one player */
   tell(pid, ev) { if (this.hooks.tell) this.hooks.tell(pid, ev); }
