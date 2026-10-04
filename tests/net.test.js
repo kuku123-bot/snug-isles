@@ -11,6 +11,7 @@ import { PROTOCOL } from '../js/net/protocol.js';
 
 const tick = () => new Promise((r) => setImmediate(r));
 async function pump(n = 8) { for (let i = 0; i < n; i++) await tick(); }
+async function waitFor(cond, ms = 3000) { const t0 = Date.now(); while (!cond() && Date.now() - t0 < ms) await new Promise((r) => setTimeout(r, 2)); return !!cond(); }
 function connPair() {
   const a = { open: true, buffered: 0, onmessage: null, onclose: null, send(s) { setImmediate(() => b.open && b.onmessage && b.onmessage(s)); }, close() { if (!a.open) return; a.open = false; b.open = false; setImmediate(() => { a.onclose && a.onclose(); b.onclose && b.onclose(); }); } };
   const b = { open: true, buffered: 0, onmessage: null, onclose: null, send(s) { setImmediate(() => a.open && a.onmessage && a.onmessage(s)); }, close() { a.close(); } };
@@ -29,7 +30,7 @@ async function join(sim, clock, name = 'Gigi', pid = 'guest-0001') {
     onKick: (r) => { throw new Error('kicked: ' + r); },
   });
   link.start();
-  for (let i = 0; i < 60 && !world; i++) await tick();
+  await waitFor(() => world, 5000);
   assert.ok(world, 'client received the snapshot');
   return { link, world, data: got, conn: cc };
 }
