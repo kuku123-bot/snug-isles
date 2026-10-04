@@ -1,0 +1,21 @@
+{
+  "name": "snug-isles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A cozy 2-player co-op crafting & building game for iPad and Mac (browser).",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/dev.mjs",
+    "test": "node --test \"tests/*.test.js\"",
+    "e2e": "node tools/e2e.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "peer": "^1.0.2",
+    "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.5"
+  }
+}
