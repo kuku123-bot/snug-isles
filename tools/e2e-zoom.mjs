@@ -68,11 +68,36 @@ for (const [name, eng] of [['chromium', chromium], ['webkit', webkit]]) {
   ok(/maximum-scale=1\.0001/.test(reset.during) && /maximum-scale=1,/.test(reset.after), 'a zoomed page is snapped back (viewport re-applied)');
   await page.evaluate(() => { window.visualViewport.scale = 1; });
 
+  // the Fix zoom button: title screen, Settings and the pause menu all open the dialog; it resets pinch zoom and the game's own zoom
+  await page.evaluate(() => { window.__meta = []; new MutationObserver(() => window.__meta.push(document.querySelector('meta[name=viewport]').content)).observe(document.querySelector('meta[name=viewport]'), { attributes: true }); });
+  const zfOpen = async (how) => { await how(); await page.waitForSelector('#zoomfix', { timeout: 3000 }).catch(() => {}); return page.evaluate(() => !!document.getElementById('zoomfix')); };
+  ok(await zfOpen(() => page.locator('.title-wrap button:has-text("Fix it")').first().click()), 'the title screen has a "Screen zoomed? Fix it" button that opens the dialog');
+  await page.evaluate(() => { window.visualViewport.scale = 2.4; const a = __snug; a.settings.zoomBias = 2; a.settings.uiScale = 1.3; a.view.bias = 2; });
+  await page.locator('#zoomfix button:has-text("Reset zoom now")').click({ force: true });
+  await page.waitForTimeout(300);
+  const zf = await page.evaluate(() => ({ meta: window.__meta, status: document.querySelector('.zf-status').textContent }));
+  ok(zf.meta.some((c) => /maximum-scale=1\.0001/.test(c)) && /maximum-scale=1,/.test(zf.meta[zf.meta.length - 1]), 'Reset zoom now re-applies the viewport (that is what undoes a pinch zoom)');
+  ok(/Zoom reset/.test(zf.status), `and says so (${zf.status})`);
+  await page.locator('#zoomfix button:has-text("back to normal")').click({ force: true });
+  const back = await page.evaluate(() => ({ z: __snug.settings.zoomBias, u: __snug.settings.uiScale, b: __snug.view.bias }));
+  ok(back.z === 0 && back.u === 1 && back.b === 0, 'the other button puts the game zoom and menu size back to normal');
+  ok(await page.evaluate(() => /Cmd\+0/.test(document.querySelector('.zf-steps').textContent) && /Add to Home Screen/.test(document.querySelector('.zf-steps').textContent)), 'the dialog explains the browser zoom (Cmd+0, aA, Add to Home Screen)');
+  await page.keyboard.press('Escape');
+  ok(!(await page.evaluate(() => !!document.getElementById('zoomfix'))), 'Escape closes it');
+  await page.evaluate(() => { window.visualViewport.scale = 1; });
+  await page.evaluate(() => { new Function('A', 'with (A) { return screens.settingsScreen(); }')(__snug); }); await page.waitForTimeout(500);
+  ok(await zfOpen(() => page.locator('button:has-text("Fix zoom")').first().click({ force: true })), 'Settings has a Fix zoom button too');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => { document.querySelector('.scrim .xbtn')?.click(); });
+
   // every form control on every screen is >= 16px (iOS zooms on focus below that)
   const audit = async (label) => { const bad = await page.evaluate(() => [...document.querySelectorAll('input, select, textarea')].filter((e) => e.type !== 'hidden' && e.type !== 'file' && parseFloat(getComputedStyle(e).fontSize) < 16).map((e) => `${e.tagName}${e.type ? '[' + e.type + ']' : ''}.${e.className} ${getComputedStyle(e).fontSize}`)); ok(bad.length === 0, `${label}: every field is at least 16px` + (bad.length ? ' — too small: ' + bad.join(', ') : '')); };
   const screens = [['title', 'showTitle()'], ['new world (all the rule dropdowns)', 'screens.newWorld()'], ['character creator', 'screens.character()'], ['join', 'screens.join()'], ['manual join', 'screens.manual()'], ['settings', 'screens.settingsScreen()']];
   for (const [label, call] of screens) { await page.evaluate((c) => { new Function('A', `with (A) { return ${c}; }`)(__snug); }, call); await page.waitForTimeout(350); await audit(label); }
   await page.goto(url + '?quick=classic&seed=zoom&peerhost=127.0.0.1&peerport=1&peerpath=/', { waitUntil: 'load' }); await page.waitForTimeout(1500);
+  await page.evaluate(() => __snug.game.ui.open('pause')); await page.waitForTimeout(300);
+  ok(await page.evaluate(() => [...document.querySelectorAll('#ui button')].some((b) => /Fix zoom/.test(b.textContent))), 'the pause menu has Fix zoom');
+  await page.evaluate(() => __snug.game.ui.closeAll(true));
   for (const panel of ['inventory', 'craft', 'build', 'tech', 'skills', 'map', 'pause', 'settings', 'rules', 'help', 'goals', 'emote']) { await page.evaluate((n) => __snug.game.ui.open(n), panel); await page.waitForTimeout(250); await audit('in game: ' + panel); }
   await page.evaluate(() => __snug.startHosting(__snug.game)); await page.waitForTimeout(1500); await audit('in game: play together (backup + manual pairing boxes)');
 

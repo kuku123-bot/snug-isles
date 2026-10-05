@@ -6,6 +6,7 @@ import { PRESETS, presetSettings, DEFAULTS } from '../data/difficulty.js';
 import { SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, HAIR_STYLES, ACCESSORIES, playerFrame } from '../gfx/art/player.js';
 import { pixmapToCanvas } from '../gfx/canvasutil.js';
 import { timeAgo } from '../util.js';
+import { openZoomFix } from './zoomfix.js';
 
 export function portrait(look, scale = 3, dir = 0, frame = 0) {
   const pm = playerFrame(look, dir, frame);
@@ -29,8 +30,9 @@ export class Screens {
       this.btn('Play together', 'ui_people', () => this.together(), 'blue'),
       this.btn('Your character', 'ui_smile', () => this.character(), 'warn'),
       h('div', { class: 'row' }, h('div', { class: 'grow' }, this.btn('Settings', 'ui_gear', () => this.settingsScreen())), h('div', { class: 'grow' }, this.btn('Help', 'ui_book', () => this.help()))));
+    const fixZoom = h('button', { class: 'btn small', onclick: () => { app.audio.play('click'); openZoomFix(app); } }, ic('ui_plus', 1), 'Screen zoomed? Fix it');
     const hint = ios && !standalone ? h('div', { class: 'panel small', style: 'max-width:380px;padding:6px 10px;text-align:center' }, 'Tip: open this page in Safari, tap ', ic('ui_arrow', 1), ' Share → "Add to Home Screen". It becomes a full-screen app: no address bar, no browser zoom, works offline.') : null;
-    const wrap = h('div', { class: 'title-wrap' }, h('div', { class: 'logo' }, 'Snug', h('br'), 'Isles', h('small', null, 'A COZY ISLAND FOR TWO')), menu, hint, h('div', { class: 'small', style: 'color:#fff;text-shadow:0 2px 0 var(--ink),1px 0 0 var(--ink),-1px 0 0 var(--ink);opacity:.9' }, `v${app.version} · made with love`));
+    const wrap = h('div', { class: 'title-wrap' }, h('div', { class: 'logo' }, 'Snug', h('br'), 'Isles', h('small', null, 'A COZY ISLAND FOR TWO')), menu, fixZoom, hint, h('div', { class: 'small', style: 'color:#fff;text-shadow:0 2px 0 var(--ink),1px 0 0 var(--ink),-1px 0 0 var(--ink);opacity:.9' }, `v${app.version} · made with love`));
     this.show(wrap);
   }
 

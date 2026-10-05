@@ -37,6 +37,20 @@ export function lockZoom() {
   if (vv) { vv.addEventListener('resize', resetIfZoomed); vv.addEventListener('scroll', () => { if (vv.scale <= 1.001) return; resetIfZoomed(); }); }
 }
 
+/** the "Fix zoom" button: undo any pinch / double-tap zoom right now (a page cannot change the browser's own page zoom, see ui/zoomfix.js). Returns the zoom it found. */
+export function forceResetZoom() {
+  const vv = window.visualViewport, was = vv ? vv.scale : 1;
+  const m = document.querySelector('meta[name=viewport]');
+  if (m) {
+    m.setAttribute('content', VIEWPORT.replace('maximum-scale=1,', 'maximum-scale=1.0001,')); // changing the string makes Safari re-apply the viewport, which resets pinch zoom
+    requestAnimationFrame(() => m.setAttribute('content', VIEWPORT));
+  }
+  window.scrollTo(0, 0);
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 80); // the game re-measures the screen
+  return was;
+}
+
 function resetIfZoomed() {
   const vv = window.visualViewport;
   if (!vv || vv.scale <= 1.01) return;

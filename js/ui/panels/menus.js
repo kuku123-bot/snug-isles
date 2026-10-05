@@ -2,6 +2,7 @@
 import { h, ic, clear, itemIc } from '../dom.js';
 import { optionsEditor } from '../options.js';
 import { sanitizeSettings } from '../../data/difficulty.js';
+import { openZoomFix } from '../zoomfix.js';
 
 export function pausePanel(g, data, ui) {
   if (g.mode === 'solo') g.paused = true;
@@ -12,6 +13,7 @@ export function pausePanel(g, data, ui) {
     b('Take a photo', 'ui_smile', () => { ui.close(); setTimeout(() => g.photo(), 120); }),
     b('How to play', 'ui_book', () => ui.open('help')),
     b('Settings', 'ui_gear', () => ui.open('settings')),
+    b('Fix zoom', 'ui_plus', () => openZoomFix(g.app)),
     g.mode !== 'client' ? b('World rules', 'ui_sword', () => ui.open('rules')) : null,
     b(g.mode === 'solo' ? 'Play together' : g.mode === 'host' ? 'Invite / players' : 'Connection', 'ui_people', () => ui.open('mp'), 'blue'),
     g.mode !== 'client' ? b('Save now', 'ui_bag', () => { g.save().then(() => g.toast('Saved!', 'good')); }) : null,
@@ -41,6 +43,7 @@ export function settingsPanel(g, data, ui) {
       choice('Picture', 'look', [['smooth', 'Smooth'], ['soft', 'Soft'], ['pixel', 'Pixel']], () => app.applyLook()),
       choice('Zoom', 'zoomBias', [[-1, 'Out'], [0, 'Normal'], [1, 'In'], [2, 'Closer']], () => { g.view.bias = s.zoomBias; g.view.resize(); }),
       choice('Menu size', 'uiScale', [[0.9, 'Small'], [1, 'Normal'], [1.15, 'Large'], [1.3, 'Huge']], () => app.applyUiScale()),
+      h('div', { class: 'field' }, h('label', null, 'Screen zoomed by accident?'), h('button', { class: 'btn warn', onclick: () => openZoomFix(app) }, ic('ui_plus', 1), 'Fix zoom')),
       toggle('Keep screen awake', 'wakeLock', 'Stops the iPad from sleeping while you play.'),
       toggle('Ask before new players join', 'approveJoins', 'When you host: someone new using your room code must be let in by you first.'));
   }
@@ -60,6 +63,7 @@ export function helpPanel(g, data, ui) {
     h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Tips'),
     h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall to buy new lands (follow the glowing price tags).'),
     h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more. Pick a branch, tap a box to read about it: yellow boxes are ready, green ones are done.'),
+    h('div', { class: 'small' }, '• Screen suddenly too big or too small? Pause menu (or Settings) → Fix zoom.'),
     h('div', { class: 'small' }, '• Every level gives a skill point for the Skills tree: tap a box and press Learn. New boxes open up as you learn the ones before them.'),
     h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows — sleeping in a bed skips the night!'),
     h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));
