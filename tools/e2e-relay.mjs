@@ -6,14 +6,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [hostEng = 'chromium', guestEng = 'webkit'] = process.argv.slice(2);
-const { server, url } = await startServer(path.join(ROOT, 'dist'));
+const local = process.env.SITE ? null : await startServer(path.join(ROOT, 'dist')); // SITE=https://… tests a deployed copy instead
+const server = local ? local.server : { close() {} }, url = process.env.SITE || local.url;
 const eng = (n) => (n === 'webkit' ? webkit : chromium);
 // block UDP for WebRTC so no direct connection is possible (chromium); the dead peer server blocks matchmaking for everyone
 const launch = (n) => eng(n).launch(n === 'chromium' ? { args: ['--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--webrtc-ip-handling-policy=disable_non_proxied_udp'] } : {});
 const hb = await launch(hostEng), gb = hostEng === guestEng ? hb : await launch(guestEng);
 const logs = []; let failed = 0;
 const ok = (c, m) => { console.log((c ? '  ✔ ' : '  ✖ ') + m); if (!c) failed++; };
-const mk = async (b, name) => { const p = await (await b.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2 })).newPage(); p.on('pageerror', (e) => { if (!/WebSocket port 1 blocked/.test(e.message)) logs.push(`[${name}] PAGEERROR: ${e.message}`); }); // (WebKit refuses the deliberately dead localhost port) p.on('console', (m) => { if (process.env.RDEBUG && /relay/i.test(m.text())) console.log(`[${name}]`, m.text().slice(0, 160)); if (m.type() === 'error' && !/WebSocket|ERR_|peerjs|matchmaking|port 1 blocked/i.test(m.text())) logs.push(`[${name}] console.error: ${m.text()}`); }); return p; };
+// (WebKit refuses the deliberately dead localhost port with a thrown SecurityError: not a real problem)
+const mk = async (b, name) => { const p = await (await b.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2 })).newPage(); p.on('pageerror', (e) => { if (!/WebSocket port 1 blocked/.test(e.message)) logs.push(`[${name}] PAGEERROR: ${e.message}`); }); p.on('console', (m) => { if (process.env.RDEBUG && /relay/i.test(m.text())) console.log(`[${name}]`, m.text().slice(0, 160)); if (m.type() === 'error' && !/WebSocket|ERR_|peerjs|matchmaking|port 1 blocked/i.test(m.text())) logs.push(`[${name}] console.error: ${m.text()}`); }); return p; };
 const host = await mk(hb, 'host'), guest = await mk(gb, 'guest');
 if (process.env.RDEBUG) for (const p of [host, guest]) await p.addInitScript(() => { globalThis.__relayDebug = true; });
 console.log(`host=${hostEng} guest=${guestEng}  (no direct WebRTC, matchmaking unreachable → the backup relay is the only way)`);

@@ -645,6 +645,11 @@ export class Game {
   // ------------------------------------------------------------------ saving
   async save() {
     if (this.mode === 'client' || !this.saveId || this.destroyed) return;
-    try { await this.app.saveWorld(this); } catch (e) { console.warn('save failed', e); }
+    try { await this.app.saveWorld(this); this.saveFailed = 0; } catch (e) {
+      console.warn('save failed', e);
+      // storage full / blocked: say so, but not on every autosave
+      if (!this.saveFailed || ++this.saveFailed % 8 === 0) this.toast('Could not save on this device (storage full or blocked?). Use Backup in the world list to keep your world safe.', 'warn');
+      this.saveFailed = this.saveFailed || 1;
+    }
   }
 }

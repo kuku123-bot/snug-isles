@@ -31,8 +31,11 @@ export class Reader {
     let m;
     try { m = JSON.parse(str); } catch (e) { return null; }
     if (m && m.t === 'big') {
+      // never trust sizes from the network: a few thousand chunks at most, a handful of messages in flight
+      if (!Number.isInteger(m.n) || m.n < 1 || m.n > 4096 || !Number.isInteger(m.i) || m.i < 0 || m.i >= m.n || typeof m.d !== 'string' || m.d.length > CHUNK * 2) return null;
       let p = this.parts.get(m.id);
-      if (!p) { p = { n: m.n, got: 0, a: new Array(m.n) }; this.parts.set(m.id, p); }
+      if (!p) { if (this.parts.size >= 16) this.parts.delete(this.parts.keys().next().value); p = { n: m.n, got: 0, a: new Array(m.n) }; this.parts.set(m.id, p); }
+      if (p.n !== m.n) return null;
       if (p.a[m.i] === undefined) { p.a[m.i] = m.d; p.got++; }
       if (p.got === p.n) {
         this.parts.delete(m.id);

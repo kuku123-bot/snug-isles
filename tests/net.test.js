@@ -246,3 +246,19 @@ test('island goals replicate: the partner sees the same list and gets the toast'
   const late = await join(sim, clock, 'Zed', 'guest-0009');
   assert.ok((late.world.shared.flags.goals || []).includes('chop'));
 });
+
+test('framing never trusts sizes from the network', async () => {
+  const { Reader, CHUNK, sendMsg } = await import('../js/net/protocol.js');
+  const r = new Reader();
+  assert.equal(r.feed(JSON.stringify({ t: 'big', id: 1, i: 0, n: 1e9, d: 'x' })), null, 'a billion chunks is refused');
+  assert.equal(r.feed(JSON.stringify({ t: 'big', id: 2, i: 5, n: 3, d: 'x' })), null, 'index outside the message');
+  assert.equal(r.feed(JSON.stringify({ t: 'big', id: 3, i: 0, n: 2, d: 'x'.repeat(CHUNK * 3) })), null, 'oversized chunk');
+  assert.equal(r.parts.size, 0, 'nothing was kept for the bad ones');
+  for (let id = 100; id < 140; id++) r.feed(JSON.stringify({ t: 'big', id, i: 0, n: 2, d: 'a' }));
+  assert.ok(r.parts.size <= 16, 'only a handful of half-received messages are remembered');
+  // a normal big message still works
+  const sent = []; const big = { t: 'x', pad: 'y'.repeat(CHUNK * 3 + 50) };
+  sendMsg({ send: (s) => sent.push(s) }, big);
+  const r2 = new Reader(); let out = null; for (const s of sent) out = r2.feed(s) || out;
+  assert.deepEqual(out, big);
+});

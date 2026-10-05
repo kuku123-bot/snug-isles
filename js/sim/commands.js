@@ -74,6 +74,9 @@ export function buildMult(sim, p, def) {
   return base * (1 - Math.min(0.75, disc));
 }
 
+/** a list of [x, y] tiles from the network: at most 220, anything that is not a pair of numbers is skipped */
+const tileList = (a) => (Array.isArray(a) ? a.slice(0, 220).filter((t) => Array.isArray(t) && Number.isFinite(t[0]) && Number.isFinite(t[1])) : []);
+
 // ------------------------------------------------------------------ dispatcher
 export function exec(sim, pid, cmd) {
   const w = sim.world;
@@ -84,8 +87,8 @@ export function exec(sim, pid, cmd) {
     case 'sel': p.sel = clamp(cmd.i | 0, 0, HOTBAR - 1); return;
     case 'craft': return doCraft(sim, p, cmd);
     case 'build': return doBuild(sim, p, cmd);
-    case 'buildMany': { const list = Array.isArray(cmd.tiles) ? cmd.tiles.slice(0, 220) : []; for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip }, true); return; }
-    case 'unbuildMany': { const list = Array.isArray(cmd.tiles) ? cmd.tiles.slice(0, 220) : []; for (const t of list) doUnbuild(sim, p, { tx: t[0], ty: t[1], layer: cmd.layer }, true); return; }
+    case 'buildMany': { const list = tileList(cmd.tiles); for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip }, true); return; }
+    case 'unbuildMany': { const list = tileList(cmd.tiles); for (const t of list) doUnbuild(sim, p, { tx: t[0], ty: t[1], layer: cmd.layer }, true); return; }
     case 'unbuild': return doUnbuild(sim, p, cmd);
     case 'buyLand': return doBuyLand(sim, p, cmd);
     case 'research': return doResearch(sim, p, cmd);
