@@ -1,6 +1,6 @@
 // A game must never zoom the page. iOS Safari ignores `user-scalable=no`, so every route to a zoom is closed here:
-// pinch (Safari's gesture events, trackpad pinch), browser zoom shortcuts, double-tap (CSS touch-action), and focus-zoom on form
-// fields (CSS font sizes >= 16px). Two-thumb play is untouched: touches themselves are never cancelled. If the page somehow ends up zoomed anyway it is snapped back.
+// pinch (Safari's gesture events, trackpad pinch), browser zoom shortcuts, double-tap (CSS touch-action plus a script guard), and focus-zoom on form
+// fields (CSS font sizes >= 16px). Two-thumb play is untouched: only the end of a quick second tap is ever cancelled. If the page somehow ends up zoomed anyway it is snapped back.
 const VIEWPORT = 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
 
 export function lockZoom() {
@@ -13,6 +13,22 @@ export function lockZoom() {
   // browser back to its normal size, so if a browser (Brave, Chrome...) remembers a zoomed level for this site it is the way back out
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '_'].includes(e.key)) e.preventDefault();
+  }, opt);
+  // double-tap zoom: CSS touch-action should stop it, but iOS browsers built on WKWebView (Brave, Chrome, Edge...) can still zoom on a quick
+  // second tap. Cancelling the end of the second tap of a quick pair is what stops it; the page then gets its click by hand, so tapping one
+  // button twice fast still counts twice. Drags, text fields and multi-finger touches are left alone (double-tap selects a word in a field).
+  let startX = 0, startY = 0, startT = 0, multi = false, lastEnd = -1e9, lastX = 0, lastY = 0;
+  document.addEventListener('touchstart', (e) => { const t = e.touches[0]; multi = e.touches.length > 1; startX = t.clientX; startY = t.clientY; startT = e.timeStamp; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (e.touches.length || !e.changedTouches.length) return;
+    const t = e.changedTouches[0], el = e.target;
+    const tap = !multi && e.timeStamp - startT < 400 && Math.hypot(t.clientX - startX, t.clientY - startY) < 14;
+    const quick = e.timeStamp - lastEnd < 350 && Math.hypot(t.clientX - lastX, t.clientY - lastY) < 70;
+    if (tap) { lastEnd = e.timeStamp; lastX = t.clientX; lastY = t.clientY; } else lastEnd = -1e9;
+    if (!tap || !quick || !e.cancelable) return;
+    if (el && el.closest && el.closest('input, textarea, select, [contenteditable]')) return;
+    e.preventDefault();
+    if (el && el.dispatchEvent) el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window, clientX: t.clientX, clientY: t.clientY }));
   }, opt);
   // after the on-screen keyboard closes iOS can leave the page nudged or zoomed: put it back
   document.addEventListener('focusout', () => setTimeout(() => { window.scrollTo(0, 0); resetIfZoomed(); }, 120));

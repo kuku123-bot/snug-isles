@@ -34,6 +34,31 @@ for (const [name, eng] of [['chromium', chromium], ['webkit', webkit]]) {
   ok(prevented.ctrlWheel && !prevented.plainWheel, 'trackpad/ctrl+wheel zoom is cancelled, normal scrolling is not');
   ok(['ctrlKey+', 'metaKey-', 'ctrlKey='].every((k) => prevented['zoomkey ' + k]) && !prevented.plainPlus, 'Ctrl/Cmd + and - browser zoom shortcuts are cancelled (the game\'s own + / - keys are not)');
   ok(!prevented['zoomkey metaKey0'], 'Ctrl/Cmd+0 (back to normal size) still works, so a browser that remembers a zoomed level can be reset');
+  // double-tap: the second tap of a quick pair is cancelled (that is what stops iOS zooming) but its click still arrives
+  await page.evaluate(() => {
+    const host = document.createElement('div'); host.id = 'dtbox'; host.style.cssText = 'position:fixed;left:20px;top:20px;z-index:99999;background:#fff;padding:10px';
+    host.innerHTML = '<button id="dtb" style="width:120px;height:60px">tap</button> <button id="dtc" style="width:120px;height:60px;margin-left:200px">far</button> <input id="dti" style="width:120px">';
+    document.body.appendChild(host);
+    window.__dt = { clicks: 0, ends: [] }; document.getElementById('dtb').addEventListener('click', () => { window.__dt.clicks++; });
+    window.addEventListener('touchend', (e) => window.__dt.ends.push(e.defaultPrevented));
+  });
+  const centre = async (sel) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, sel);
+  const clearDt = async () => { await page.waitForTimeout(500); await page.evaluate(() => { window.__dt.clicks = 0; window.__dt.ends.length = 0; }); }; // (a pause, so the previous tap is not part of the next pair)
+  const [bx, by] = await centre('#dtb'), [ix, iy] = await centre('#dti'), [cx, cy] = await centre('#dtc');
+  await page.touchscreen.tap(bx, by); await page.waitForTimeout(70); await page.touchscreen.tap(bx, by); await page.waitForTimeout(100);
+  let dt = await page.evaluate(() => window.__dt);
+  ok(dt.ends.length === 2 && dt.ends[0] === false && dt.ends[1] === true, `a quick second tap is cancelled so iOS cannot zoom (touchend default prevented: ${dt.ends.join(', ')})`);
+  ok(dt.clicks === 2, `both taps still reach the button (${dt.clicks} clicks)`);
+  await clearDt(); await page.touchscreen.tap(bx, by); await page.waitForTimeout(600); await page.touchscreen.tap(bx, by); await page.waitForTimeout(100);
+  dt = await page.evaluate(() => window.__dt);
+  ok(dt.ends.every((v) => v === false) && dt.clicks === 2, `slow taps are left alone (${dt.ends.join(', ')}; ${dt.clicks} clicks)`);
+  await clearDt(); await page.touchscreen.tap(bx, by); await page.waitForTimeout(70); await page.touchscreen.tap(cx, cy); await page.waitForTimeout(100);
+  dt = await page.evaluate(() => window.__dt);
+  ok(dt.ends.every((v) => v === false), `quick taps in two different places are left alone (${dt.ends.join(', ')})`);
+  await clearDt(); await page.touchscreen.tap(ix, iy); await page.waitForTimeout(70); await page.touchscreen.tap(ix, iy); await page.waitForTimeout(100);
+  dt = await page.evaluate(() => window.__dt);
+  ok(dt.ends.every((v) => v === false), `double-tap inside a text field is left alone (${dt.ends.join(', ')})`);
+  await page.evaluate(() => document.getElementById('dtbox').remove());
   // (desktop WebKit drops this iOS-only property from its stylesheet model, so check the shipped CSS text)
   const tsa = await page.evaluate(async () => { const href = document.querySelector('link[rel=stylesheet]').href; const css = await (await fetch(href)).text(); return /html\s*\{[^}]*text-size-adjust:\s*100%/.test(css); });
   ok(tsa, 'text auto-inflation is switched off (text-size-adjust: 100%)');
