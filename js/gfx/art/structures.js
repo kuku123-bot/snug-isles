@@ -456,26 +456,85 @@ S.rainbow_arch = () => { const pm = new Pixmap(32, 30); const cols = ['#ff6a8a',
 S.star_orb = (f = 0) => { const pm = new Pixmap(16, 22); pm.circle(8, 10 - (f % 2), 5, R('#d8e0ff')[2]); ballShade(pm, 8, 10 - (f % 2), 4.6, 4.6, R('#d8e0ff'), { dither: 0.1 }); pm.set(6, 8 - (f % 2), WHITE); sparkle(pm, 3, 4, hex('#fff0a0')); sparkle(pm, 13, 6 + f, hex('#a9c4ff')); sparkle(pm, 12, 15, hex('#fff0a0')); pm.ellipse(8, 19, 4, 1.2, withAlpha(hex('#1e1440'), 90)); return fin(pm, null, 0.6); };
 S.portal_ring = (f = 0) => { const pm = new Pixmap(32, 34); pm.ellipse(16, 17, 13, 15, R('#8a6cff')[3]); pm.ellipse(16, 17, 11.4, 13.4, R('#b79cff')[1]); pm.ellipse(16, 17, 9.4, 11.4, hex('#14102a')); pm.ellipse(16, 17, 6, 8, hex('#2a1f6a')); pm.ellipse(16, 17, 3, 4.5, hex('#6a5cff')); for (let k = 0; k < 6; k++) { const a = k + f * 0.9; pm.set(Math.round(16 + Math.cos(a) * 7), Math.round(17 + Math.sin(a) * 9), hex('#fffbd0')); } pm.rect(6, 29, 20, 4, R('#3a3a7a')[2]); pm.rect(6, 29, 20, 1, R('#5a5a9a')[1]); return fin(pm, [16, 33, 12, 1.6]); };
 
-// crop sprites (drawn on top of a farm plot): stage 1..3
-function crop(id, stage) {
+// crop sprites (drawn on top of the 16x16 farm plot): stage 0 seeds .. 3 ripe. Each crop has its own silhouette so a field reads at a glance.
+const C = {
+  leaf: R('#5cc24a'), leafD: R('#3f9a3a'), stalk: hex('#7ccf5a'),
+  soil: hex('#6a4a2a'), soilL: hex('#8a6038'),
+  gold: hex('#f6c844'), goldD: hex('#d89a24'), goldL: hex('#fff0a0'),
+  org: hex('#ff9a3c'), orgD: hex('#d9701a'), orgL: hex('#ffc070'),
+  red: hex('#f2503a'), redD: hex('#c0322a'), redL: hex('#ff8a70'),
+  berry: hex('#ff4f6d'), berryD: hex('#c93252'),
+  wood: hex('#a8743c'), white: hex('#ffffff'), cream: hex('#f0eef8'), flower: hex('#ffffff'), yolk: hex('#ffd84a'),
+};
+function bushShape(pm, cx, cy, r) { const L = C.leaf, D = C.leafD; pm.ellipse(cx, cy, r, r * 0.75, D[2]); pm.ellipse(cx, cy - 0.5, r - 0.6, r * 0.75 - 0.6, L[2]); for (const [dx, dy] of [[-1, -1], [1, 0], [0, -2]]) pm.set(Math.round(cx + dx * r * 0.4), Math.round(cy + dy * 0.8), L[0]); }
+function sprout(pm, x, y) { pm.set(x, y, C.leaf[1]); pm.set(x - 1, y - 1, C.leaf[0]); pm.set(x + 1, y - 1, C.leaf[0]); pm.set(x, y + 1, C.leaf[3]); }
+function clod(pm, x, y) { pm.set(x, y, C.soilL); pm.set(x + 1, y + 1, C.soil); }
+function drawCrop(id, stage) {
   const pm = new Pixmap(16, 16);
-  const g = R('#58b84a');
-  if (stage === 0) { for (const [x, y] of [[4, 4], [10, 8], [6, 11]]) pm.set(x, y, hex('#6a4a2a')); return pm; }
-  const base = { wheat: '#f0c850', carrot: '#ff9a3c', tomato: '#f2503a', pumpkin: '#ff9a3c', strawberry: '#ff4f6d', cotton: '#ffffff' }[id];
-  const n = stage === 1 ? 2 : stage === 2 ? 3 : 4;
-  for (let i = 0; i < n; i++) {
-    const x = 3 + Math.round((i + 0.5) * 10 / n), top = 12 - stage * 3 - (i % 2);
-    pm.vline(x, top, 13 - top, g[2]); pm.vline(x + 1, top + 1, 12 - top, g[3]);
-    if (stage >= 1) { pm.set(x - 1, top + 1, g[1]); pm.set(x + 2, top + 2, g[1]); }
-    if (stage === 3) {
-      if (id === 'wheat') { for (let k = 0; k < 4; k++) { pm.set(x - 1, top - 1 + k, hex(base)); pm.set(x + 1, top - 2 + k, hex('#e8b030')); } pm.set(x, top - 3, hex('#f8e080')); }
-      else if (id === 'carrot') { pm.rect(x - 1, 11, 3, 3, hex(base)); pm.set(x, 14, hex('#e07a1a')); }
-      else if (id === 'cotton') { pm.circle(x + 0.5, top, 1.9, WHITE); pm.set(x, top + 1, hex('#d8e0f8')); }
-      else { pm.circle(x + 0.5, top + 3, 1.9, hex(base)); pm.set(x, top + 2, WHITE); }
+  if (stage === 0) { for (const [x, y] of [[4, 4], [10, 7], [6, 11], [12, 12], [3, 12]]) clod(pm, x, y); return pm; }
+  const L = C.leaf, D = C.leafD;
+  if (id === 'wheat') {
+    const xs = [4, 8, 12];
+    xs.forEach((x, i) => {
+      const h = [3, 6, 10][stage - 1] + (i === 1 ? 1 : 0), lean = stage === 3 ? (i - 1) : 0;
+      for (let k = 0; k < h; k++) pm.set(x + Math.round(lean * k / h), 13 - k, k < 2 ? D[2] : C.stalk);
+      if (stage >= 2) { pm.set(x - 1, 12 - Math.floor(h / 3), L[1]); pm.set(x + 1, 11 - Math.floor(h / 3), L[1]); pm.set(x - 2, 11 - Math.floor(h / 3), L[2]); }
+      if (stage === 3) { const hx = x + lean, hy = 13 - h; for (let k = 0; k < 4; k++) { pm.set(hx - 1, hy + k, k % 2 ? C.goldD : C.gold); pm.set(hx + 1, hy + k - 1, k % 2 ? C.gold : C.goldD); pm.set(hx, hy + k - 1, C.gold); } pm.set(hx, hy - 2, C.goldL); pm.set(hx - 1, hy - 2, C.goldD); pm.set(hx + 1, hy - 3, C.goldL); }
+    });
+  } else if (id === 'carrot') {
+    [4, 8, 12].forEach((x, i) => {
+      const n = stage === 1 ? 2 : stage === 2 ? 4 : 5, hgt = stage === 1 ? 3 : stage === 2 ? 5 : 6, by = 12 + (i % 2) * 0;
+      for (let k = 0; k < n; k++) { const dx = k - (n - 1) / 2; const len = hgt - Math.abs(dx) * 1.3; for (let j = 0; j < len; j++) pm.set(Math.round(x + dx * (0.6 + j * 0.28)), by - j, j > len - 2 ? L[1] : (k % 2 ? L[2] : D[1])); }
+      if (stage === 3) { pm.rect(x - 1, 12, 3, 2, C.org); pm.set(x - 1, 12, C.orgL); pm.set(x + 1, 13, C.orgD); pm.set(x, 14, C.orgD); }
+    });
+  } else if (id === 'tomato') {
+    const xs = stage === 1 ? [5, 11] : [5, 11];
+    xs.forEach((x, i) => {
+      const h = [3, 7, 10][stage - 1];
+      if (stage >= 2) { for (let k = 0; k < h + 1; k++) pm.set(x + 1, 13 - k, C.wood); }
+      for (let k = 0; k < h; k++) pm.set(x, 13 - k, D[1]);
+      for (let k = 0; k < Math.max(1, h / 2.2); k++) { const y = 12 - k * 2; pm.set(x - 1, y, L[1]); pm.set(x - 2, y - 1, L[2]); pm.set(x + 2, y - 1, L[1]); pm.set(x + 3, y, L[2]); }
+      if (stage === 2) { pm.set(x - 2, 7, C.yolk); pm.set(x + 3, 9, C.yolk); }
+      if (stage === 3) for (const [dx, dy] of [[-2, 7], [3, 9], [-2, 11], [3, 5]]) { pm.rect(x + dx, dy, 2, 2, C.red); pm.set(x + dx, dy, C.redL); pm.set(x + dx + 1, dy + 1, C.redD); pm.set(x + dx, dy - 1, D[1]); }
+    });
+  } else if (id === 'pumpkin') {
+    const cx = 8;
+    if (stage === 1) { pm.set(cx, 12, D[2]); pm.set(cx, 11, D[1]); pm.rect(cx - 3, 9, 3, 2, L[1]); pm.rect(cx + 1, 8, 3, 2, L[2]); pm.set(cx - 3, 9, L[0]); }
+    else {
+      // vine + big leaves
+      for (let k = 0; k < 9; k++) pm.set(Math.round(2 + k * 1.3), 13 - Math.round(Math.sin(k / 2.2) * 2), D[2]);
+      pm.circle(4, 9, 2.6, L[1]); pm.set(3, 8, L[0]); pm.circle(13, 6, 2.4, L[2]); pm.set(12, 5, L[0]); pm.set(4, 9, D[2]);
+      if (stage === 2) { pm.circle(9, 10, 2, hex('#7dc860')); pm.set(8, 9, hex('#a8e088')); pm.set(9, 7, D[3]); }
+      else {
+        pm.ellipse(8, 9.5, 5.4, 4, C.orgD); pm.ellipse(8, 9, 5, 3.6, C.org);
+        for (const x of [4, 6, 10, 12]) pm.vline(x, 7, 5, C.orgD);
+        pm.vline(8, 6, 6, C.orgD); pm.rect(5, 7, 2, 2, C.orgL); pm.set(9, 7, C.orgL);
+        pm.rect(7, 4, 2, 3, D[3]); pm.set(7, 4, L[1]); pm.set(9, 4, D[2]); pm.set(10, 3, D[2]);
+      }
+    }
+  } else if (id === 'strawberry') {
+    const bush = (cx, cy, r) => bushShape(pm, cx, cy, r);
+    if (stage === 1) { sprout(pm, 5, 11); sprout(pm, 11, 10); pm.set(8, 12, L[1]); pm.set(7, 11, L[0]); pm.set(9, 11, L[0]); }
+    else {
+      bush(5, 10, stage === 2 ? 4 : 4.4); bush(11, 9, stage === 2 ? 4 : 4.4); bush(8, 12, 3.4);
+      if (stage === 2) for (const [x, y] of [[4, 8], [11, 6], [7, 11], [12, 10]]) { pm.set(x, y, C.flower); pm.set(x - 1, y, C.flower); pm.set(x + 1, y, C.flower); pm.set(x, y - 1, C.flower); pm.set(x, y + 1, C.flower); pm.set(x, y, C.yolk); }
+      else for (const [x, y] of [[4, 8], [7, 12], [10, 9], [13, 11], [8, 7], [2, 11]]) { pm.rect(x, y, 2, 3, C.berry); pm.set(x, y, C.redL); pm.set(x + 1, y + 2, C.berryD); pm.set(x, y + 1, C.yolk); pm.set(x + 1, y - 1, D[2]); pm.set(x, y - 1, D[2]); }
+    }
+  } else if (id === 'cotton') {
+    if (stage === 1) { sprout(pm, 4, 11); sprout(pm, 8, 10); sprout(pm, 12, 11); }
+    else {
+      bushShape(pm, 5, 10, 4.2); bushShape(pm, 11, 10, 4.2); bushShape(pm, 8, 8, 3.8);
+      if (stage === 2) for (const [x, y] of [[4, 8], [8, 6], [12, 8], [7, 11], [11, 12]]) { pm.rect(x, y, 2, 2, hex('#8ad870')); pm.set(x, y, hex('#c8f4b0')); }
+      else for (const [x, y] of [[3, 7], [8, 4], [13, 7], [6, 9], [10, 10]]) {
+        pm.set(x - 1, y + 2, C.wood); pm.set(x + 1, y + 2, C.wood); pm.set(x, y + 3, C.wood);
+        pm.circle(x, y, 1.7, C.white); pm.set(x - 1, y - 1, C.white); pm.set(x + 1, y + 1, C.cream); pm.set(x + 1, y, C.cream); pm.set(x, y - 1, hex('#ffffff'));
+      }
     }
   }
+  pm.outline(null, { amt: 0.55 });
   return pm;
 }
+function crop(id, stage) { return drawCrop(id, stage); }
 
 export function registerStructures(book) {
   const add = (name, pm) => book.add(name, pm);
