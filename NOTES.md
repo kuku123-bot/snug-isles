@@ -34,5 +34,20 @@ Original art/audio (all procedural). NOT affiliated with, and uses no assets fro
 - Client sends: pos (~25Hz), commands.
 - Either player can host: client keeps a backup copy of the world.
 
+## Things that were learned the hard way (keep these in mind)
+- **Networking**: free public TURN relays are dead (the old "openrelay" one included). The ICE list contains only STUN servers that were probed live; connections are direct P2P. `?turn=…` adds a relay on one device. Tested: cloud PeerJS + local PeerServer + manual copy/paste, Chromium<->WebKit, reconnect, backup copy.
+- **Manual pairing**: the host's wait only starts when the answer is pasted (humans take minutes); the panel keeps its `<details>`/textareas across re-renders (it used to be rebuilt on every status change).
+- **Join approval**: `HostLink` asks the host before admitting a pid that is not in `world.players` (room codes are 5 chars). The card lives in `#joinreqs` above every panel. A returning partner on a new device can claim an offline character (`adopt` + `prk` event). `PROTOCOL` bumps on any wire change; `BUILD_ID` (source hash, injected by tools/build.mjs) only produces a soft "different versions" warning.
+- **Goals** (`data/goals.js`, `sim/goals.js`): the host evaluates conditions on a census every 1.5s; counters live in `shared.flags.gs` (host only, persisted), the done-list in `shared.flags.goals` (replicated by `goal`/`goals` events + snapshot). Item goals use `made_<item>` counters (crafted/smelted/produced), never inventory contents (the starting kit would complete them).
+- **Spawning**: lands are 20x20 so the old 14-23 tile spawn ring never fit the starting island; `spawnTick` falls back to a closer ring and scales the early crowd. New worlds have `flags.age` (played seconds): peaceful for 120s, ramping to full over 240s.
+- **Refunds** equal what building costs *now* (`buildMult`), otherwise discounts could be farmed by build/remove cycles.
+- **Presets** must only use values that exist in `OPTIONS` or `sanitizeSettings` silently resets them (tests/content.test.js checks).
+- **Touch**: while building, the joystick zone shrinks to a corner (`.joyzone.compact`) so the rest of the screen paints; quick taps count (pointerdown+up inside one frame); furniture is placed on finger-lift so you can slide the ghost. Wake lock is re-requested on `visibilitychange`.
+- **Short windows** (iPad Safari with toolbars ~1180x700): menus use `100vh`-based heights and a `max-height: 740px` media query.
+
+## Test map
+- `npm test`: sim, rules (one test per world option), content (reference integrity + reachability fixpoint of every item/tech/blueprint/recipe), playthrough (craft every recipe, build+remove every blueprint, research the tree, machines, altars…), serialize/backup, net loopback (join/approval/replication/goals).
+- Browser: tools/e2e.mjs (mouse/keyboard), e2e-touch.mjs (real CDP touch incl. two thumbs), e2e-mp.mjs (two browsers), e2e-manual.mjs, perf.mjs (CPU-throttled stress scene), screens.mjs, live.mjs (deployed site).
+
 ## Status log
 - (see git log)
