@@ -32,6 +32,10 @@ Open the site on any modern browser (Safari on iPad, Chrome/Safari on Mac). On i
 * Want a proper relay (TURN) of your own? Add it with `?turn=turn:host:3478&turnuser=…&turncred=…` on the page address; it is remembered on that device.
 * Switched devices or cleared Safari data? The host can hand your old character to your new device when it asks to let you in.
 
+### Privacy
+
+There is no account and no game server. Worlds live in your browser. To connect two devices the game uses free public services: the PeerJS cloud server (only to introduce you; it sees the 5-letter room code), Google/Cloudflare/Nextcloud STUN servers (to learn your public address), and — only if you turn on the backup connection — the HiveMQ/EMQX/Mosquitto public MQTT servers, which only ever see encrypted bytes. As with any direct (peer-to-peer) connection, your partner's device can see your IP address.
+
 ### Keep your world safe
 
 Worlds live in the browser's storage. *Your worlds → Backup* saves a file (share it to Files/AirDrop on iPad), *Open a backup* restores it as a new world.
