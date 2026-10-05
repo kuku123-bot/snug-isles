@@ -64,7 +64,13 @@ export class App {
     window.__snug = this;
     this.dbg = { spawnMob }; // test/debug helpers (perf scene, e2e)
     this.handleUrl();
-    if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.search.includes('nosw') && !/localhost|127\.0\.0\.1/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(() => {});
+    try { sessionStorage.removeItem('snug.upd'); } catch (e) { /* ignore */ }
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.search.includes('nosw') && (location.search.includes('sw=1') || !/localhost|127\.0\.0\.1/.test(location.hostname))) {
+      const hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js').then((reg) => { setInterval(() => reg.update().catch(() => {}), 3 * 3600 * 1000); }).catch(() => {});
+      // a new version took over while this page was open: say so (never reload under a running game)
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (!hadController) return; if (this.game) this.game.toast('A new version of Snug Isles is ready. Reload the page when you reach a good stopping point.', 'info'); else location.reload(); });
+    }
   }
 
   onResize() {
@@ -191,9 +197,18 @@ export class App {
   }
 
   // ------------------------------------------------------------------ multiplayer (loaded on demand)
-  async startHosting(game) { const m = await import('./net/session.js'); return m.startHosting(this, game); }
-  async joinGame(code, onStatus, opts) { const m = await import('./net/session.js'); return m.joinGame(this, code, onStatus, opts); }
-  async manualJoin(offer, onStatus) { const m = await import('./net/session.js'); return m.manualJoin(this, offer, onStatus); }
+  /** multiplayer code is loaded on demand; a tab left open across an update can no longer find its old chunk, so reload once to pick up the new version */
+  async session() {
+    try { return await import('./net/session.js'); } catch (e) {
+      console.error('could not load the multiplayer module', e);
+      let again = false; try { again = !!sessionStorage.getItem('snug.upd'); sessionStorage.setItem('snug.upd', '1'); } catch (x) { /* ignore */ }
+      if (!again) { alert('Snug Isles was updated. The page will reload now (your world is saved).'); if (this.game) await this.game.save(); location.reload(); } else alert('Could not load the multiplayer part of the game. Please check your connection and reload the page.');
+      throw e;
+    }
+  }
+  async startHosting(game) { const m = await this.session(); return m.startHosting(this, game); }
+  async joinGame(code, onStatus, opts) { const m = await this.session(); return m.joinGame(this, code, onStatus, opts); }
+  async manualJoin(offer, onStatus) { const m = await this.session(); return m.manualJoin(this, offer, onStatus); }
 
   // ------------------------------------------------------------------ loop
   loop(now) {
