@@ -8,6 +8,7 @@ export function pausePanel(g, data, ui) {
   const b = (label, icon, fn, cls = '') => h('button', { class: 'btn ' + cls, style: 'width:100%;font-size:19px;justify-content:flex-start', onclick: () => { g.audio.play('click'); fn(); } }, ic(icon, 2), label);
   const body = h('div', { class: 'col', style: 'min-width:min(80vw,320px);gap:10px' },
     b('Back to the game', 'ui_check', () => ui.close(), 'good'),
+    b('Island goals', 'ui_star', () => ui.open('goals')),
     b('How to play', 'ui_book', () => ui.open('help')),
     b('Settings', 'ui_gear', () => ui.open('settings')),
     g.mode !== 'client' ? b('World rules', 'ui_sword', () => ui.open('rules')) : null,
@@ -33,7 +34,7 @@ export function settingsPanel(g, data, ui) {
       h('div', { class: 'sep' }),
       toggle('Smart tools', 'smartTools', 'Automatically picks the best pickaxe / sword / bow for what you hit.'),
       toggle('See-through walls', 'fadeWalls', 'Walls near you fade so you never get hidden behind them.'),
-      toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
+      toggle('Goal tracker', 'showGoals', 'Shows the next Island Goal in the corner.', () => g.hud && g.hud.refreshGoal && g.hud.refreshGoal()), toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
       choice('Touch controls', 'touchControls', [['auto', 'Auto'], ['on', 'Always'], ['off', 'Never']], () => g.touch.layout()),
       toggle('Left-handed layout', 'leftHanded', 'Swap the joystick and buttons.', () => g.touch.layout()),
       choice('Zoom', 'zoomBias', [[-1, 'Out'], [0, 'Normal'], [1, 'In'], [2, 'Closer']], () => { g.view.bias = s.zoomBias; g.view.resize(); }),

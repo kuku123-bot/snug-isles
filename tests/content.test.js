@@ -151,3 +151,43 @@ test('every ground biome has a way to earn its own tier of materials', () => {
     assert.ok(b.mobs.length && b.night.length, `${b.id} has day and night creatures`);
   }
 });
+
+test('island goals: unique ids, real icons, real items, and every condition can come true', async () => {
+  const { GOALS, GOAL_SECTIONS, nextGoal } = await import('../js/data/goals.js');
+  const { expectedSprites } = await import('../js/gfx/art/index.js');
+  const sprites = new Set(expectedSprites());
+  for (const n of ['i_coin', 'ui_star', 'ui_heart', 'ui_house', 'ui_hammer', 'ui_hunger', 'ui_sword', 'ui_map', 'ui_flask', 'ui_moon', 'ui_sun', 'ui_check']) sprites.add(n); // ui sprites are registered by hand
+  const sections = new Set(GOAL_SECTIONS.map((s) => s.id));
+  const ids = new Set(), bad = [];
+  for (const g of GOALS) {
+    if (ids.has(g.id)) bad.push('duplicate id ' + g.id); ids.add(g.id);
+    if (!sections.has(g.section)) bad.push(`${g.id}: unknown section ${g.section}`);
+    if (!g.title) bad.push(`${g.id}: no title`);
+    if (!(g.reward.coins >= 0) || !(g.reward.xp >= 0)) bad.push(`${g.id}: bad reward`);
+    if (!/^ui_|^i_coin$/.test(g.icon) && !sprites.has(g.icon)) bad.push(`${g.id}: icon ${g.icon} is not a real sprite`);
+    if (g.prog) { const p = g.prog({ gs: {}, techs: new Set(), things: {}, items: new Set(), biomes: new Set(), maxLevel: 1, cozy: 0, lands: 1, floors: 0, walls: 0, furniture: 0 }); if (!Array.isArray(p) || p[1] <= 0) bad.push(`${g.id}: bad progress`); }
+  }
+  assert.deepEqual(bad, []);
+  assert.ok(GOALS.length >= 50, 'plenty of goals: ' + GOALS.length);
+  // every goal that asks for an item or a built thing names one that exists (probe with a Proxy census that records what is asked for)
+  const asked = { items: new Set(), things: new Set() };
+  const probe = { gs: new Proxy({}, { get: () => 0 }), techs: { size: 0, has: () => false }, things: new Proxy({}, { get: (_, k) => { asked.things.add(String(k)); return 0; } }), items: { has: (k) => { asked.items.add(k); return false; } }, biomes: new Set(), maxLevel: 1, cozy: 0, lands: 1, floors: 0, walls: 0, doors: 0, windows: 0, bridges: 0, furniture: 0, lights: 0, beds: 0, chests: 0, drills: 0, coins: 0 };
+  for (const g of GOALS) g.check(probe);
+  for (const i of asked.items) assert.ok(ITEMS[i], 'goal asks for unknown item ' + i);
+  for (const t of asked.things) assert.ok(BUILD[t], 'goal asks for unknown blueprint ' + t);
+  // the tracker always has something sensible to show
+  assert.equal(nextGoal(new Set()).id, 'chop');
+  assert.equal(nextGoal(new Set(GOALS.map((g) => g.id))), null);
+  const some = new Set(GOALS.slice(0, 5).map((g) => g.id));
+  assert.ok(!some.has(nextGoal(some).id));
+});
+
+test('presets only use values the options actually allow (nothing is silently reset)', async () => {
+  const { OPTIONS, PRESETS, sanitizeSettings } = await import('../js/data/difficulty.js');
+  for (const p of PRESETS) for (const [k, v] of Object.entries(p.v)) {
+    const o = OPTIONS.find((x) => x.id === k);
+    assert.ok(o, `${p.id}: unknown option ${k}`);
+    assert.ok(o.opts.some((x) => x[0] === v), `${p.id}: ${k}=${v} is not one of the choices`);
+  }
+  for (const p of PRESETS) assert.deepEqual(sanitizeSettings({ ...p.v }), { ...sanitizeSettings({}), ...p.v }, `${p.id} survives sanitizing`);
+});

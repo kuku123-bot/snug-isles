@@ -2,6 +2,7 @@
 import { RNG, TILE, clamp, dist2, hash32, stochRound } from '../util.js';
 import { World, LAND, PAD, thingDef, wallDefOf } from './world.js';
 import { assignBiomes, genLand, seamFill, landPrice } from './worldgen.js';
+import { goalsTick, bump } from './goals.js';
 import { ITEMS } from '../data/items.js';
 import { NODES } from '../data/nodes.js';
 import { BUILD } from '../data/build.js';
@@ -23,7 +24,7 @@ export class Sim {
     this.rng = new RNG((world.seed ^ 0x9e3779b9) >>> 0);
     this.depleted = new Set(); // ids of depleted nodes awaiting regrowth
     this.machineIds = new Set(); // ids of things that tick (processors, farms, drills...)
-    this.acc = { slow: 0, cozy: 0, spawn: 0, weather: 0, doors: 0 };
+    this.acc = { slow: 0, cozy: 0, spawn: 0, weather: 0, doors: 0, goals: 0 };
     this.openDoors = new Map(); // tile idx -> seconds since someone was near
     this.sleepFade = 0;
     this.skipping = false;
@@ -46,6 +47,7 @@ export class Sim {
     sim.spawn = { x: (ox + LAND / 2) * TILE, y: (oy + LAND / 2) * TILE };
     world.time = world.settings.dayLength * 0.12;
     world.shared.flags.created = Date.now();
+    world.shared.flags.goals = [];
     return sim;
   }
 
@@ -217,6 +219,7 @@ export class Sim {
         for (const p of ps) {
           if (p.sleeping) { p.sleeping = false; this.onWake(p); }
         }
+        this.bump('slept');
         w.emit(['wake']);
       }
       return;
@@ -406,6 +409,8 @@ export class Sim {
       this.acc.cozy = 0;
       for (const p of w.players.values()) if (p.online && !p.dead) { const old = p.cozy; this.computeCozy(p); if (old !== p.cozy) touch(p); }
     }
+    this.acc.goals += dt;
+    if (this.acc.goals > 1.5) { this.acc.goals = 0; goalsTick(this); }
     this.acc.weather += dt;
     if (this.acc.weather > 75) { this.acc.weather = 0; this._weatherTick(); }
   }
@@ -419,6 +424,8 @@ export class Sim {
     w.shared.market = m;
     w.emit(['market', m]);
   }
+
+  bump(key, n = 1) { bump(this, key, n); }
 
   // ------------------------------------------------------------------ commands
   exec(pid, cmd) { return execCommand(this, pid, cmd); }

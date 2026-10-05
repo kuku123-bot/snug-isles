@@ -1,5 +1,6 @@
 // The running game session (solo / host / client). Owns the world mirror, local player control, camera, fx, HUD and UI.
 import { TILE, clamp, TAU, hash32 } from '../util.js';
+import { GOAL_BY_ID } from '../data/goals.js';
 import { FX } from './fx.js';
 import { Builder } from './builder.js';
 import { HUD } from '../ui/hud.js';
@@ -150,6 +151,18 @@ export class Game {
       case 'toast': this.toast(ev.text, ev.kind); break;
       case 'kb': this.kb.vx = ev.vx; this.kb.vy = ev.vy; break;
       case 'teleport': { const me = this.me; if (me) { me.x = ev.x; me.y = ev.y; this.cam.x = me.x - this.view.w / 2; this.cam.y = me.y - this.view.h / 2 - 8; } break; }
+      case 'goal': {
+        const gd = GOAL_BY_ID[ev.id]; if (!gd) break;
+        const f = this.world.shared.flags; const l = f.goals || (f.goals = []); if (!l.includes(ev.id)) l.push(ev.id); // solo/host already has it; harmless
+        this.hud.refreshGoal();
+        if (ev.late === 2) break;
+        const me = this.me;
+        if (me) { this.fx.ring(me.x, me.y - 6, 22, '#ffe066', 0.8); this.fx.burst(me.x, me.y - 14, 16, ['#ffe066', '#ffffff', '#ff9fd0'], { speed: 58, up: 34, life: 0.9 }); }
+        this.audio.play('research');
+        if (ev.late === 1) { this.toast('More goals complete! Open the goal list to see them.', 'good'); break; }
+        this.toast(`Goal complete: ${gd.title}${gd.reward.coins ? '   +' + gd.reward.coins + ' coins' : ''}`, 'good');
+        break;
+      }
       case 'dead': this.ui.open('dead'); break;
       case 'ui': {
         const t = this.world.things.get(ev.id);

@@ -146,6 +146,8 @@ export function applyEvent(world, ev, ctx = {}) {
     case 'wake': break;
     case 'pj': ensurePlayer(world, ev[1]); break; // [pj, {pid,id,name,look}]
     case 'pl': { const p = world.players.get(ev[1]); if (p) p.online = false; break; }
+    case 'goal': { const f = world.shared.flags; const l = f.goals || (f.goals = []); if (!l.includes(ev[1])) l.push(ev[1]); world.rev++; break; }
+    case 'goals': world.shared.flags.goals = [...ev[1]]; world.rev++; break;
     case 'prk': { const p = world.players.get(ev[1]); if (p) { world.players.delete(ev[1]); p.pid = ev[2]; world.players.set(ev[2], p); } break; } // a returning partner on a new device
     case 'name': { const p = world.players.get(ev[1]); if (p) { p.name = ev[2]; p.look = ev[3]; } break; }
     default: break;

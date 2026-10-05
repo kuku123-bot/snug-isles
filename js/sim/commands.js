@@ -128,6 +128,7 @@ function doCraft(sim, p, cmd) {
     addXp(w, p, r.xp);
   }
   if (!made) return sim.toast(p.pid, 'Missing ingredients.', 'warn');
+  sim.bump('crafted', made);
   touch(p);
   w.fx('craft', p.x, p.y - 10, r.out, made);
 }
@@ -205,6 +206,7 @@ function doBuild(sim, p, cmd, quiet = false) {
     if (def.behavior === 'farm' || def.behavior === 'producer') t.s.by = p.pid;
   }
   addXp(w, p, 0.5 + Object.keys(def.cost).length * 0.4, false);
+  sim.bump('built');
   w.fx('build', cx, cy, def.kind === 'wall' ? 1 : 0);
   touch(p);
 }
@@ -485,6 +487,7 @@ function doSell(sim, p, cmd) {
   const each = Math.max(1, Math.round(it.sell * mul * st.sellMul));
   s.n -= n; if (s.n <= 0) p.inv[i] = null;
   w.coins += each * n;
+  sim.bump('sold', n);
   w.emit(['coins', w.coins]);
   w.fx('coin', p.x, p.y - 14, each * n);
   addXp(w, p, 0.4 * n, false);

@@ -12,9 +12,9 @@ export const OPTIONS = [
   { group: 'Creatures', id: 'nightDanger', label: 'Night danger', desc: 'Extra monsters after dark.', opts: [[0, 'Calm nights'], [1, 'Normal'], [2, 'Fierce']], def: 1 },
   { group: 'Creatures', id: 'bossPower', label: 'Boss strength', desc: 'Boss health and damage.', opts: [[0.6, 'Friendly'], [1, 'Normal'], [1.6, 'Fearsome']], def: 1 },
 
-  { group: 'Economy', id: 'resourceYield', label: 'Resource yield', desc: 'How much you get from nodes.', opts: [[0.5, '×0.5'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
+  { group: 'Economy', id: 'resourceYield', label: 'Resource yield', desc: 'How much you get from nodes.', opts: [[0.5, '×0.5'], [0.75, '×0.75'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
   { group: 'Economy', id: 'resourceRespawn', label: 'Regrowth speed', desc: 'How fast trees, rocks and bushes return.', opts: [[0.5, 'Slow'], [1, 'Normal'], [2, 'Fast'], [4, 'Very fast']], def: 1 },
-  { group: 'Economy', id: 'xpRate', label: 'XP gain', desc: 'How fast you level up.', opts: [[0.5, '×0.5'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
+  { group: 'Economy', id: 'xpRate', label: 'XP gain', desc: 'How fast you level up.', opts: [[0.5, '×0.5'], [0.75, '×0.75'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
   { group: 'Economy', id: 'landPrice', label: 'Land prices', desc: 'Coins needed to buy new lands.', opts: [[0, 'Free'], [0.5, 'Cheap'], [1, 'Normal'], [1.5, 'Pricey'], [2.5, 'Steep']], def: 1 },
   { group: 'Economy', id: 'buildCost', label: 'Building cost', desc: 'Materials needed to build. Free = creative mode.', opts: [[0, 'Free (creative)'], [0.5, 'Half'], [1, 'Normal'], [1.5, 'Pricey']], def: 1 },
   { group: 'Economy', id: 'techCost', label: 'Research cost', desc: 'Materials needed for research.', opts: [[0, 'Free'], [0.5, 'Half'], [1, 'Normal'], [2, 'Double']], def: 1 },

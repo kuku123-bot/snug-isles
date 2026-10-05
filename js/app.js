@@ -18,7 +18,7 @@ import { strHash } from './util.js';
 import { DEFAULT_LOOK } from './sim/player.js';
 
 export const VERSION = '0.1.0';
-const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true, approveJoins: true };
+const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true, approveJoins: true, showGoals: true };
 
 export class App {
   constructor() {

@@ -1,5 +1,6 @@
 // Creatures, damage, projectiles and bosses (host-side).
 import { TILE, TAU, clamp, hash32 } from '../util.js';
+import { bumpBoss } from './goals.js';
 import { MOBS } from '../data/mobs.js';
 import { ITEMS } from '../data/items.js';
 import { calcStats, addXp, touch } from './player.js';
@@ -152,6 +153,7 @@ export function killMob(sim, m, p) {
       for (let i = 0; i < pieces; i++) sim.spawnDrop('coin', Math.floor(n / pieces) + (i < n % pieces ? 1 : 0), m.x, m.y - 2);
     } else sim.spawnDrop(item, n, m.x, m.y - 2);
   }
+  if (def.hostile) { if (def.boss) { bumpBoss(sim, m.type); } else sim.bump('kills'); }
   if (p) {
     addXp(w, p, def.xp);
     if (st.lifesteal) { p.hp = Math.min(st.maxHp, p.hp + st.lifesteal); touch(p); }

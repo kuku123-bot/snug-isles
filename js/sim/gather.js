@@ -50,7 +50,7 @@ export function breakNode(sim, t, p) {
   const cx = (t.x + 0.5) * TILE, cy = (t.y + 0.7) * TILE;
   for (const it of items) sim.spawnDrop(it.id, it.n, cx, cy);
   const st = p ? calcStats(w, p) : null;
-  if (p) addXp(w, p, nd.xp * st.gatherXp);
+  if (p) { addXp(w, p, nd.xp * st.gatherXp); sim.bump(nd.tree ? 'chop' : nd.plant ? 'pick' : 'mine'); }
   w.fx('break', cx, cy, nd.fx, nd.tree ? 1 : 0);
   depleteNode(sim, t, nd, st ? st.regrow : 0);
 }
@@ -172,6 +172,7 @@ export function useItem(sim, p, slot, ax, ay) {
     if (loot.coins) sim.spawnDrop('coin', loot.coins, cx, cy);
     for (const it of loot.items) sim.spawnDrop(it.id, it.n, cx, cy);
     addXp(w, p, 6 + biome.tier * 3);
+    sim.bump('dug');
     return true;
   }
   if (item.tool === 'rod') {
@@ -195,6 +196,7 @@ function castRod(sim, p, item, ax, ay, st) {
       p.fish = null;
       sim.award(p, id, 1 + (sim.rng.chance(0.08 + st.luck * 0.2) ? 1 : 0));
       addXp(w, p, 4 + ITEMS[id].sell * 0.15);
+      sim.bump('caught'); if (id === 'fish_koi') sim.bump('koi');
       w.fx('catch', f.x, f.y, id);
       return true;
     }
@@ -255,6 +257,7 @@ function plantSeed(sim, p, slot, item, ax, ay) {
   inv.n--; if (inv.n <= 0) p.inv[slot] = null;
   plot.s = { ...s, c: item.crop, g: 0, st: 0, by: p.pid };
   w.patchThing(plot.id, { s: plot.s });
+  sim.bump('planted');
   w.fx('plant', (plot.x + 0.5) * TILE, (plot.y + 0.5) * TILE, 0);
   p.cd = 0.3;
   touch(p);
@@ -274,6 +277,7 @@ export function harvestPlot(sim, p, plot) {
   sim.award(p, crop.item, n);
   if (sim.rng.next() < 0.55) sim.award(p, 'seed_' + s.c, 1 + sim.rng.int(2));
   addXp(w, p, 4 + n);
+  sim.bump('harvested');
   const cx = (plot.x + 0.5) * TILE, cy = (plot.y + 0.5) * TILE;
   w.fx('harvest', cx, cy, 0);
   plot.s = crop.regrow ? { ...s, g: crop.time * 0.45 } : { ...s, c: null, g: 0, st: 0 };

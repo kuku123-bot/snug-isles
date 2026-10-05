@@ -8,6 +8,8 @@ import { fmtNum } from '../util.js';
 import { GROUND_IDS, BIOMES } from '../data/biomes.js';
 import { BUILD, WALL_IDS } from '../data/build.js';
 import { MOBS } from '../data/mobs.js';
+import { GOAL_BY_ID, nextGoal } from '../data/goals.js';
+import { census } from '../sim/goals.js';
 
 const GROUND_RGB = { water: [51, 136, 220], grass: [108, 194, 78], sand: [241, 220, 154], snow: [236, 244, 255], swamp: [79, 143, 98], grave: [127, 115, 146], volcano: [93, 74, 83], crystal: [203, 184, 244], void: [43, 33, 88] };
 
@@ -34,7 +36,9 @@ export class HUD {
     this.meters = h('div', { class: 'meters' }, h('div', { class: 'meter' }, ic('ui_bolt', 1), h('div', { class: 'bar' }, this.energyFill)), this.hungerMeter);
     this.partnerEl = h('div', { class: 'pill small', style: 'display:none;font-size:14px;padding:2px 10px 2px 6px' });
     this.cozyEl = h('div', { class: 'pill small', style: 'display:none;font-size:14px' });
-    const tl = h('div', { class: 'hud-tl' }, this.heartsEl, this.lvlEl, this.meters, this.partnerEl);
+    this.goalTxt = h('span'); this.goalProg = h('span', { class: 'gp' });
+    this.goalPill = h('div', { class: 'goalpill', style: 'display:none', onclick: () => { g.audio.play('click'); g.ui.toggle('goals'); } }, ic('ui_star', 1), this.goalTxt, this.goalProg);
+    const tl = h('div', { class: 'hud-tl' }, this.heartsEl, this.lvlEl, this.meters, this.goalPill, this.partnerEl);
 
     this.coinNum = h('span', null, '0');
     this.coinPill = h('div', { class: 'pill', onclick: () => g.ui.open('map') }, ic('i_coin', 2), this.coinNum);
@@ -115,7 +119,20 @@ export class HUD {
     setTimeout(() => el.remove(), 3500);
   }
 
-  refreshAll() { this.last = {}; this.update(0, true); this.renderHotbar(); }
+  /** the corner pill that names the next Island Goal */
+  refreshGoal() {
+    const g = this.g, w = g.world;
+    const done = new Set((w && w.shared.flags.goals) || []);
+    const nxt = g.settings.showGoals === false ? null : nextGoal(done);
+    this.goalNow = nxt;
+    this.goalPill.style.display = nxt ? '' : 'none';
+    if (!nxt) return;
+    this.goalTxt.textContent = nxt.title;
+    const pr = nxt.prog ? nxt.prog(census(w)) : null;
+    this.goalProg.textContent = pr ? ` ${pr[0]}/${pr[1]}` : '';
+  }
+
+  refreshAll() { this.last = {}; this.update(0, true); this.renderHotbar(); this.refreshGoal(); }
 
   renderHotbar() {
     const g = this.g, p = g.me;
@@ -139,6 +156,9 @@ export class HUD {
     const g = this.g, p = g.me, w = g.world;
     if (!p) return;
     const L = this.last;
+    this.goalT = (this.goalT || 0) + dt;
+    const gl = (w.shared.flags.goals || []).length;
+    if (gl !== this.goalLen || (this.goalT > 2 && this.goalNow && this.goalNow.prog)) { this.goalT = 0; this.goalLen = gl; this.refreshGoal(); }
     const st = calcStats(w, p);
     if (force || L.hp !== p.hp || L.mhp !== st.maxHp) {
       L.hp = p.hp; L.mhp = st.maxHp;

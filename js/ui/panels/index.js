@@ -6,6 +6,7 @@ import { mapPanel } from './map.js';
 import { chestPanel, processorPanel, marketPanel, warpPanel, landBuyPanel } from './stations.js';
 import { pausePanel, settingsPanel, helpPanel, rulesPanel, emotePanel, deadPanel, lostPanel } from './menus.js';
 import { mpPanel } from './mp.js';
+import { goalsPanel } from './goals.js';
 
 export const PANELS = {
   inventory: inventoryPanel,
@@ -28,5 +29,6 @@ export const PANELS = {
   emote: emotePanel,
   dead: deadPanel,
   mp: mpPanel,
+  goals: goalsPanel,
   lost: lostPanel,
 };

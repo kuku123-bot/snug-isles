@@ -261,3 +261,39 @@ test('inventory transfers: chest <-> bag, equipment, processors', () => {
   assert.equal(p.equip.body, null);
   assert.ok(p.inv.some((s) => s && s.id === 'tunic_cloth'));
 });
+
+test('island goals: rewards arrive once, everyone is told, and counters track real play', async () => {
+  const { GOALS } = await import('../js/data/goals.js');
+  const { goalsTick } = await import('../js/sim/goals.js');
+  const sim = makeSim('classic');
+  const w = sim.world, p = sim.addPlayer('a', 'Alice');
+  const goals = () => w.shared.flags.goals;
+  assert.deepEqual(goals(), [], 'a new world starts with an empty list');
+  const coins0 = w.coins;
+  // chop a tree for real
+  const tree = findThing(sim, 'oak', p);
+  standNear(sim, p, tree);
+  let n = 0; while (!tree.dep && n++ < 60) { p.cd = 0; sim.exec('a', { c: 'use', slot: 0, ax: (tree.x + .5) * TILE, ay: (tree.y + .5) * TILE }); sim.update(0.05); }
+  assert.equal(w.shared.flags.gs.chop, 1, 'felling a tree is counted');
+  sim.tells = [];
+  step(sim, 3);
+  assert.ok(goals().includes('chop'), 'the chop goal completed');
+  assert.equal(w.coins - coins0 >= 10, true, 'its coins were paid');
+  assert.ok(sim.tells.some(([pid, ev]) => pid === 'a' && ev.t === 'goal' && ev.id === 'chop'), 'the player was told');
+  assert.ok(w.drainEvents().some((ev) => ev[0] === 'goal' && ev[1] === 'chop'), 'and the clients get an event');
+  const paid = w.coins; step(sim, 6);
+  assert.equal(goals().filter((g) => g === 'chop').length, 1, 'never listed twice');
+  assert.ok(w.coins >= paid, 'no double payment for the same goal');
+  // building and researching move the list along
+  give(p, 'wood', 40); w.techs.add('carpentry');
+  const spot = freeSpot(sim, p, 8); p.x = (spot[0] + .5) * TILE; p.y = (spot[1] + 3) * TILE;
+  sim.exec('a', { c: 'build', bid: 'workbench', tx: spot[0], ty: spot[1] });
+  step(sim, 3);
+  assert.ok(goals().includes('workbench'), 'building a workbench completes its goal');
+  assert.equal(w.shared.flags.gs.built >= 1, true);
+  // an old world (no list yet) is ticked off silently: no reward shower
+  const old = makeSim('classic'); old.addPlayer('a', 'A'); delete old.world.shared.flags.goals;
+  const c0 = old.world.coins; old.world.techs.add('carpentry'); goalsTick(old);
+  assert.ok(Array.isArray(old.world.shared.flags.goals) && old.world.coins === c0, 'silent catch-up on old worlds');
+  assert.ok(GOALS.length > 50);
+});

@@ -204,3 +204,12 @@ textarea.sdp { width: 100%; height: 90px; border: 3px solid var(--ink); border-r
 
 .joinreqs { position: absolute; left: 50%; top: calc(8px + var(--sat)); transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 55; pointer-events: none; width: min(92vw, 380px); }
 .joinreq { pointer-events: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; animation: winin .2s ease-out; }
+
+.goalpill { display: flex; align-items: center; gap: 4px; background: rgba(255,244,220,.94); border: 3px solid var(--ink); border-radius: 999px; padding: 1px 10px 1px 5px; box-shadow: 0 3px 0 var(--ink); font-size: calc(14px * var(--ui)); font-weight: 700; max-width: min(48vw, 270px); cursor: pointer; touch-action: manipulation; }
+.goalpill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goalpill .gp { color: var(--ink2); font-weight: 600; flex: none; }
+.goal { display: flex; gap: 10px; align-items: center; border: 3px solid var(--ink2); background: var(--paper2); border-radius: 12px; padding: 5px 9px 5px 6px; }
+.goal .gicon { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--paper3); border-radius: 10px; }
+.goal.done { opacity: .6; background: #e3f4d8; }
+.goal.next { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255,143,179,.38); }
+.goal .rw { display: flex; gap: 4px; flex: none; }

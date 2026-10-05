@@ -228,3 +228,21 @@ test('join approval: a returning partner on a new device gets their old characte
   assert.equal(plot.s.by, 'new-device-2', 'her farm still counts as hers');
   assert.ok(back.world.players.get('new-device-2') && !back.world.players.has('old-device-1'), 'her device sees the same');
 });
+
+test('island goals replicate: the partner sees the same list and gets the toast', async () => {
+  const { sim, host, clock } = setup();
+  const w = sim.world;
+  const { link, world } = await join(sim, clock);
+  const tells = []; link.game = { onTell: (ev) => tells.push(ev) };
+  w.hooks.tell = (pid, ev) => host.tellRemote(pid, ev); // route private messages the way the real game does
+  w.shared.flags.gs = { chop: 1 };
+  const { goalsTick } = await import('../js/sim/goals.js');
+  goalsTick(sim);
+  advance(sim, host, [link], clock, 0.3); await pump(6);
+  assert.ok(w.shared.flags.goals.includes('chop'));
+  assert.ok((world.shared.flags.goals || []).includes('chop'), "the partner's mirror has it");
+  assert.ok(tells.some((e) => e.t === 'goal' && e.id === 'chop'), 'the partner was told');
+  // a late joiner receives the whole list in the snapshot
+  const late = await join(sim, clock, 'Zed', 'guest-0009');
+  assert.ok((late.world.shared.flags.goals || []).includes('chop'));
+});
