@@ -115,8 +115,8 @@ const FISH = [['fish_minnow', 'Minnow', 3], ['fish_carp', 'Carp', 7], ['fish_sal
 for (const [id, name, sell] of FISH) add(id, name, 'food', sell, { fish: true, food: { heal: 3, hunger: 8, buff: null } });
 
 // ---------------------------------------------------------------- misc
-add('pet_egg', 'Mystery Egg', 'misc', 90, { stack: 5 });
-add('treasure_key', 'Old Key', 'misc', 30, { stack: 5 });
+add('pet_egg', 'Mystery Egg', 'misc', 90, { stack: 5, hatch: true });
+add('treasure_key', 'Old Key', 'misc', 30, { stack: 5, key: true });
 add('boss_token', 'Boss Trophy', 'misc', 300, { stack: 20 });
 
 export const isTool = (it) => it && (it.cat === 'tool' || it.cat === 'weapon');
@@ -133,6 +133,8 @@ export function itemDesc(it) {
   if (it.armor) p.push(`Defense +${it.def}`);
   if (it.tool === 'shovel') p.push('Digs up buried treasure');
   if (it.tool === 'rod') p.push('Catches fish');
+  if (it.hatch) p.push('Use it to hatch a pet that follows you around');
+  if (it.key) p.push('Carry it: the next treasure chest you open gives double treasure');
   if (it.food) p.push(`Heals ${it.food.heal} · fills ${it.food.hunger}`);
   if (it.potion && it.potion.heal) p.push(`Heals ${it.potion.heal}`);
   const b = (it.food && it.food.buff) || (it.potion && it.potion.buff);

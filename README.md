@@ -12,7 +12,8 @@ Gather resources, buy new lands, research a big tech tree, automate your island,
 * **69 technologies** in 8 tiers (stone age → starlit age), **101 recipes**, 42 skills
 * **295 build pieces**: 66 wall/window/door/fence styles, 27 floors, 16 wall decorations, **84 pieces of furniture in 7 styles**, lights, farms, animal pens, drills, turrets, warp pads…
 * **Automation**: furnaces and drills that load/unload from chests next to them, sprinklers, windmills, turrets
-* **67 Island Goals** — a gentle checklist with rewards that teaches the game and gives you things to aim for
+* **Pets**: Mystery Eggs (found in chests, buried treasure and boss drops) hatch a bunny, duckling, chick, lizard, penguin… or a very rare unicorn that trots after you (and comes back after every reload); an **Old Key** in your bag doubles the next treasure chest
+* **68 Island Goals** — a gentle checklist with rewards that teaches the game and gives you things to aim for
 * **20 world rules** (monsters, damage, health, alertness, night danger, boss strength, yield, regrowth, XP, land price, build cost, research cost, hunger, regeneration, what happens when you faint, sleep rules, day length, weather…) with five presets from *Dreamy Builder* (no monsters, free everything) to *Nightmare*
 * **Co-op for two** (up to four), both devices keep a backup copy of the world
 

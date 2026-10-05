@@ -68,6 +68,7 @@ G('tech_all', 'craft', 'ui_flask', 'Research everything', 'The whole tree!', { c
 G('plant', 'farm', 'i_seed_wheat', 'Plant a crop', 'Build a farm plot, hold seeds and tap the plot. Tall grass sometimes drops seeds.', { coins: 20, xp: 14 }, (c) => gs('planted')(c) >= 1);
 G('harvest', 'farm', 'i_wheat', 'Harvest a crop', 'Wait for it to ripen (rain helps!), then tap the plot.', { coins: 25, xp: 18 }, (c) => gs('harvested')(c) >= 1);
 G('fish1', 'farm', 'i_fish_minnow', 'Catch a fish', 'Research Fishing, craft a rod, and cast onto water.', { coins: 25, xp: 18 }, (c) => gs('caught')(c) >= 1);
+G('hatch', 'farm', 'i_pet_egg', 'Hatch a pet', 'Mystery eggs hide in chests and buried treasure. Use one to meet your new buddy!', { coins: 100, xp: 60 }, (c) => gs('hatched')(c) >= 1);
 G('dig1', 'farm', 'i_shovel_stone', 'Dig up buried treasure', 'Look for an X on the ground and use a shovel.', { coins: 25, xp: 18 }, (c) => gs('dug')(c) >= 1);
 G('sell1', 'farm', 'i_coin', 'Sell something', 'Build a Market Stall (Trade tech) and sell your goods.', { coins: 25, xp: 18 }, (c) => gs('sold')(c) >= 1);
 G('honey', 'farm', 'i_honey', 'Collect honey', 'Beehives need flowers nearby.', { coins: 60, xp: 40 }, made('honey'));

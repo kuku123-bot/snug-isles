@@ -50,7 +50,7 @@ export function inventoryPanel(g, data, ui) {
     if (it.armor || it.charm) { g.cmd({ c: 'equip', i: sel.i }); sel = null; render(); return; }
     // otherwise put it on the hotbar selection / use directly
     if (sel.i < HOTBAR) { g.selectSlot(sel.i); ui.close(); }
-    else if (it.food || it.potion) { g.cmd({ c: 'use', slot: sel.i, ax: p.x, ay: p.y }); }
+    else if (it.food || it.potion || it.hatch) { g.cmd({ c: 'use', slot: sel.i, ax: p.x, ay: p.y }); }
     else {
       // move to the first hotbar slot that's empty, else swap into the selected slot
       const target = p.inv.slice(0, HOTBAR).findIndex((x) => !x);
@@ -90,7 +90,7 @@ export function inventoryPanel(g, data, ui) {
       if (sel.k === 'e') acts.append(btn('Take off', () => { g.cmd({ c: 'unequip', slot: sel.slot }); sel = null; render(); }, 'good'));
       else {
         if (it.armor || it.charm) acts.append(btn('Wear', useSelected, 'good'));
-        else if (it.food || it.potion) acts.append(btn('Use', () => g.cmd({ c: 'use', slot: sel.i, ax: p.x, ay: p.y }), 'good'));
+        else if (it.food || it.potion || it.hatch) acts.append(btn(it.hatch ? 'Hatch' : 'Use', () => g.cmd({ c: 'use', slot: sel.i, ax: p.x, ay: p.y }), 'good'));
         else if (sel.i >= HOTBAR) acts.append(btn('To hotbar', useSelected, 'good'));
         else acts.append(btn('Hold', () => { g.selectSlot(sel.i); }, 'good'));
         if (s.n > 1) acts.append(btn('Split', () => { const e = p.inv.findIndex((x) => !x); if (e >= 0) { g.cmd({ c: 'inv', op: 'move', from: { k: 'p', i: sel.i }, to: { k: 'p', i: e }, n: Math.floor(s.n / 2) }); } sel = null; render(); }));

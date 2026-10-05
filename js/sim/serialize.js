@@ -19,7 +19,7 @@ const sparse = (arr, state) => {
 export function serializePlayer(p) {
   return {
     pid: p.pid, id: p.id, name: p.name, look: p.look, x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10, hp: p.hp, energy: Math.round(p.energy), hunger: Math.round(p.hunger),
-    inv: p.inv, equip: p.equip, sel: p.sel, xp: Math.round(p.xp * 10) / 10, level: p.level, sp: p.sp, skills: p.skills, buffs: p.buffs, spawn: p.spawn, windDay: p.windDay || 0,
+    inv: p.inv, equip: p.equip, sel: p.sel, xp: Math.round(p.xp * 10) / 10, level: p.level, sp: p.sp, skills: p.skills, buffs: p.buffs, spawn: p.spawn, windDay: p.windDay || 0, pet: p.pet || null,
   };
 }
 

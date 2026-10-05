@@ -3,6 +3,7 @@ import { RNG, TILE, clamp, dist2, hash32, stochRound } from '../util.js';
 import { World, LAND, PAD, thingDef, wallDefOf } from './world.js';
 import { assignBiomes, genLand, seamFill, landPrice } from './worldgen.js';
 import { goalsTick, bump } from './goals.js';
+import { ensurePets } from './pets.js';
 import { ITEMS } from '../data/items.js';
 import { NODES } from '../data/nodes.js';
 import { BUILD } from '../data/build.js';
@@ -412,7 +413,7 @@ export class Sim {
     }
     if (w.shared.flags.age !== undefined && !this.skipping) { for (const p of w.players.values()) if (p.online) { w.shared.flags.age += dt; break; } }
     this.acc.goals += dt;
-    if (this.acc.goals > 1.5) { this.acc.goals = 0; goalsTick(this); }
+    if (this.acc.goals > 1.5) { this.acc.goals = 0; goalsTick(this); ensurePets(this); }
     this.acc.weather += dt;
     if (this.acc.weather > 75) { this.acc.weather = 0; this._weatherTick(); }
   }

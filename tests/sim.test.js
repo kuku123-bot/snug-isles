@@ -311,3 +311,59 @@ test('goals reward what you did, not what you were handed: a generous starting k
   step(sim, 3);
   assert.ok(w.shared.flags.goals.includes('pick_stone'), 'crafting it completes the goal');
 });
+
+test('pets: a Mystery Egg hatches a buddy that follows you, survives a reload, and does not crowd out wild critters', async () => {
+  const { restoreWorld, serializeWorld } = await import('../js/sim/serialize.js');
+  const { MOBS } = await import('../js/data/mobs.js');
+  const { calcStats } = await import('../js/sim/player.js');
+  const sim = makeSim('classic', { enemyDensity: 0 });
+  const w = sim.world, p = sim.addPlayer('a', 'Alice');
+  give(p, 'pet_egg', 2); p.sel = 7; p.inv[7] = p.inv.find((s) => s && s.id === 'pet_egg'); // an egg in the selected slot
+  const slot = p.inv.findIndex((s) => s && s.id === 'pet_egg');
+  sim.exec('a', { c: 'sel', i: Math.min(slot, 7) });
+  sim.exec('a', { c: 'use', slot, ax: p.x, ay: p.y });
+  assert.ok(p.pet && MOBS[p.pet] && !MOBS[p.pet].hostile, 'a friendly pet type was chosen: ' + p.pet);
+  assert.equal(w.shared.flags.gs.hatched, 1);
+  step(sim, 0.2);
+  const petMob = () => [...w.mobs.values()].find((m) => m.pet === 'a');
+  assert.ok(petMob(), 'the pet is in the world');
+  // a second egg is kept: only one pet at a time
+  const eggs = p.inv.filter((s) => s && s.id === 'pet_egg').reduce((a, s) => a + s.n, 0);
+  p.cd = 0; sim.exec('a', { c: 'use', slot, ax: p.x, ay: p.y });
+  assert.equal(p.inv.filter((s) => s && s.id === 'pet_egg').reduce((a, s) => a + s.n, 0), eggs, 'the second egg was not wasted');
+  // it follows: walk the owner away and the pet keeps up
+  const st = calcStats(w, p);
+  for (let i = 0; i < 300; i++) { const r = w.moveBox(p.x, p.y - 3, st.speed / 30, 0, 4, 3); p.x = r.x; p.y = r.y + 3; sim.update(1 / 30); }
+  const m = petMob();
+  assert.ok(Math.hypot(m.x - p.x, m.y - p.y) < 60, 'the pet kept up with its owner: ' + Math.hypot(m.x - p.x, m.y - p.y).toFixed(0));
+  // and when the owner is far away or blocked it pops back
+  p.x += 400; step(sim, 1);
+  assert.ok(Math.hypot(petMob().x - p.x, petMob().y - p.y) < 40, 'it catches up by popping over');
+  // wild critters still appear (the pet is not counted)
+  step(sim, 40);
+  assert.ok([...w.mobs.values()].filter((x) => !x.pet && !MOBS[x.type].hostile).length >= 1, 'wild critters still spawn');
+  // saved with the player, reborn after loading
+  const data = JSON.parse(JSON.stringify(serializeWorld(sim)));
+  const r = restoreWorld(data); r.sim.addPlayer('a', 'Alice');
+  step(r.sim, 3);
+  assert.ok([...r.world.mobs.values()].some((x) => x.pet === 'a' && x.type === p.pet), 'the pet came back after a reload');
+  // gone when the owner leaves
+  sim.removePlayer('a'); step(sim, 0.2);
+  assert.ok(!petMob(), 'no owner, no pet');
+});
+
+test('an Old Key in the bag doubles the next wild treasure chest', async () => {
+  const sim = makeSim('classic', { enemyDensity: 0 }, 77);
+  const w = sim.world, p = sim.addPlayer('a', 'Alice');
+  const open = (key) => {
+    const s = makeSim('classic', { enemyDensity: 0 }, 77); const q = s.addPlayer('a', 'Alice');
+    const chest = s.world.addThing('chest_wild', Math.floor(q.x / TILE) + 1, Math.floor(q.y / TILE));
+    if (key) give(q, 'treasure_key', 1);
+    q.x = (chest.x + 0.5) * TILE; q.y = (chest.y + 1.5) * TILE;
+    s.exec('a', { c: 'interact', id: chest.id });
+    const drops = [...s.world.drops.values()]; return { n: drops.reduce((a, d) => a + (d.item === 'coin' ? 0 : d.n), 0), coins: drops.filter((d) => d.item === 'coin').reduce((a, d) => a + d.n, 0), key: invCount(q.inv, 'treasure_key') };
+  };
+  const plain = open(false), keyed = open(true);
+  assert.equal(keyed.key, 0, 'the key was used up');
+  assert.ok(keyed.n > plain.n && keyed.coins > plain.coins, `double treasure: ${plain.n}+${plain.coins}c -> ${keyed.n}+${keyed.coins}c`);
+});

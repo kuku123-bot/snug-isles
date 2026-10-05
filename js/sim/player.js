@@ -19,7 +19,7 @@ export function makePlayer(world, pid, name, look) {
     inv: makeInv(BASE_SLOTS), equip: { head: null, body: null, feet: null, charm: null }, sel: 0,
     xp: 0, level: 1, sp: 0, skills: {}, buffs: {},
     spawn: null, dead: 0, sleeping: false, sit: null, online: true,
-    cd: 0, dashCd: 0, fish: null, cozy: 0, shield: 0, wind: 0, stats: null,
+    cd: 0, dashCd: 0, fish: null, cozy: 0, shield: 0, wind: 0, stats: null, pet: null,
     rev: 1, // bumped whenever private state changes (inventory, hp, xp...)
     id: 0,
   };

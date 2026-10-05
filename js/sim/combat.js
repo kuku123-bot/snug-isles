@@ -259,7 +259,7 @@ export function spawnTick(sim) {
   const players = [...w.players.values()].filter((p) => p.online && p.dead <= 0);
   if (!players.length) return;
   let hostile = 0, passive = 0;
-  for (const m of w.mobs.values()) { if (m.boss) continue; if (MOBS[m.type].hostile) hostile++; else passive++; }
+  for (const m of w.mobs.values()) { if (m.boss || m.pet) continue; if (MOBS[m.type].hostile) hostile++; else passive++; }
   const per = players.length;
   const room = Math.min(1, 0.55 + 0.15 * w.ownedCount()); // a lone starting island gets a gentler crowd
   // safe start: nothing hostile for the first two minutes of a new world (time to chop wood and craft a sword), then a gentle ramp
@@ -313,6 +313,7 @@ export function updateMobs(sim, dt) {
   const w = sim.world, s = w.settings;
   for (const m of w.mobs.values()) {
     const def = MOBS[m.type];
+    if (m.pet) { petAI(sim, m, def, dt); continue; }
     const near = nearestPlayer(w, m.x, m.y, MOB_SIM_RANGE);
     if (!near) {
       // far from everyone: despawn (bosses stick around for a while)
@@ -344,6 +345,28 @@ export function updateMobs(sim, dt) {
     if (def.hostile && m.atk <= 0 && d < def.r + 6 && !(def.ai === 'hop' && m.z > 5)) {
       if (hurtPlayer(sim, tgt, def.dmg, m.x, m.y, 'mob')) m.atk = def.atkcd;
     }
+  }
+}
+
+/** a hatched pet trots after its owner, hops to catch up, and pops back to them if it gets stuck or left far behind */
+function petAI(sim, m, def, dt) {
+  const w = sim.world, owner = w.players.get(m.pet);
+  if (!owner || !owner.online || owner.pet !== m.type) { w.mobs.delete(m.id); w.emit(['mr', m.id, 0]); return; }
+  m.hit = 0; m.atk = 0;
+  const dx = owner.x - m.x, dy = owner.y - 2 - m.y, d = Math.hypot(dx, dy);
+  const home = () => { const side = owner.face >= 0 ? -1 : 1; m.x = owner.x + side * 12; m.y = owner.y; m.stuck = 0; w.fx('poof', m.x, m.y - 4, 0); };
+  if (d > 170) return home();
+  if (d > 26) {
+    const x0 = m.x, y0 = m.y;
+    seekMove(sim, m, def, Math.atan2(dy, dx), def.spd * (d > 70 ? 2.2 : 1.2), dt);
+    m.st = 'run';
+    m.stuck = Math.hypot(m.x - x0, m.y - y0) < dt * 6 ? (m.stuck || 0) + dt : 0; // walking into a wall? after a few seconds, pop over
+    if (m.stuck > 3) home();
+  } else {
+    m.st = 'idle'; m.stuck = 0; m.face = dx >= 0 ? 1 : -1;
+    m.stt -= dt;
+    if (m.stt <= 0) { m.stt = 2 + sim.rng.next() * 3; if (sim.rng.next() < 0.35) { m.st = 'wander'; wanderDir(sim, m); } }
+    if (m.st === 'wander') seekMove(sim, m, def, m.dir, def.spd * 0.35, dt);
   }
 }
 

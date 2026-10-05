@@ -96,6 +96,11 @@ ok(await guest.evaluate(() => __snug.game.me.inv.some((s) => s && s.id === 'plan
 await guest.evaluate(() => __snug.game.cmd({ c: 'emote', e: 0 }));
 await host.waitForTimeout(400);
 ok(await host.evaluate(() => __snug.game.fx.emotes.size > 0), 'emote bubble reaches the host');
+// the host hatches a pet: the guest sees it trotting beside the host
+await host.evaluate(() => { const g = __snug.game, me = g.me; me.inv[6] = { id: 'pet_egg', n: 1 }; me.rev++; g.cmd({ c: 'use', slot: 6, ax: me.x, ay: me.y }); });
+await guest.waitForTimeout(2500);
+const petSeen = await guest.evaluate(() => { const w = __snug.game.world, h = [...w.players.values()].find((p) => p.name === 'Mochi'); return [...w.mobs.values()].some((m) => Math.hypot(m.x - h.x, m.y - h.y) < 70 && ['bunny', 'chick', 'duck', 'lizard', 'penguin', 'snow_bunny', 'unicorn'].includes(m.type)); });
+ok(petSeen, "the guest sees the host's new pet next to the host");
 const rtt = await guest.evaluate(() => __snug.game.net.rtt);
 console.log(`  · guest ping ${rtt.toFixed(0)} ms`);
 

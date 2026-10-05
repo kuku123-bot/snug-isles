@@ -9,6 +9,8 @@ import { calcStats, addXp, touch, techFx, EQUIP_SLOTS, HOTBAR } from './player.j
 import { meleeAttack, fireBow, castStaff, hurtMob } from './combat.js';
 import { lootDig, lootChest, lootFish } from './loot.js';
 import { ensureState } from './machines.js';
+import { hatchEgg } from './pets.js';
+import { invCount, invRemove } from './inventory.js';
 
 // ------------------------------------------------------------------ drops
 const RARE_ITEM = (id) => ITEMS[id] && (ITEMS[id].sell >= 40 || id.startsWith('gem_'));
@@ -179,6 +181,7 @@ export function useItem(sim, p, slot, ax, ay) {
     p.cd = SWING_CD.rod;
     return castRod(sim, p, item, ax, ay, st);
   }
+  if (item.hatch) return hatchEgg(sim, p, slot);
   if (item.food || item.potion) return consume(sim, p, slot, item, st);
   if (item.crop) return plantSeed(sim, p, slot, item, ax, ay);
   if (item.armor || item.charm) return equipFromSlot(sim, p, slot);
@@ -317,6 +320,13 @@ export function openWildChest(sim, p, t) {
   const biome = w.biomeAtTile(t.x, t.y);
   const st = calcStats(w, p);
   const loot = lootChest(sim.rng, biome.tier, st.luck);
+  // an Old Key in the bag unlocks a second helping of treasure
+  if (invCount(p.inv, 'treasure_key') > 0) {
+    invRemove(p.inv, 'treasure_key', 1); touch(p);
+    const bonus = lootChest(sim.rng, biome.tier, st.luck + 0.2);
+    loot.coins += bonus.coins; loot.items.push(...bonus.items);
+    sim.toast(p.pid, 'The Old Key unlocked a bonus: double treasure!', 'good');
+  }
   const cx = (t.x + 0.5) * TILE, cy = (t.y + 0.5) * TILE;
   w.patchThing(t.id, { dep: 1 });
   w.fx('chestopen', cx, cy, 0);
