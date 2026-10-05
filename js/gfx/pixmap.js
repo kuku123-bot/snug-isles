@@ -1,4 +1,5 @@
 // Tiny software pixel canvas used to author all sprites in code (works in Node + browser).
+import { STYLE } from './style.js';
 // Colors are packed uint32 in little-endian RGBA order (0xAABBGGRR) so the buffer can go straight into ImageData.
 
 export const rgba = (r, g, b, a = 255) => (((a & 255) << 24) | ((b & 255) << 16) | ((g & 255) << 8) | (r & 255)) >>> 0;
@@ -240,7 +241,7 @@ export class Pixmap {
    * color === null => "selective" outline: a darkened version of the neighbouring fill (softer, cuter than pure black).
    */
   outline(color = null, o = {}) {
-    const diag = !!o.diag, amt = o.amt === undefined ? 0.62 : o.amt;
+    const diag = !!o.diag, amt = (o.amt === undefined ? 0.62 : o.amt) * STYLE.outline;
     const w = this.w, h = this.h, src = this.d.slice();
     const op = (x, y) => x >= 0 && y >= 0 && x < w && y < h && A(src[y * w + x]) > 0;
     for (let y = 0; y < h; y++) {
@@ -313,7 +314,7 @@ export class Pixmap {
  */
 export function ballShade(pm, cx, cy, rx, ry, pal, o = {}) {
   const lx = o.lx === undefined ? -0.55 : o.lx, ly = o.ly === undefined ? -0.8 : o.ly;
-  const dith = o.dither === undefined ? 0.12 : o.dither;
+  const dith = o.dither === undefined ? STYLE.dither : o.dither;
   for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) {
     for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) {
       const nx = (x + 0.5 - cx) / rx, ny = (y + 0.5 - cy) / ry;

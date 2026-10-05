@@ -1,16 +1,19 @@
 @font-face { font-family: 'Pixelify'; src: url('../assets/fonts/PixelifySans.ttf') format('truetype'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'Fredoka'; src: url('../assets/fonts/Fredoka.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
 :root {
+  --font: 'Fredoka', 'Nunito', 'Trebuchet MS', system-ui, sans-serif; /* the round, smooth look */
   --ink: #3a2848; --ink2: #5a4468; --paper: #fff4dc; --paper2: #ffe9c2; --paper3: #f3d9a8;
   --pink: #ff8fb3; --pink-d: #d9587f; --green: #7ed957; --green-d: #3f9a2e; --blue: #5cc7ff; --blue-d: #2f8fd0; --yellow: #ffd84a; --purple: #a77bff; --red: #ff6b7a;
   --shadow: rgba(42, 31, 61, .45);
   --sat: env(safe-area-inset-top, 0px); --sar: env(safe-area-inset-right, 0px); --sab: env(safe-area-inset-bottom, 0px); --sal: env(safe-area-inset-left, 0px);
   --ui: 1; /* ui scale */
 }
+:root[data-look='pixel'] { --font: 'Pixelify', 'Trebuchet MS', system-ui, sans-serif; } /* Settings > Picture > Pixel keeps the classic pixel font */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* iOS zooms the page when a form field under 16px gets focus; never let that happen */
 input, select, textarea { font-size: 16px; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #1d1530; overscroll-behavior: none; font-family: 'Pixelify', 'Trebuchet MS', system-ui, sans-serif; color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #1d1530; overscroll-behavior: none; font-family: var(--font); color: var(--ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
 #app { position: fixed; inset: 0; overflow: hidden; }
 #game { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); image-rendering: pixelated; image-rendering: crisp-edges; background: #3388dc; touch-action: none; display: block; }
 .hidden { display: none !important; }

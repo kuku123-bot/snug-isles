@@ -15,6 +15,7 @@ Gather resources, buy new lands, research a big tech tree, automate your island,
 * **Pets**: Mystery Eggs (found in chests, buried treasure and boss drops) hatch a bunny, duckling, chick, lizard, penguin… or a very rare unicorn that trots after you (and comes back after every reload); an **Old Key** in your bag doubles the next treasure chest
 * **68 Island Goals** — a gentle checklist with rewards that teaches the game and gives you things to aim for
 * **20 world rules** (monsters, damage, health, alertness, night danger, boss strength, yield, regrowth, XP, land price, build cost, research cost, hunger, regeneration, what happens when you faint, sleep rules, day length, weather…) with five presets from *Dreamy Builder* (no monsters, free everything) to *Nightmare*
+* **Smooth, rounded look** (Settings → Picture: *Smooth* / *Soft* / *Pixel*): the pixel art is shown through a small GPU shader that rounds off the staircases and anti-aliases every edge, with a round UI font and crisp name tags; *Pixel* brings back the classic chunky look. Slow or software GPUs quietly fall back by themselves.
 * **Co-op for two** (up to four), both devices keep a backup copy of the world
 
 ## Play
@@ -57,7 +58,7 @@ Worlds live in the browser's storage. *Your worlds → Backup* saves a file (sha
 ```bash
 npm install
 npm run dev        # build + serve on http://localhost:5173 and rebuild on change
-npm test           # 60+ tests: simulation, rules, content reachability, saves, networking (Node)
+npm test           # 85+ tests: simulation, rules, content reachability, saves, networking (Node)
 npm run build      # production bundle in dist/
 
 # browser tests (Playwright: Chromium + WebKit)
@@ -66,6 +67,7 @@ node tools/e2e-touch.mjs                   # iPad-style touch: joystick, buttons
 node tools/e2e-mp.mjs chromium webkit      # two real browsers playing together (add `cloud` for the real PeerJS server)
 node tools/e2e-manual.mjs chromium chromium  # serverless copy/paste pairing
 node tools/e2e-invite.mjs chromium webkit    # the invite-link flow a partner uses (name, approval, auto-join next time)
+node tools/e2e-smooth.mjs chromium webkit  # the smooth look: GPU shader == CPU reference, photo, settings, context loss, slow-GPU fallback
 node tools/e2e-zoom.mjs                    # page zoom is impossible (pinch, double-tap, focus-zoom, shortcuts) and the picture never jumps
 node tools/e2e-relay.mjs chromium webkit     # the encrypted backup relay through the real public brokers (needs internet)
 node tools/perf.mjs 4                      # stress scene under CPU throttling
@@ -77,5 +79,5 @@ Architecture notes live in [NOTES.md](NOTES.md). Pushing to `main` runs the test
 
 ## Credits
 
-* Font: [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans) (SIL Open Font License 1.1, see `assets/fonts/OFL.txt`)
+* Fonts: [Fredoka](https://github.com/hafontia/Fredoka-One) (menus, SIL Open Font License 1.1, see `assets/fonts/OFL-Fredoka.txt`) and [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans) (the Pixel look, SIL OFL 1.1, see `assets/fonts/OFL.txt`)
 * Networking: [PeerJS](https://peerjs.com) (MIT) over WebRTC

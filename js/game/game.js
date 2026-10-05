@@ -474,14 +474,19 @@ export class Game {
       if (inp.pressed('prevSlot')) this.selectSlot((me.sel + HOTBAR - 1) % HOTBAR);
     }
   }
-  /** save what is on screen (without the menus) as a crisp pixel-art picture */
+  /** save what is on screen (without the menus) as a picture (smooth look: device resolution; pixel look: crisp pixel art) */
   async photo() {
     const src = this.app.canvas;
     if (!src || !src.width) return;
-    const k = Math.max(3, Math.round(2400 / src.width));
-    const c = document.createElement('canvas'); c.width = src.width * k; c.height = src.height * k;
-    const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
-    const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    const pr = this.app.presenter;
+    let blob = null;
+    if (pr && pr.ok && pr.active) { const tl = this.app.textLayer; blob = await pr.snapshot(tl && tl.shown ? [tl.canvas] : []); } // the smooth look: the picture exactly as shown, at the screen's full resolution
+    if (!blob) {
+      const k = Math.max(3, Math.round(2400 / src.width));
+      const c = document.createElement('canvas'); c.width = src.width * k; c.height = src.height * k;
+      const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
+      blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    }
     if (!blob) { this.toast('Could not take the photo.', 'warn'); return; }
     // shutter flash
     const fl = document.createElement('div'); fl.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.85;z-index:80;pointer-events:none;transition:opacity .45s ease-out'; document.getElementById('app').appendChild(fl);

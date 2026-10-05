@@ -38,6 +38,7 @@ export function settingsPanel(g, data, ui) {
       toggle('Goal tracker', 'showGoals', 'Shows the next Island Goal in the corner.', () => g.hud && g.hud.refreshGoal && g.hud.refreshGoal()), toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
       choice('Touch controls', 'touchControls', [['auto', 'Auto'], ['on', 'Always'], ['off', 'Never']], () => g.touch.layout()),
       toggle('Left-handed layout', 'leftHanded', 'Swap the joystick and buttons.', () => g.touch.layout()),
+      choice('Picture', 'look', [['smooth', 'Smooth'], ['soft', 'Soft'], ['pixel', 'Pixel']], () => app.applyLook()),
       choice('Zoom', 'zoomBias', [[-1, 'Out'], [0, 'Normal'], [1, 'In'], [2, 'Closer']], () => { g.view.bias = s.zoomBias; g.view.resize(); }),
       choice('Menu size', 'uiScale', [[0.9, 'Small'], [1, 'Normal'], [1.15, 'Large'], [1.3, 'Huge']], () => app.applyUiScale()),
       toggle('Keep screen awake', 'wakeLock', 'Stops the iPad from sleeping while you play.'),

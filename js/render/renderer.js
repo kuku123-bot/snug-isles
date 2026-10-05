@@ -24,6 +24,8 @@ export class Renderer {
     this.sprites = sprites;
     this.book = book;
     this.world = null;
+    this.textLayer = null; // smooth look: in-world text is drawn by js/render/labels.js
+    this.labels = null; // = textLayer while it is in use this frame
     this.light = document.createElement('canvas');
     this.lctx = this.light.getContext('2d');
     this.lightSprites = new Map();
@@ -115,6 +117,9 @@ export class Renderer {
     if (this.light.width !== VW || this.light.height !== VH) { this.light.width = VW; this.light.height = VH; }
     this._processDirty();
     const t = g.t;
+    const pr = this.presenter;
+    this.labels = pr && pr.ok && pr.active && this.textLayer ? this.textLayer : null;
+    if (this.labels) this.labels.begin();
     const camX = Math.round(g.camX), camY = Math.round(g.camY);
     const ox = -camX, oy = -camY;
     ctx.globalCompositeOperation = 'source-over';
@@ -220,9 +225,11 @@ export class Renderer {
     // ---- lighting & weather
     this._drawLighting(ctx, g, ox, oy, VW, VH, tx0, ty0, tx1, ty1);
     this._drawWeather(ctx, g, VW, VH);
-    g.fx.drawPopups(ctx, ox, oy, sp);
+    g.fx.drawPopups(ctx, ox, oy, sp, this.labels);
     this._drawOverlays(ctx, g, ox, oy, VW, VH);
     if (g.fx.flash > 0) { ctx.globalAlpha = Math.min(0.7, g.fx.flash); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, VW, VH); ctx.globalAlpha = 1; }
+    if (this.presenter) this.presenter.present(); // smooth look: show this frame through the rounding shader
+    if (this.textLayer) { if (this.labels) this.textLayer.flush(); else this.textLayer.clear(); }
   }
 
   // ------------------------------------------------------------------ things
@@ -399,6 +406,7 @@ export class Renderer {
   }
   _nameTag(ctx, name, x, y, g, p) {
     if (!g.showNames && p.pid === g.localPid) return;
+    if (this.labels) { this.labels.add(name, p.pid === g.localPid ? '#fff6dc' : '#bfeaff', x, y - 3.5, { a: 0.97 }); return; }
     const spr = g.fx.textSprite(name, p.pid === g.localPid ? '#fff6dc' : '#bfeaff');
     ctx.globalAlpha = 0.95;
     ctx.drawImage(spr, Math.round(x - spr.width / 2), Math.round(y - spr.height));
@@ -441,7 +449,10 @@ export class Renderer {
     if (blink) ctx.globalAlpha = 0.4;
     sp.drawS(ctx, spr, Math.round(x + ox - 8), Math.round(y + oy - 13 - z));
     ctx.globalAlpha = 1;
-    if (d.item !== 'coin' && d.n > 1) { const s2 = g.fx.textSprite(String(d.n), '#ffffff'); ctx.drawImage(s2, Math.round(x + ox + 1), Math.round(y + oy - 6 - z)); }
+    if (d.item !== 'coin' && d.n > 1) {
+      if (this.labels) this.labels.add(String(d.n), '#ffffff', Math.round(x + ox + 2), Math.round(y + oy - 3 - z), { align: 'left', k: 0.8 });
+      else { const s2 = g.fx.textSprite(String(d.n), '#ffffff'); ctx.drawImage(s2, Math.round(x + ox + 1), Math.round(y + oy - 6 - z)); }
+    }
   }
   _drawProjectiles(ctx, w, ox, oy, g) {
     for (const p of w.projs.values()) {
@@ -479,8 +490,8 @@ export class Renderer {
       if (x < -40 || x > g.view.w + 40 || y < -30 || y > g.view.h + 30) continue;
       const hot = g.hover && g.hover.landKey === tg.gx + ',' + tg.gy;
       sp.draw(ctx, 'fx_tag', x - 12, y - 8);
-      const txt = g.fx.textSprite(String(tg.price), tg.afford ? '#5a3a1a' : '#b83a4a', 'rgba(255,255,255,0)');
-      ctx.drawImage(txt, Math.round(x - txt.width / 2 + 0), y - 2);
+      if (this.labels) this.labels.add(String(tg.price), tg.afford ? '#5a3a1a' : '#b83a4a', x, y + 1.5, { stroke: null, k: 0.95 });
+      else { const txt = g.fx.textSprite(String(tg.price), tg.afford ? '#5a3a1a' : '#b83a4a', 'rgba(255,255,255,0)'); ctx.drawImage(txt, Math.round(x - txt.width / 2 + 0), y - 2); }
       if (hot) { ctx.strokeStyle = '#fff'; ctx.strokeRect(x - 13, y - 9, 26, 18); }
       const bn = g.landBiomeIcon && g.landBiomeIcon(tg);
       if (bn) { ctx.fillStyle = bn; ctx.fillRect(x - 11, y + 8, 22, 3); ctx.fillStyle = 'rgba(42,31,61,0.6)'; ctx.fillRect(x - 11, y + 11, 22, 1); }

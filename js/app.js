@@ -7,6 +7,8 @@ import { View } from './engine/view.js';
 import { Input } from './engine/input.js';
 import { AudioEngine } from './engine/audio.js';
 import { Renderer } from './render/renderer.js';
+import { Presenter, LOOKS } from './render/smooth.js';
+import { TextLayer } from './render/labels.js';
 import { Screens } from './ui/screens.js';
 import { TitleScene } from './game/titleScene.js';
 import { Game } from './game/game.js';
@@ -19,7 +21,7 @@ import { strHash } from './util.js';
 import { DEFAULT_LOOK } from './sim/player.js';
 
 export const VERSION = '0.1.0';
-const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true, approveJoins: true, showGoals: true };
+const DEFAULT_SETTINGS = { master: 0.9, music: 0.35, sfx: 0.8, smartTools: true, screenShake: true, fadeWalls: true, showNames: true, touchControls: 'auto', leftHanded: false, uiScale: 1, zoomBias: 0, wakeLock: true, approveJoins: true, showGoals: true, look: 'smooth' };
 
 export class App {
   constructor() {
@@ -48,6 +50,9 @@ export class App {
     this.audio = new AudioEngine();
     this.audio.setVolumes(this.settings.master, this.settings.sfx, this.settings.music);
     this.renderer = new Renderer(this.canvas, this.sprites, this.book);
+    const ql = new URLSearchParams(location.search).get('look'); // ?look=pixel|soft|smooth: the starting picture for this visit
+    if (ql && (LOOKS[ql] || ql === 'pixel')) this.settings.look = ql;
+    this.applyLook();
     this.applyUiScale();
     this.screens = new Screens(this);
     window.addEventListener('resize', () => this.onResize());
@@ -62,7 +67,7 @@ export class App {
     requestAnimationFrame((t) => this.loop(t));
     console.log(`Snug Isles ${VERSION} booted in ${(performance.now() - t0).toFixed(0)}ms, ${this.book.names().length} sprites`);
     window.__snug = this;
-    this.dbg = { spawnMob }; // test/debug helpers (perf scene, e2e)
+    this.dbg = { spawnMob, Presenter }; // test/debug helpers (perf scene, e2e)
     this.handleUrl();
     try { sessionStorage.removeItem('snug.upd'); } catch (e) { /* ignore */ }
     if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !location.search.includes('nosw') && (location.search.includes('sw=1') || !/localhost|127\.0\.0\.1/.test(location.hostname))) {
@@ -81,6 +86,46 @@ export class App {
     const portrait = window.innerHeight > window.innerWidth;
     const touch = navigator.maxTouchPoints > 0;
     document.getElementById('rotate').classList.toggle('hidden', !(portrait && touch && this.game));
+  }
+  /**
+   * Picture style: 'smooth' / 'soft' show the art canvas through the rounding shader (js/render/smooth.js), 'pixel' is the plain pixelated canvas.
+   * ?look=pixel|soft|smooth sets the starting picture for one visit (&force=1 skips the speed checks, used by tests).
+   * Anything that goes wrong (no WebGL2, software GPU, too slow, lost context) quietly leaves the pixelated canvas showing.
+   */
+  applyLook() {
+    const q = new URLSearchParams(location.search);
+    const want = this.settings.look || 'smooth';
+    const force = q.get('force') === '1';
+    if (LOOKS[want] && !this.presenter && !this.lookFailed) {
+      const p = Presenter.create(this.canvas, { force });
+      if (!p) this.lookFailed = Presenter.why || 'unavailable';
+      else {
+        this.presenter = p;
+        this.textLayer = new TextLayer(p.canvas);
+        const fit = () => { const size = { w: this.view.w, h: this.view.h, scale: this.view.scale, cssW: this.canvas.style.width, cssH: this.canvas.style.height }; p.resize(size); this.textLayer.resize(size); };
+        this.view.onResize(fit); fit();
+        p.force = force;
+      }
+    }
+    if (this.presenter) this.presenter.setLook(LOOKS[want] ? want : 'pixel');
+    this.renderer.presenter = this.presenter || null;
+    this.renderer.textLayer = this.presenter ? this.textLayer : null;
+    if (this.textLayer) this.textLayer.show(!!(this.presenter && this.presenter.active));
+    document.documentElement.dataset.look = LOOKS[want] ? 'smooth' : 'pixel'; // round UI font for the smooth looks, the pixel font for Pixel
+  }
+  /**
+   * A slow GPU is handled on real frames, never at boot: first draw fewer pixels (the browser stretches them), and only if that is still too
+   * slow go back to the plain pixelated look, so the game itself always stays smooth.
+   */
+  checkLookSpeed() {
+    const p = this.presenter;
+    if (!p || p.force || !p.active || p.tier === 'done') return;
+    if (p.frames < (p.nextCheck || 40)) return;
+    if (document.visibilityState !== 'visible') return;
+    const ms = p.benchmark(10);
+    if (ms <= 9) { p.tier = 'done'; return; }
+    if (p.rs > 0.6) { p.setRenderScale(p.rs === 1 ? 0.75 : 0.55); p.nextCheck = p.frames + 40; console.warn(`smooth look: ${ms.toFixed(1)} ms/frame, drawing at ${p.rs}x`); return; }
+    this.lookFailed = `slow (${ms.toFixed(1)} ms/frame)`; p.tier = 'done'; p.setLook('pixel'); this.renderer.presenter = null; this.renderer.textLayer = null; if (this.textLayer) this.textLayer.show(false); console.warn('smooth look turned off:', this.lookFailed);
   }
   applyUiScale() { document.documentElement.style.setProperty('--ui', String(this.settings.uiScale || 1)); document.getElementById('ui').style.zoom = ''; document.documentElement.style.fontSize = ''; }
   saveSettings() { lsSet('snug.settings', this.settings); }
@@ -221,6 +266,7 @@ export class App {
       if (this.game) { this.game.update(dt); this.game.render(); }
       else { this.title.update(dt); this.renderer.draw(this.title); }
     } catch (e) { console.error(e); this.errCount = (this.errCount || 0) + 1; if (this.errCount > 20) return; }
+    this.checkLookSpeed();
     requestAnimationFrame((t) => this.loop(t));
   }
 }

@@ -2,6 +2,7 @@
 import { Pixmap, hex, darker, lighter, mixC, withAlpha, bayer, INK, A } from '../pixmap.js';
 import { RNG, strHash } from '../../util.js';
 import { GROUND, WATER } from '../palette.js';
+import { STYLE } from '../style.js';
 
 export const GROUND_KINDS = Object.keys(GROUND);
 const GV = 4; // base variants per ground
@@ -27,8 +28,8 @@ export function groundTile(kind, v) {
   const g = col(GROUND[kind]);
   const rng = new RNG(strHash(kind) + v * 7919 + 13);
   const pm = new Pixmap(16, 16).fill(g.base);
-  cluster(pm, rng, g.lo, 9);
-  cluster(pm, rng, g.hi, 8);
+  cluster(pm, rng, mixC(g.base, g.lo, STYLE.groundContrast), Math.round(9 * STYLE.groundNoise));
+  cluster(pm, rng, mixC(g.base, g.hi, STYLE.groundContrast), Math.round(8 * STYLE.groundNoise));
   switch (kind) {
     case 'grass':
       if (v === 1 || v === 3) tuft(pm, 2 + rng.int(9), 3 + rng.int(9), g.tuft, g.hi);
@@ -146,14 +147,14 @@ export function decoTile(kind, n) {
 /** Water tile: tone 'shallow' | 'deep', variant 0..2, frame 0..3 */
 export function waterTile(tone, variant, frame) {
   const base = hex(tone === 'deep' ? WATER.deep : WATER.shallow);
-  const mid = hex(tone === 'deep' ? WATER.mid : '#4cb6f0');
-  const hi = hex(WATER.hi), glint = hex(WATER.glint);
+  const mid = mixC(base, hex(tone === 'deep' ? WATER.mid : '#4cb6f0'), STYLE.waterContrast);
+  const hi = mixC(base, hex(WATER.hi), STYLE.waterContrast), glint = hex(WATER.glint);
   const pm = new Pixmap(16, 16).fill(base);
   const rng = new RNG(900 + variant * 131 + (tone === 'deep' ? 7 : 0));
   // static darker blotches for depth
-  for (let i = 0; i < 6; i++) { const x = rng.int(14), y = rng.int(16); pm.hline(x, y, 2 + rng.int(3), mid); }
+  for (let i = 0; i < Math.round(6 * STYLE.groundNoise + 1); i++) { const x = rng.int(14), y = rng.int(16); pm.hline(x, y, 2 + rng.int(3), mid); }
   // drifting wave dashes (looks like ~ moving to the right)
-  const dashes = 3;
+  const dashes = 2;
   for (let i = 0; i < dashes; i++) {
     const bx = rng.int(16), y = 1 + ((i * 5 + variant * 3 + rng.int(3)) % 14);
     const x = (bx + frame) & 15;
@@ -176,7 +177,7 @@ export function foamTile(side, frame) {
     const px = side === 'n' ? [i, d] : side === 's' ? [i, 15 - d] : side === 'w' ? [d, i] : [15 - d, i];
     pm.set(px[0], px[1], f);
     const px2 = side === 'n' ? [i, d + 1] : side === 's' ? [i, 14 - d] : side === 'w' ? [d + 1, i] : [14 - d, i];
-    if ((i + frame) % 3 !== 0) pm.set(px2[0], px2[1], f2);
+    if ((i + frame) % 7 !== 0) pm.set(px2[0], px2[1], f2);
   }
   return pm;
 }
@@ -191,8 +192,8 @@ export function cliffTile(kind, m) {
   pm.rect(0, 1, 16, 2, lighter(dirt, 0.12));
   pm.rect(0, 3, 16, 3, dirt);
   pm.rect(0, 6, 16, 1, darker(dirt, 0.28));
-  for (let i = 0; i < 6; i++) pm.set(rng.int(16), 1 + rng.int(5), darker(dirt, 0.3));
-  for (let i = 0; i < 4; i++) pm.set(rng.int(16), 1 + rng.int(3), lighter(dirt, 0.3));
+  for (let i = 0; i < 3; i++) pm.set(rng.int(16), 1 + rng.int(5), darker(dirt, 0.22));
+  for (let i = 0; i < 2; i++) pm.set(rng.int(16), 1 + rng.int(3), lighter(dirt, 0.22));
   // pebbles
   pm.set(4, 4, lighter(dirt, 0.4)); pm.set(11, 3, lighter(dirt, 0.4)); pm.set(5, 4, darker(dirt, 0.35));
   const dk = darker(dirt, 0.65);

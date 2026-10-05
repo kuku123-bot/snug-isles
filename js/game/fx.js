@@ -168,15 +168,20 @@ export class FX {
       ctx.beginPath(); ctx.arc((r.x + ox) | 0, (r.y + oy) | 0, rad, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
     }
   }
-  drawPopups(ctx, ox, oy, sprites) {
+  drawPopups(ctx, ox, oy, sprites, labels = null) {
     for (const p of this.pops) {
       const t = p.t / p.life;
       const a = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+      if (labels) { // smooth look: the text is drawn crisp by the label layer, the little item icon stays in the picture
+        const k = p.big ? 1.15 : 1, tw = labels.measure(p.text, k), cx = Math.round(p.x + ox), y = Math.round(p.y + oy);
+        if (p.icon) { const s = sprites.get('i_' + p.icon); if (s) { ctx.globalAlpha = a; sprites.drawS(ctx, s, Math.round(cx - tw / 2 - 15), y - 6); ctx.globalAlpha = 1; } }
+        labels.add(p.text, p.color, cx + (p.icon ? 1 : 0), y + 3.5, { a, k });
+        continue;
+      }
       const spr = this.textSprite(p.text, p.color);
       let x = Math.round(p.x + ox - spr.width / 2), y = Math.round(p.y + oy);
       if (p.icon) { const s = sprites.get('i_' + p.icon); if (s) { x -= 5; ctx.globalAlpha = a; sprites.drawS(ctx, s, x - 14 + 6, y - 6); } }
       ctx.globalAlpha = a;
-      const sc = p.big ? 1 : 1;
       ctx.drawImage(spr, x + (p.icon ? 6 : 0), y);
       ctx.globalAlpha = 1;
     }
