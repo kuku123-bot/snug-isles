@@ -9,9 +9,10 @@ export function lockZoom() {
   for (const t of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(t, (e) => e.preventDefault(), opt);
   // Chrome/Edge/Firefox: trackpad pinch and ctrl+wheel arrive as wheel events with ctrlKey
   window.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, opt);
-  // browser zoom shortcuts (the game's own +/- keys, without Ctrl/Cmd, still work)
+  // browser zoom shortcuts (the game's own +/- keys, without Ctrl/Cmd, still work). Ctrl/Cmd+0 is left alone on purpose: it only puts the
+  // browser back to its normal size, so if a browser (Brave, Chrome...) remembers a zoomed level for this site it is the way back out
   window.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '_', '0'].includes(e.key)) e.preventDefault();
+    if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '_'].includes(e.key)) e.preventDefault();
   }, opt);
   // after the on-screen keyboard closes iOS can leave the page nudged or zoomed: put it back
   document.addEventListener('focusout', () => setTimeout(() => { window.scrollTo(0, 0); resetIfZoomed(); }, 120));

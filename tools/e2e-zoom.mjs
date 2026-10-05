@@ -32,7 +32,8 @@ for (const [name, eng] of [['chromium', chromium], ['webkit', webkit]]) {
   });
   ok(prevented.gesturestart && prevented.gesturechange && prevented.gestureend, 'Safari pinch (gesture events) is cancelled');
   ok(prevented.ctrlWheel && !prevented.plainWheel, 'trackpad/ctrl+wheel zoom is cancelled, normal scrolling is not');
-  ok(['ctrlKey+', 'metaKey-', 'ctrlKey=', 'metaKey0'].every((k) => prevented['zoomkey ' + k]) && !prevented.plainPlus, 'Ctrl/Cmd +, -, 0 browser zoom shortcuts are cancelled (the game\'s own + / - keys are not)');
+  ok(['ctrlKey+', 'metaKey-', 'ctrlKey='].every((k) => prevented['zoomkey ' + k]) && !prevented.plainPlus, 'Ctrl/Cmd + and - browser zoom shortcuts are cancelled (the game\'s own + / - keys are not)');
+  ok(!prevented['zoomkey metaKey0'], 'Ctrl/Cmd+0 (back to normal size) still works, so a browser that remembers a zoomed level can be reset');
   // (desktop WebKit drops this iOS-only property from its stylesheet model, so check the shipped CSS text)
   const tsa = await page.evaluate(async () => { const href = document.querySelector('link[rel=stylesheet]').href; const css = await (await fetch(href)).text(); return /html\s*\{[^}]*text-size-adjust:\s*100%/.test(css); });
   ok(tsa, 'text auto-inflation is switched off (text-size-adjust: 100%)');
