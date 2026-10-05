@@ -1,4 +1,7 @@
 import { App } from './app.js';
+import { lockZoom } from './engine/nozoom.js';
+
+lockZoom();
 
 const app = new App();
 app.boot().catch((e) => {

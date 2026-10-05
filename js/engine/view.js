@@ -19,11 +19,15 @@ export class View {
     // aim for ~targetH art pixels tall in landscape, ~ targetH*0.62 wide-ish in portrait (so portrait isn't absurdly zoomed out)
     const aspect = vw / vh;
     const target = aspect < 1 ? this.targetH * 0.78 : this.targetH;
-    let s = Math.round(devH / target) + this.bias;
+    const raw = devH / target + this.bias;
+    let s = Math.round(raw);
+    // hysteresis: a small change of the window (browser toolbars, keyboard, split view) must never make the picture jump between two
+    // zoom levels; only a real change (rotation, a different size, the zoom setting) moves it
+    if (this._s && this._portrait === (aspect < 1) && Math.abs(raw - this._s) < 0.62) s = this._s;
     s = Math.max(2, Math.min(14, s));
     // keep at least ~300 art px across so phones/portrait still see enough
     while (devW / s < 300 && s > 2) s--;
-    this.dpr = dpr; this.scale = s;
+    this.dpr = dpr; this.scale = s; this._s = s; this._portrait = aspect < 1;
     this.w = Math.ceil(devW / s); this.h = Math.ceil(devH / s);
     this.cssScale = s / dpr;
     const c = this.canvas;

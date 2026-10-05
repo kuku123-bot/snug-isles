@@ -66,6 +66,7 @@ node tools/e2e-touch.mjs                   # iPad-style touch: joystick, buttons
 node tools/e2e-mp.mjs chromium webkit      # two real browsers playing together (add `cloud` for the real PeerJS server)
 node tools/e2e-manual.mjs chromium chromium  # serverless copy/paste pairing
 node tools/e2e-invite.mjs chromium webkit    # the invite-link flow a partner uses (name, approval, auto-join next time)
+node tools/e2e-zoom.mjs                    # page zoom is impossible (pinch, double-tap, focus-zoom, shortcuts) and the picture never jumps
 node tools/e2e-relay.mjs chromium webkit     # the encrypted backup relay through the real public brokers (needs internet)
 node tools/perf.mjs 4                      # stress scene under CPU throttling
 node tools/screens.mjs                     # screenshots of every menu at iPad/Mac sizes
