@@ -146,6 +146,7 @@ function procTick(sim, t, d, dt) {
         s.prog = 0;
         s.inp.n -= rec.n; if (s.inp.n <= 0) s.inp = null;
         s.out = s.out ? { id: rec.out, n: s.out.n + rec.on } : { id: rec.out, n: rec.on };
+        sim.bump('made_' + rec.out, rec.on);
         changed = true;
         w.fx('puff', (t.x + t.w / 2) * TILE, t.y * TILE, 0);
       }
@@ -196,6 +197,7 @@ function producerTick(sim, t, d, dt) {
     s.p = 0;
     if (c.feed) s.feed--;
     s.stock++;
+    if (c.out !== '@fishpick') sim.bump('made_' + c.out);
     if (c.out === '@fishpick') { (s.fish || (s.fish = [])).push(lootFish(sim.rng, w.biomeAtTile(t.x, t.y).id, 2, 0, 0)); }
     w.patchThing(t.id, { s });
   }

@@ -171,7 +171,7 @@ test('island goals: unique ids, real icons, real items, and every condition can 
   assert.ok(GOALS.length >= 50, 'plenty of goals: ' + GOALS.length);
   // every goal that asks for an item or a built thing names one that exists (probe with a Proxy census that records what is asked for)
   const asked = { items: new Set(), things: new Set() };
-  const probe = { gs: new Proxy({}, { get: () => 0 }), techs: { size: 0, has: () => false }, things: new Proxy({}, { get: (_, k) => { asked.things.add(String(k)); return 0; } }), items: { has: (k) => { asked.items.add(k); return false; } }, biomes: new Set(), maxLevel: 1, cozy: 0, lands: 1, floors: 0, walls: 0, doors: 0, windows: 0, bridges: 0, furniture: 0, lights: 0, beds: 0, chests: 0, drills: 0, coins: 0 };
+  const probe = { gs: new Proxy({}, { get: (_, k) => { if (String(k).startsWith('made_')) asked.items.add(String(k).slice(5)); return 0; } }), techs: { size: 0, has: () => false }, things: new Proxy({}, { get: (_, k) => { asked.things.add(String(k)); return 0; } }), items: { has: (k) => { asked.items.add(k); return false; } }, biomes: new Set(), maxLevel: 1, cozy: 0, lands: 1, floors: 0, walls: 0, doors: 0, windows: 0, bridges: 0, furniture: 0, lights: 0, beds: 0, chests: 0, drills: 0, coins: 0 };
   for (const g of GOALS) g.check(probe);
   for (const i of asked.items) assert.ok(ITEMS[i], 'goal asks for unknown item ' + i);
   for (const t of asked.things) assert.ok(BUILD[t], 'goal asks for unknown blueprint ' + t);

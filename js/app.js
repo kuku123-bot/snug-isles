@@ -14,6 +14,7 @@ import { Sim } from './sim/sim.js';
 import { serializeWorld, restoreWorld, saveMeta } from './sim/serialize.js';
 import { presetSettings, PRESETS, OPTIONS, sanitizeSettings } from './data/difficulty.js';
 import { saveWorldRecord, loadWorldRecord, listWorlds, deleteWorld, requestPersistence, lsGet, lsSet, uid } from './engine/storage.js';
+import { makeBackup, parseBackup, backupFileName, MAX_BACKUP_BYTES } from './engine/backup.js';
 import { strHash } from './util.js';
 import { DEFAULT_LOOK } from './sim/player.js';
 
@@ -92,6 +93,31 @@ export class App {
 
   // ------------------------------------------------------------------ worlds
   listWorlds() { return listWorlds(); }
+  /** save a world to a file (share sheet on iPad, download on Mac) */
+  async exportWorld(id) {
+    const data = await loadWorldRecord(id);
+    if (!data) throw new Error('That world could not be found.');
+    const meta = (await listWorlds()).find((m) => m.id === id) || {};
+    const text = JSON.stringify(makeBackup(data, meta, VERSION));
+    const name = backupFileName(meta.name || data.name, meta.day);
+    const file = new File([text], name, { type: 'application/json' });
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 0) {
+      try { await navigator.share({ files: [file], title: 'Snug Isles world backup' }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancelled'; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(a.href); }, 5000);
+    return 'downloaded';
+  }
+  /** load a backup file as a NEW world (never overwrites an existing one) */
+  async importWorld(file) {
+    if (!file) throw new Error('No file chosen.');
+    if (file.size > MAX_BACKUP_BYTES) throw new Error('That file is too big to be a Snug Isles world.');
+    const { data, meta } = parseBackup(await file.text());
+    const id = uid();
+    const now = Date.now();
+    await saveWorldRecord(id, data, { ...meta, name: (meta.name || data.name || 'Our Isles') + ' (restored)', updated: now });
+    return id;
+  }
   async deleteWorld(id) { await deleteWorld(id); }
   presetName(settings) {
     for (const p of PRESETS) { const ps = presetSettings(p.id); if (OPTIONS.every((o) => o.locked || settings[o.id] === ps[o.id])) return p.name; }

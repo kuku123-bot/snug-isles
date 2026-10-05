@@ -128,7 +128,7 @@ function doCraft(sim, p, cmd) {
     addXp(w, p, r.xp);
   }
   if (!made) return sim.toast(p.pid, 'Missing ingredients.', 'warn');
-  sim.bump('crafted', made);
+  sim.bump('crafted', made); sim.bump('made_' + r.out, made * r.n);
   touch(p);
   w.fx('craft', p.x, p.y - 10, r.out, made);
 }

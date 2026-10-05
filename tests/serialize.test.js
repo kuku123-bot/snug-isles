@@ -40,3 +40,23 @@ test('save round trip preserves the world, builds, players and tech', () => {
   step(sim2, 10);
   assert.ok(p2.online);
 });
+
+test('backup files: round trip, and bad files are refused with a readable reason', async () => {
+  const { makeBackup, parseBackup, backupFileName } = await import('../js/engine/backup.js');
+  const { makeSim } = await import('./helpers.js');
+  const sim = makeSim('cozy'); sim.addPlayer('a', 'Alice');
+  const data = serializeWorld(sim); data.name = 'Our Isles';
+  const text = JSON.stringify(makeBackup(data, { name: 'Our Isles', day: 3, updated: 1 }, '9.9.9'));
+  const back = parseBackup(text);
+  assert.equal(back.data.seed, data.seed);
+  assert.equal(back.meta.name, 'Our Isles');
+  assert.ok(restoreWorld(back.data, { withSim: false }).world.players.get('a'), 'the player survives the file');
+  assert.throws(() => parseBackup('not json at all'), /not a Snug Isles/);
+  assert.throws(() => parseBackup('{"hello":1}'), /not a Snug Isles/);
+  assert.throws(() => parseBackup(JSON.stringify({ kind: 'snug-isles-world', saveVersion: 99, data: { gw: 9 } })), /newer version/);
+  assert.throws(() => parseBackup(JSON.stringify({ kind: 'snug-isles-world', saveVersion: 1, data: { gw: 999999 } })), /damaged/);
+  assert.throws(() => parseBackup(JSON.stringify({ kind: 'snug-isles-world', saveVersion: 1, data: { ...data, ground: 'AAAA' } })), /damaged/);
+  assert.equal(backupFileName('Our  Isles!!/..', 12), 'snug-isles-Our-Isles-day12.json');
+  assert.equal(backupFileName('', 0), 'snug-isles-Our-Isles-day1.json');
+  assert.equal(backupFileName('!!!', 2), 'snug-isles-world-day2.json');
+});

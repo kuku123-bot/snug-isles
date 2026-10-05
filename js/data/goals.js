@@ -16,7 +16,7 @@ export const GOALS = [];
 const G = (id, section, icon, title, desc, reward, check, prog) => GOALS.push({ id, section, icon, title, desc, reward, check, prog: prog || null });
 const gs = (k) => (c) => (c.gs[k] || 0);
 const built = (type) => (c) => (c.things[type] || 0) >= 1;
-const has = (item) => (c) => c.items.has(item);
+const made = (item) => (c) => (c.gs['made_' + item] || 0) >= 1; // crafted / smelted / produced by you (the starting kit does not count)
 const NT = Object.keys(TECHS).length;
 
 // ---- first steps
@@ -47,21 +47,21 @@ G('furn80', 'home', 't_piano', 'A house full of life', 'Furnish with 80 pieces.'
 
 // ---- tools & machines
 G('furnace', 'craft', 't_furnace', 'Build a Furnace', 'Research Stonecraft first. Furnaces turn ore into ingots.', { coins: 30, xp: 20 }, built('furnace'));
-G('copper', 'craft', 'i_copper_ingot', 'Smelt a copper ingot', 'Put copper ore and fuel into the furnace (or place a chest next to it!).', { coins: 40, xp: 25 }, has('copper_ingot'));
+G('copper', 'craft', 'i_copper_ingot', 'Smelt a copper ingot', 'Put copper ore and fuel into the furnace (or place a chest next to it!).', { coins: 40, xp: 25 }, made('copper_ingot'));
 G('tech5', 'craft', 'ui_flask', 'Research 5 technologies', 'Every tech unlocks something new.', { coins: 50, xp: 40 }, (c) => c.techs.size >= 5, (c) => [Math.min(c.techs.size, 5), 5]);
-G('pick_stone', 'craft', 'i_pickaxe_stone', 'Craft a stone pickaxe', 'Stronger pickaxes break harder rocks.', { coins: 30, xp: 20 }, has('pickaxe_stone'));
-G('pick_copper', 'craft', 'i_pickaxe_copper', 'Craft a copper pickaxe', 'Needed for iron veins.', { coins: 60, xp: 40 }, has('pickaxe_copper'));
+G('pick_stone', 'craft', 'i_pickaxe_stone', 'Craft a stone pickaxe', 'Stronger pickaxes break harder rocks.', { coins: 30, xp: 20 }, made('pickaxe_stone'));
+G('pick_copper', 'craft', 'i_pickaxe_copper', 'Craft a copper pickaxe', 'Needed for iron veins.', { coins: 60, xp: 40 }, made('pickaxe_copper'));
 G('tech10', 'craft', 'ui_flask', 'Research 10 technologies', '', { coins: 100, xp: 70 }, (c) => c.techs.size >= 10, (c) => [Math.min(c.techs.size, 10), 10]);
-G('pick_iron', 'craft', 'i_pickaxe_iron', 'Craft an iron pickaxe', 'Iron opens up gold and the deeper biomes.', { coins: 120, xp: 70 }, has('pickaxe_iron'));
+G('pick_iron', 'craft', 'i_pickaxe_iron', 'Craft an iron pickaxe', 'Iron opens up gold and the deeper biomes.', { coins: 120, xp: 70 }, made('pickaxe_iron'));
 G('drill', 'craft', 't_drill_iron', 'Build an auto-miner', 'Drills mine nearby rocks by themselves. Put a chest next to one!', { coins: 200, xp: 100 }, (c) => c.drills >= 1);
 G('tech20', 'craft', 'ui_flask', 'Research 20 technologies', '', { coins: 200, xp: 120 }, (c) => c.techs.size >= 20, (c) => [Math.min(c.techs.size, 20), 20]);
-G('pick_gold', 'craft', 'i_pickaxe_gold', 'Craft a golden pickaxe', '', { coins: 250, xp: 130 }, has('pickaxe_gold'));
-G('steel', 'craft', 'i_steel_ingot', 'Make steel', 'The Blast Furnace turns iron into steel.', { coins: 300, xp: 150 }, has('steel_ingot'));
+G('pick_gold', 'craft', 'i_pickaxe_gold', 'Craft a golden pickaxe', '', { coins: 250, xp: 130 }, made('pickaxe_gold'));
+G('steel', 'craft', 'i_steel_ingot', 'Make steel', 'The Blast Furnace turns iron into steel.', { coins: 300, xp: 150 }, made('steel_ingot'));
 G('tech35', 'craft', 'ui_flask', 'Research 35 technologies', '', { coins: 400, xp: 220 }, (c) => c.techs.size >= 35, (c) => [Math.min(c.techs.size, 35), 35]);
-G('pick_obsidian', 'craft', 'i_pickaxe_obsidian', 'Craft an obsidian pickaxe', '', { coins: 500, xp: 250 }, has('pickaxe_obsidian'));
+G('pick_obsidian', 'craft', 'i_pickaxe_obsidian', 'Craft an obsidian pickaxe', '', { coins: 500, xp: 250 }, made('pickaxe_obsidian'));
 G('tech50', 'craft', 'ui_flask', 'Research 50 technologies', '', { coins: 800, xp: 400 }, (c) => c.techs.size >= 50, (c) => [Math.min(c.techs.size, 50), 50]);
-G('pick_crystal', 'craft', 'i_pickaxe_crystal', 'Craft a crystal pickaxe', '', { coins: 900, xp: 450 }, has('pickaxe_crystal'));
-G('pick_star', 'craft', 'i_pickaxe_star', 'Craft a star pickaxe', 'The best pickaxe there is.', { coins: 1500, xp: 700 }, has('pickaxe_star'));
+G('pick_crystal', 'craft', 'i_pickaxe_crystal', 'Craft a crystal pickaxe', '', { coins: 900, xp: 450 }, made('pickaxe_crystal'));
+G('pick_star', 'craft', 'i_pickaxe_star', 'Craft a star pickaxe', 'The best pickaxe there is.', { coins: 1500, xp: 700 }, made('pickaxe_star'));
 G('tech_all', 'craft', 'ui_flask', 'Research everything', 'The whole tree!', { coins: 3000, xp: 1500 }, (c) => c.techs.size >= NT, (c) => [Math.min(c.techs.size, NT), NT]);
 
 // ---- farm & fish
@@ -70,8 +70,8 @@ G('harvest', 'farm', 'i_wheat', 'Harvest a crop', 'Wait for it to ripen (rain he
 G('fish1', 'farm', 'i_fish_minnow', 'Catch a fish', 'Research Fishing, craft a rod, and cast onto water.', { coins: 25, xp: 18 }, (c) => gs('caught')(c) >= 1);
 G('dig1', 'farm', 'i_shovel_stone', 'Dig up buried treasure', 'Look for an X on the ground and use a shovel.', { coins: 25, xp: 18 }, (c) => gs('dug')(c) >= 1);
 G('sell1', 'farm', 'i_coin', 'Sell something', 'Build a Market Stall (Trade tech) and sell your goods.', { coins: 25, xp: 18 }, (c) => gs('sold')(c) >= 1);
-G('honey', 'farm', 'i_honey', 'Collect honey', 'Beehives need flowers nearby.', { coins: 60, xp: 40 }, has('honey'));
-G('cake', 'farm', 'i_strawberry_cake', 'Bake a cake', 'Research Gourmet Cooking, then cook a strawberry cake in the kitchen.', { coins: 150, xp: 80 }, has('strawberry_cake'));
+G('honey', 'farm', 'i_honey', 'Collect honey', 'Beehives need flowers nearby.', { coins: 60, xp: 40 }, made('honey'));
+G('cake', 'farm', 'i_strawberry_cake', 'Bake a cake', 'Research Gourmet Cooking, then cook a strawberry cake in the kitchen.', { coins: 150, xp: 80 }, made('strawberry_cake'));
 G('koi', 'farm', 'i_fish_koi', 'Catch a Golden Koi', 'A very rare fish. Better rods and luck help.', { coins: 300, xp: 150 }, (c) => gs('koi')(c) >= 1);
 
 // ---- adventure

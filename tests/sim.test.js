@@ -297,3 +297,17 @@ test('island goals: rewards arrive once, everyone is told, and counters track re
   assert.ok(Array.isArray(old.world.shared.flags.goals) && old.world.coins === c0, 'silent catch-up on old worlds');
   assert.ok(GOALS.length > 50);
 });
+
+test('goals reward what you did, not what you were handed: a generous starting kit completes nothing', async () => {
+  const sim = makeSim('cozy');
+  const w = sim.world, p = sim.addPlayer('a', 'Alice');
+  assert.ok(p.inv.some((s) => s && s.id === 'pickaxe_stone'), 'the cozy kit includes a stone pickaxe');
+  step(sim, 6);
+  assert.deepEqual(w.shared.flags.goals, [], 'nothing is "done" at the start');
+  // crafting one yourself does count
+  const bench = w.addThing('workbench', Math.floor(p.x / TILE) + 2, Math.floor(p.y / TILE));
+  w.techs.add('stonecraft'); give(p, 'wood', 20); give(p, 'stone', 20); give(p, 'fiber', 10);
+  sim.exec('a', { c: 'craft', rid: 'pickaxe_stone' });
+  step(sim, 3);
+  assert.ok(w.shared.flags.goals.includes('pick_stone'), 'crafting it completes the goal');
+});

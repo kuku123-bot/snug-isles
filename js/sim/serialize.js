@@ -48,6 +48,8 @@ function remapCode(oldIds, newIds, code) {
 
 /** Rebuild a World (and optionally a Sim around it) from serialized data. */
 export function restoreWorld(data, { withSim = true } = {}) {
+  if (!data || typeof data !== 'object' || !(data.gw >= 3 && data.gw <= 15)) throw new Error('unreadable world data');
+  if (data.v > SAVE_VERSION) throw new Error('This world was saved by a newer version of the game.');
   const settings = sanitizeSettings(data.settings);
   const world = new World({ gw: data.gw, gh: data.gw, seed: data.seed, settings });
   world.biomeMap = data.biomeMap;
@@ -56,8 +58,11 @@ export function restoreWorld(data, { withSim = true } = {}) {
   world.shared = Object.assign({ weather: 0, wetUntil: 0, bossUp: null, market: {}, flags: {} }, data.shared || {});
   world.shared.bossUp = null; // bosses are not persisted
   world.nextId = data.nextId || 1;
-  world.owned.set(b64ToBytes(data.owned));
+  const ownedB = b64ToBytes(data.owned);
+  if (ownedB.length !== world.owned.length) throw new Error('damaged land ownership layer');
+  world.owned.set(ownedB);
   const g = b64ToBytes(data.ground);
+  if (g.length !== world.ground.length) throw new Error('damaged ground layer');
   // ground ids may have been reordered between versions: remap by name
   const gmap = data.groundIds ? data.groundIds.map((id) => GROUND_IDS.indexOf(id)) : null;
   for (let i = 0; i < g.length && i < world.ground.length; i++) world.ground[i] = gmap ? Math.max(0, gmap[g[i]] ?? 0) : g[i];

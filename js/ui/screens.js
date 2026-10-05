@@ -53,8 +53,10 @@ export class Screens {
   async worlds(opts = {}) {
     const app = this.app;
     const listEl = h('div', { class: 'col scroll', style: 'max-height:56vh;gap:8px' }, h('div', { class: 'muted' }, 'Loading…'));
+    const note = h('div', { class: 'small', style: 'min-height:18px' });
+    const picker = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = picker.files && picker.files[0]; picker.value = ''; if (!f) return; try { await app.importWorld(f); this.worlds(opts); } catch (err) { note.textContent = err.message || String(err); } } });
     const body = h('div', { class: 'col', style: 'gap:10px' },
-      this.btn('New world', 'ui_plus', () => this.newWorld(opts), 'good'), listEl);
+      h('div', { class: 'row', style: 'gap:8px' }, h('div', { class: 'grow' }, this.btn('New world', 'ui_plus', () => this.newWorld(opts), 'good')), this.btn('Open a backup', 'ui_bag', () => picker.click()), picker), note, listEl);
     this.frame(opts.host ? 'Host which world?' : 'Your worlds', body);
     const rows = await app.listWorlds();
     clear(listEl);
@@ -64,7 +66,9 @@ export class Screens {
         h('div', { class: 'row', style: 'gap:0;flex:none' }, ...(m.players || []).slice(0, 2).map((p) => portrait(p.look, 3))),
         h('div', { class: 'grow' }, h('b', { style: 'font-size:18px' }, m.name || 'Our Isles'), h('div', { class: 'small' }, `Day ${m.day || 1} · ${m.lands || 1} land${(m.lands || 1) > 1 ? 's' : ''} · ${(m.players || []).map((p) => p.name).join(' & ') || '—'}`), h('div', { class: 'small muted' }, `${m.preset || 'Classic'} · ${timeAgo(m.updated)}`)),
         h('div', { class: 'col', style: 'gap:6px' }, this.btn(opts.host ? 'Host' : 'Play', 'ui_check', () => app.startSaved(m.id, opts.host ? 'host' : 'solo'), 'good'),
-          h('button', { class: 'btn small red', onclick: (e) => { e.stopPropagation(); if (confirm(`Delete "${m.name}" forever?`)) app.deleteWorld(m.id).then(() => this.worlds(opts)); } }, ic('ui_trash', 1))));
+          h('div', { class: 'row', style: 'gap:6px' },
+            h('button', { class: 'btn small', title: 'Save a backup file', onclick: async (e) => { e.stopPropagation(); try { const r = await app.exportWorld(m.id); if (r !== 'cancelled') note.textContent = r === 'shared' ? 'Backup shared — keep it somewhere safe!' : 'Backup saved to your downloads.'; } catch (err) { note.textContent = err.message || String(err); } } }, ic('ui_bag', 1), 'Backup'),
+            h('button', { class: 'btn small red', title: 'Delete', onclick: (e) => { e.stopPropagation(); if (confirm(`Delete "${m.name}" forever?`)) app.deleteWorld(m.id).then(() => this.worlds(opts)); } }, ic('ui_trash', 1)))));
       listEl.append(card);
     }
   }
