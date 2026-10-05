@@ -91,10 +91,11 @@ export function lostPanel(g, data, ui) {
     clear(btns);
     if (st.final) {
       btns.append(h('div', { class: 'small muted', style: 'width:100%;text-align:center' }, 'A copy of the world is saved on this device. You can host it yourself from Play together → Host a world.'),
+        st.canRetry && st.retry ? h('button', { class: 'btn good', onclick: () => st.retry() }, ic('ui_link', 2), 'Try again') : null,
         h('button', { class: 'btn red', onclick: () => g.app.quitToTitle() }, ic('ui_cross', 2), 'Back to title'));
     } else btns.append(h('button', { class: 'btn', onclick: () => { st.stop = true; g.app.quitToTitle(); } }, 'Leave'));
   }
   render();
   const body = h('div', { class: 'col', style: 'min-width:min(86vw,360px);gap:12px' }, msg, btns);
-  return { title: 'Connection lost', icon: 'ui_link', body, noClose: true, noScrimClose: true, sig: () => `${st.msg}:${st.final}`, refresh: render };
+  return { title: 'Connection lost', icon: 'ui_link', body, noClose: true, noScrimClose: true, sig: () => `${st.msg}:${st.final}:${st.tries}`, refresh: render };
 }

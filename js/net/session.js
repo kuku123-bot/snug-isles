@@ -149,20 +149,20 @@ function lost(app, link, ctx, reason, final = false) {
   const game = app.game;
   if (!game || game.net !== link || game.mode !== 'client') return;
   if (game.lostState) return;
-  const state = { msg: reason, final: final || !(ctx.code || ctx.relayKey), tries: 0, stop: false };
+  const canRetry = !!(ctx.code || ctx.relayKey);
+  const state = { msg: reason, final: final || !canRetry, tries: 0, stop: false, canRetry };
   game.lostState = state;
   game.ui.open('lost', { state });
-  if (state.final) return;
-  (async () => {
+  const run = async () => {
     for (let i = 1; i <= 24 && !state.stop; i++) {
       state.tries = i; state.msg = `Reconnecting… (try ${i})`;
       await wait(i === 1 ? 800 : 2500);
       if (state.stop || app.game !== game) return;
+      let conn = null, ok = false;
       try {
-        let conn = null;
         if (ctx.code && !ctx.usedRelay) { try { ({ conn } = await connectToHost(ctx.code, { timeoutMs: 9000, attempts: ctx.relayKey ? 1 : 3 })); } catch (e) { if (!ctx.relayKey) throw e; } }
         if (!conn && ctx.relayKey) { ({ conn } = await connectRelay(ctx.relayKey)); ctx.usedRelay = true; }
-        const ok = await new Promise((resolve) => {
+        ok = await new Promise((resolve) => {
           const nl = new ClientLink(conn, {
             pid: app.profile.pid, name: app.profile.name, look: app.profile.look,
             onSnapshot: (data) => { const world = buildMirror(data, app.profile.pid); game.swapWorld(world, nl); game.lostState = null; game.ui.closeAll(true); game.toast('Reconnected!', 'good'); app.saveClientCopy(data); resolve(true); },
@@ -171,9 +171,13 @@ function lost(app, link, ctx, reason, final = false) {
           nl.start();
           setTimeout(() => resolve(false), 15000);
         });
-        if (ok) return;
       } catch (e) { state.msg = 'Waiting for your partner… (' + (e.message || 'offline') + ')'; }
+      if (ok) return;
+      if (conn) { try { conn.close(); } catch (e) { /* ignore */ } } // do not leave a half-open connection behind
     }
-    state.final = true; state.msg = 'Could not reconnect. Your partner may have closed the world.';
-  })();
+    state.final = true; state.msg = 'Could not reconnect. Your partner may have closed the world, or their device went to sleep.';
+  };
+  /** the "Try again" button */
+  state.retry = () => { if (!state.final || !state.canRetry) return; state.final = false; state.stop = false; state.tries = 0; state.msg = 'Trying again…'; run(); };
+  if (!state.final) run();
 }
