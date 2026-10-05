@@ -106,11 +106,14 @@ export class App {
     const meta = (await listWorlds()).find((m) => m.id === id) || {};
     const text = JSON.stringify(makeBackup(data, meta, VERSION));
     const name = backupFileName(meta.name || data.name, meta.day);
-    const file = new File([text], name, { type: 'application/json' });
+    return this.deliverFile(new File([text], name, { type: 'application/json' }), 'Snug Isles world backup');
+  }
+  /** hand a file to the person: the share sheet on iPad (Files, AirDrop, Messages…), a download on a Mac */
+  async deliverFile(file, title) {
     if (navigator.canShare && navigator.canShare({ files: [file] }) && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 0) {
-      try { await navigator.share({ files: [file], title: 'Snug Isles world backup' }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancelled'; }
+      try { await navigator.share({ files: [file], title }); return 'shared'; } catch (e) { if (e && e.name === 'AbortError') return 'cancelled'; }
     }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click();
     setTimeout(() => { a.remove(); URL.revokeObjectURL(a.href); }, 5000);
     return 'downloaded';
   }

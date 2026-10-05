@@ -4,7 +4,7 @@ export const KEYMAP = {
   dash: ['Space', 'ShiftLeft', 'ShiftRight'], interact: ['KeyE', 'KeyF'],
   inventory: ['Tab', 'KeyI'], craft: ['KeyC'], build: ['KeyB'], tech: ['KeyT'], skills: ['KeyK'], map: ['KeyM'],
   menu: ['Escape'], rotate: ['KeyR'], remove: ['KeyX'], emote: ['KeyG'], zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'],
-  prevSlot: ['KeyQ', 'BracketLeft'], nextSlot: ['BracketRight'], chat: ['Enter'],
+  prevSlot: ['KeyQ', 'BracketLeft'], nextSlot: ['BracketRight'], chat: ['Enter'], photo: ['KeyP'],
 };
 const CODE_TO_ACTION = {};
 for (const a in KEYMAP) for (const c of KEYMAP[a]) (CODE_TO_ACTION[c] = CODE_TO_ACTION[c] || []).push(a);

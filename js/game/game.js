@@ -463,6 +463,7 @@ export class Game {
     if (ui.blocking) return;
     if (inp.pressed('interact')) this.tryInteract();
     if (inp.pressed('rotate')) this.builder.rotate();
+    if (inp.pressed('photo')) this.photo();
     if (inp.pressed('remove')) { if (this.builder.active) this.builder.toggleRemove(); else this.builder.startRemove(); }
     if (inp.pressed('zoomIn')) this.zoom(1);
     if (inp.pressed('zoomOut')) this.zoom(-1);
@@ -472,6 +473,23 @@ export class Game {
       if (inp.pressed('nextSlot')) this.selectSlot((me.sel + 1) % HOTBAR);
       if (inp.pressed('prevSlot')) this.selectSlot((me.sel + HOTBAR - 1) % HOTBAR);
     }
+  }
+  /** save what is on screen (without the menus) as a crisp pixel-art picture */
+  async photo() {
+    const src = this.app.canvas;
+    if (!src || !src.width) return;
+    const k = Math.max(3, Math.round(2400 / src.width));
+    const c = document.createElement('canvas'); c.width = src.width * k; c.height = src.height * k;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(src, 0, 0, c.width, c.height);
+    const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+    if (!blob) { this.toast('Could not take the photo.', 'warn'); return; }
+    // shutter flash
+    const fl = document.createElement('div'); fl.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:.85;z-index:80;pointer-events:none;transition:opacity .45s ease-out'; document.getElementById('app').appendChild(fl);
+    requestAnimationFrame(() => { fl.style.opacity = '0'; setTimeout(() => fl.remove(), 600); });
+    this.audio.play('open', { vol: 0.7 });
+    const safe = String(this.saveName || 'our-isles').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 30) || 'our-isles';
+    const r = await this.app.deliverFile(new File([blob], `snug-isles-${safe}-day${(this.world.day || 0) + 1}.png`, { type: 'image/png' }), 'A photo from Snug Isles');
+    if (r !== 'cancelled') this.toast(r === 'shared' ? 'Photo ready to share!' : 'Photo saved to your downloads!', 'good');
   }
   zoom(d) { this.view.zoom(d); this.settings.zoomBias = this.view.bias; this.app.saveSettings(); }
 

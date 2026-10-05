@@ -7,7 +7,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const engine = process.argv[2] || 'chromium';
 const { server, url } = await startServer(path.join(ROOT, 'dist'));
 const browser = await (engine === 'webkit' ? webkit : chromium).launch();
-const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2 });
+const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, acceptDownloads: true });
 const page = await ctx.newPage();
 const logs = []; let failed = 0;
 page.on('console', (m) => { if (m.type() === 'error') logs.push('console.error: ' + m.text()); });
@@ -77,6 +77,14 @@ await ev(() => { const g = __snug.game; g.cmd({ c: 'craft', rid: 'plank', n: 3 }
 await page.waitForTimeout(100);
 ok(await ev(() => __snug.game.me.inv.some((s) => s && s.id === 'plank')), 'crafted planks by hand');
 
+console.log('photo mode');
+{
+  const ctx2 = page.context();
+  const dl = page.waitForEvent('download', { timeout: 6000 }).catch(() => null);
+  await page.keyboard.press('KeyP');
+  const d = await dl;
+  ok(!!d && /^snug-isles-.*\.png$/.test(d.suggestedFilename()), 'P takes a photo and saves a PNG (' + (d ? d.suggestedFilename() : 'no download') + ')');
+}
 console.log('save + reload');
 await ev(() => __snug.game.save());
 await page.waitForTimeout(400);

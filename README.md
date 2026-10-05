@@ -44,6 +44,7 @@ Worlds live in the browser's storage. *Your worlds → Backup* saves a file (sha
 | Mine / chop / fight | hold left-click | hold the big button (auto-aims) |
 | Interact | `E` / click | hand button / tap things |
 | Dash | `Space` | dash button |
+| Photo | `P` (or the pause menu): saves a clean picture of what you see | pause menu → *Take a photo* (share sheet) |
 | Menus | `I` bag · `C` craft · `B` build · `T` research · `K` skills · `M` map · `G` emote | top-right buttons |
 | Build | pick a piece, click/drag; `R` flips, `X` removes | pick a piece, drag to paint; furniture: slide the ghost and lift to place; **Rect** fills a whole room |
 
