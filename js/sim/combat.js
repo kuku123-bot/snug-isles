@@ -262,7 +262,10 @@ export function spawnTick(sim) {
   for (const m of w.mobs.values()) { if (m.boss) continue; if (MOBS[m.type].hostile) hostile++; else passive++; }
   const per = players.length;
   const room = Math.min(1, 0.55 + 0.15 * w.ownedCount()); // a lone starting island gets a gentler crowd
-  const capH = Math.round((3 + 3 * night * (0.5 + s.nightDanger * 0.5) + (s.nightDanger === 2 ? 2 * night : 0)) * dens * per * room);
+  // safe start: nothing hostile for the first two minutes of a new world (time to chop wood and craft a sword), then a gentle ramp
+  const age = w.shared.flags.age === undefined ? 1e9 : w.shared.flags.age;
+  const ramp = clamp((age - 120) / 240, 0, 1);
+  const capH = Math.round((3 + 3 * night * (0.5 + s.nightDanger * 0.5) + (s.nightDanger === 2 ? 2 * night : 0)) * dens * per * room * ramp);
   const capP = 5 * per;
   const wantHostile = dens > 0 && hostile < capH && rng.next() < 0.55;
   const wantPassive = passive < capP && rng.next() < 0.3;

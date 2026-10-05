@@ -48,6 +48,7 @@ export class Sim {
     world.time = world.settings.dayLength * 0.12;
     world.shared.flags.created = Date.now();
     world.shared.flags.goals = [];
+    world.shared.flags.age = 0; // seconds actually played: a brand-new world starts peaceful (see spawnTick)
     return sim;
   }
 
@@ -409,6 +410,7 @@ export class Sim {
       this.acc.cozy = 0;
       for (const p of w.players.values()) if (p.online && !p.dead) { const old = p.cozy; this.computeCozy(p); if (old !== p.cozy) touch(p); }
     }
+    if (w.shared.flags.age !== undefined && !this.skipping) { for (const p of w.players.values()) if (p.online) { w.shared.flags.age += dt; break; } }
     this.acc.goals += dt;
     if (this.acc.goals > 1.5) { this.acc.goals = 0; goalsTick(this); }
     this.acc.weather += dt;

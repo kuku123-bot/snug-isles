@@ -14,7 +14,7 @@ import { rollNodeDrops, breakNode } from '../js/sim/gather.js';
 import { addXp } from '../js/sim/player.js';
 import { xpForLevel } from '../js/data/skills.js';
 
-const sim = (o = {}, seed = 4242) => { const s = makeSim('classic', { enemyDensity: 1, ...o }, seed); const p = s.addPlayer('a', 'Alice'); return { sim: s, w: s.world, p }; };
+const sim = (o = {}, seed = 4242) => { const s = makeSim('classic', { enemyDensity: 1, ...o }, seed); s.world.shared.flags.age = 1e6; /* past the safe-start grace */ const p = s.addPlayer('a', 'Alice'); return { sim: s, w: s.world, p }; };
 const hostile = (w) => [...w.mobs.values()].filter((m) => MOBS[m.type].hostile && !m.boss);
 const night = (s) => { s.world.time = s.world.settings.dayLength * 0.85; };
 const avg = (f, n = 200) => { let a = 0; for (let i = 0; i < n; i++) a += f(i); return a / n; };
@@ -142,4 +142,16 @@ test('dayLength and weather', () => {
   assert.equal(rains(1), true); assert.equal(rains(2), true);
   const stormy = (wx) => { const { sim: s, w } = sim({ weather: wx, enemyDensity: 0 }); let n = 0; for (let i = 0; i < 2000; i++) { s._weatherTick(); if (w.shared.weather) n++; } return n; };
   assert.ok(stormy(2) > stormy(1), 'stormy weather rains more often than gentle');
+});
+
+test('safe start: a brand-new world is peaceful for two minutes, then monsters ramp in', () => {
+  const s = makeSim('nightmare', {}, 99); const w = s.world; const p = s.addPlayer('a', 'Alice'); p.shield = 9999; p.hp = 9999;
+  const crowd = () => hostile(w).length;
+  let early = 0; for (let t = 0; t < 110; t++) { night(s); step(s, 1); early = Math.max(early, crowd()); }
+  assert.equal(early, 0, 'nothing hostile in the first ~2 minutes, even on Nightmare at night');
+  let late = 0; for (let t = 0; t < 400; t++) { night(s); step(s, 1); late = Math.max(late, crowd()); }
+  assert.ok(late >= 3, 'then they come: ' + late);
+  assert.ok(w.shared.flags.age > 400, 'the clock counts played time');
+  // sleeping through the night does not burn the grace period, and an offline world does not age
+  const q = makeSim('classic', {}, 5); const before = q.world.shared.flags.age; step(q, 30); assert.equal(q.world.shared.flags.age, before, 'no one is playing: no ageing');
 });
