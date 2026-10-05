@@ -536,6 +536,68 @@ function drawCrop(id, stage) {
 }
 function crop(id, stage) { return drawCrop(id, stage); }
 
+// ----------------------------------------------------------------- seaside, zen and festival decor
+S.beach_umbrella = () => {
+  const pm = new Pixmap(16, 32), red = R('#ff6b7a'), wh = R('#ffffff');
+  pm.rect(7, 12, 2, 18, DWOOD[2]); pm.rect(7, 12, 1, 18, DWOOD[1]); pm.rect(8, 12, 1, 18, DWOOD[3]);
+  for (let y = 1; y <= 13; y++) for (let x = 0; x < 16; x++) {
+    const dx = (x + 0.5 - 8) / 8, dy = (y + 0.5 - 13.5) / 12.5;
+    if (dx * dx + dy * dy > 1) continue;
+    const pal = Math.floor((x + 1) / 3) % 2 ? wh : red;
+    pm.set(x, y, x < 5 ? pal[1] : x > 10 ? pal[3] : pal[2]);
+  }
+  for (let x = 0; x < 16; x += 3) pm.set(x + 1, 13, pm.get(x + 1, 12));
+  pm.rect(7, 0, 2, 2, GOLD[2]); pm.set(7, 0, GOLD[0]);
+  pm.ellipse(8, 30, 5.5, 1.7, hex('#f1dc9a'));
+  return fin(pm, [8, 31, 7, 1.4]);
+};
+S.deck_chair = () => {
+  const pm = new Pixmap(16, 20), blue = R('#5fb8e8'), wh = R('#ffffff');
+  for (const x of [1, 13]) { pm.rect(x, 1, 2, 18, DWOOD[2]); pm.vline(x, 1, 18, DWOOD[1]); pm.vline(x + 1, 1, 18, DWOOD[3]); }
+  for (let y = 2; y < 15; y += 2) { pm.rect(3, y, 10, 2, Math.floor(y / 2) % 2 ? wh[2] : blue[2]); pm.hline(3, y, 10, Math.floor(y / 2) % 2 ? wh[1] : blue[1]); }
+  pm.rect(1, 9, 3, 2, DWOOD[1]); pm.rect(12, 9, 3, 2, DWOOD[1]); pm.rect(3, 15, 10, 1, DWOOD[3]);
+  return fin(pm, [8, 19, 7, 1.3]);
+};
+S.sandcastle = () => {
+  const pm = new Pixmap(16, 16), s = R('#f1dc9a');
+  const tower = (x, w, top) => { pm.rect(x, top, w, 13 - top, s[2]); pm.rect(x, top, w, 1, s[0]); pm.vline(x, top, 13 - top, s[1]); pm.vline(x + w - 1, top, 13 - top, s[3]); for (let k = 0; k < w; k += 2) pm.set(x + k, top - 1, s[2]); };
+  pm.ellipse(8, 13, 7.5, 2.4, s[3]);
+  pm.rect(2, 9, 12, 4, s[2]); pm.hline(2, 9, 12, s[1]);
+  tower(1, 4, 5); tower(11, 4, 5); tower(6, 4, 3);
+  pm.rect(7, 10, 2, 3, s[4]);
+  pm.vline(8, 0, 2, DWOOD[2]); pm.poly([[9, 0], [12, 1], [9, 2]], hex('#ff6b7a'));
+  pm.set(3, 14, hex('#ffb8c8')); pm.set(12, 14, WHITE);
+  return fin(pm, [8, 14, 8, 1.3]);
+};
+S.shell_lamp = () => {
+  const pm = new Pixmap(16, 24), pink = R('#ffb8c8'), cream = R('#fff3e8');
+  pm.rect(7, 14, 2, 8, DWOOD[2]); pm.vline(7, 14, 8, DWOOD[1]); pm.ellipse(8, 22, 4.5, 1.6, DWOOD[3]);
+  pm.poly([[8, 15], [0, 7], [3, 2], [8, 0], [13, 2], [16, 7]], cream[2]);
+  pm.poly([[8, 15], [3, 5], [8, 2], [13, 5]], cream[1]);
+  for (const [x, y] of [[1.5, 7], [4, 2.5], [8, 1], [12, 2.5], [14.5, 7]]) pm.line(8, 15, Math.round(x), Math.round(y), pink[3]);
+  for (let x = 1; x < 16; x += 3) pm.set(x, 7 - Math.round(Math.sin((x / 16) * Math.PI) * 5), pink[2]);
+  pm.ellipse(8, 8, 3, 3, withAlpha(hex('#fff6c0'), 220));
+  return fin(pm, [8, 23, 5, 1.2]);
+};
+S.hot_tub = () => {
+  const pm = new Pixmap(32, 32), wd = DWOOD, wt = R('#5fd0f4');
+  pm.ellipse(16, 22, 15.5, 9, wd[3]); pm.ellipse(16, 20, 15.5, 9, wd[2]); pm.ellipse(16, 20, 13, 7, wd[1]);
+  pm.ellipse(16, 20, 11.5, 5.8, wt[2]); pm.ellipse(14, 18.6, 6, 2.4, wt[1]);
+  for (let x = 3; x < 30; x += 4) pm.vline(x, 24, 5, wd[4]);
+  for (const [x, y] of [[12, 20], [19, 21], [16, 18], [22, 19]]) pm.set(x, y, WHITE);
+  for (const [x, y, a] of [[13, 10, 110], [15, 7, 90], [17, 11, 100], [19, 8, 80], [16, 4, 60]]) { pm.set(x, y, withAlpha(WHITE, a)); pm.set(x + 1, y, withAlpha(WHITE, a)); }
+  return fin(pm, [16, 31, 14, 1.8]);
+};
+S.paper_lantern = () => {
+  const pm = new Pixmap(16, 24), red = R('#ff6b5a');
+  pm.rect(7, 12, 2, 11, DWOOD[2]); pm.rect(7, 12, 1, 11, DWOOD[1]); pm.ellipse(8, 22.5, 3.5, 1.3, DWOOD[3]);
+  pm.rect(5, 1, 6, 2, DWOOD[2]);
+  pm.ellipse(8, 7.5, 6, 5.5, red[2]); pm.ellipse(7, 6.5, 4, 3.5, red[1]); pm.ellipse(8, 7.5, 2.5, 3, hex('#ffd58a'));
+  for (const x of [4, 8, 12]) pm.vline(x, 3, 9, red[3]);
+  pm.rect(5, 12, 6, 2, DWOOD[2]); pm.vline(8, 14, 2, hex('#ffd84a'));
+  return fin(pm, [8, 23, 5, 1.2]);
+};
+
 export function registerStructures(book) {
   const add = (name, pm) => book.add(name, pm);
   for (const [id, fn] of Object.entries(S)) {

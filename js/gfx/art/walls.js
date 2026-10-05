@@ -51,6 +51,9 @@ FACES.pink = plasterFace('#ffc2d6'); CAPS.pink = '#ffe0ea'; TRIM.pink = '#e0709a
 FACES.mint = plasterFace('#b8ecd0'); CAPS.mint = '#d8fae8'; TRIM.mint = '#5ab890';
 FACES.sky = plasterFace('#bcdcff'); CAPS.sky = '#dceeff'; TRIM.sky = '#5a8ad0';
 FACES.butter = plasterFace('#ffe8a0'); CAPS.butter = '#fff4c8'; TRIM.butter = '#d8a830';
+FACES.lilac = plasterFace('#d9c6f4'); CAPS.lilac = '#ece0fb'; TRIM.lilac = '#9a74d0';
+FACES.peach = plasterFace('#ffd2b8'); CAPS.peach = '#ffe6d6'; TRIM.peach = '#e0825a';
+FACES.seafoam = plasterFace('#bdf0e0'); CAPS.seafoam = '#dcfaf0'; TRIM.seafoam = '#48b898';
 function blocks(pm, pal, rows, mortar) {
   pm.rect(0, 0, 16, 16, mortar);
   let y = 0;
@@ -230,7 +233,7 @@ export function wallSprite(mat, piece, mask = 0, open = 0) {
 /** fence / gate (low, see-through). mask: E=2, W=4 */
 export function fenceSprite(mat, gate, mask = 0, open = 0) {
   const pm = new Pixmap(16, 20);
-  const pal = R({ wood: '#d9a066', picket: '#fffaf0', stone: '#aab0c4', iron: '#6a7490', bone: '#f1ead7' }[mat]);
+  const pal = R({ wood: '#d9a066', picket: '#fffaf0', stone: '#aab0c4', iron: '#6a7490', bone: '#f1ead7', drift: '#cdbb9c' }[mat]);
   const dark = darker(pal[3], 0.3);
   const hasE = mask & 2, hasW = mask & 4;
   if (mat === 'stone') {
@@ -337,6 +340,9 @@ const tiles = (a, b) => (pm) => {
   }
 };
 FLOORFN.tile_pink = tiles('#ffc2d6', '#fff0f5'); FLOORFN.tile_blue = tiles('#a8d0ff', '#eef6ff'); FLOORFN.checker = tiles('#f4f0f0', '#4a4458');
+FLOORFN.boardwalk = (pm) => { planksFloor(pm, '#c8ad86'); const gap = darker(hex('#c8ad86'), 0.4), sand = hex('#f1dc9a'); for (let y = 0; y < 16; y += 4) pm.hline(0, y, 16, gap); for (const [x, y] of [[2, 2], [10, 6], [5, 10], [13, 14], [8, 13]]) pm.set(x, y, sand); };
+FLOORFN.tile_mint = tiles('#bdf0dc', '#effcf6'); FLOORFN.tile_lilac = tiles('#d9c6f4', '#f6efff'); FLOORFN.tile_butter = tiles('#ffe9a0', '#fff8d8');
+FLOORFN.carpet_lilac = carpet('#c9a8f0', '#e8d8ff'); FLOORFN.carpet_teal = carpet('#4fc9c0', '#a8f0e8');
 FLOORFN.brick = (pm) => blocks(pm, R('#d86a50'), [{ h: 4, w: [8, 8] }, { h: 4, w: [8, 8], off: 4 }, { h: 4, w: [8, 8] }, { h: 4, w: [8, 8], off: 4 }], hex('#e8cfc0'));
 FLOORFN.sandstone = (pm) => blocks(pm, R('#eccb88'), [{ h: 8, w: [8, 8] }, { h: 8, w: [8, 8], off: 4 }], hex('#c8a060'));
 FLOORFN.ice = (pm) => { const p = R('#c8eeff'); blocks(pm, p, [{ h: 8, w: [8, 8] }, { h: 8, w: [8, 8], off: 4 }], hex('#f0fbff')); pm.line(2, 6, 6, 3, WHITE); pm.set(11, 12, WHITE); };
@@ -379,6 +385,9 @@ const DECOFN = {
   wall_mirror: (pm) => { frame(pm, 4, 1, 8, 13, '#ffcf45'); pm.rect(5, 2, 6, 11, hex('#cfeeff')); pm.line(6, 3, 6, 7, WHITE); pm.set(9, 11, WHITE); pm.set(10, 10, hex('#ffffffaa')); },
   antlers: (pm) => { const b = R('#f1ead7'); pm.rect(5, 9, 6, 4, hex('#8a5a3a')); for (const s of [-1, 1]) { const x = 8 + s * 2; pm.line(x, 9, x + s * 3, 4, b[2]); pm.line(x + s, 7, x + s * 4, 6, b[2]); pm.line(x + s * 2, 6, x + s * 2, 2, b[1]); } },
   wall_shelf: (pm) => { pm.rect(2, 9, 12, 2, hex('#a8703f')); pm.hline(2, 9, 12, hex('#d09860')); pm.rect(4, 6, 3, 3, hex('#ff8fb3')); pm.rect(4, 5, 3, 1, hex('#58b84a')); pm.rect(9, 5, 2, 4, hex('#fff6e0')); pm.set(10, 4, hex('#ffe066')); pm.set(10, 3, hex('#ff9a3c')); pm.set(2, 12, hex('#6a4a2a')); pm.set(13, 12, hex('#6a4a2a')); },
+  conch_shell: (pm) => { const p = R('#ffe2cc'), sp = R('#e08a6a'); pm.circle(8, 8.5, 5.8, p[2]); pm.circle(7, 7.5, 3.6, p[1]); pm.poly([[11, 3], [14, 2], [13, 6]], p[2]); for (let t = 0; t < 12.5; t += 0.25) { const r = 0.6 + t * 0.4, x = Math.round(8 + r * Math.cos(t)), y = Math.round(8.5 + r * Math.sin(t)); pm.set(x, y, t > 8 ? sp[2] : sp[1]); } pm.ellipse(12.2, 11.5, 1.4, 2, hex('#ff9fa8')); pm.set(5, 5, WHITE); },
+  lifebuoy: (pm) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const dx = x + 0.5 - 8, dy = y + 0.5 - 8, d = Math.hypot(dx, dy); if (d >= 3 && d <= 6.2) { const a = Math.atan2(dy, dx) + Math.PI + 0.4; pm.set(x, y, Math.floor(a / (Math.PI / 2)) % 2 ? hex('#ff5a68') : hex('#ffffff')); } } pm.set(8, 1, hex('#8a5a2a')); pm.set(8, 0, hex('#8a5a2a')); },
+  string_lights: (pm) => { const cols = ['#ffe066', '#ff8fb3', '#8fd8ff', '#b0f08a']; for (let x = 0; x < 16; x++) pm.set(x, 3 + Math.round(Math.sin((x / 15) * Math.PI) * 3), hex('#4a3a40')); [1, 5, 9, 13].forEach((x, i) => { const y = 3 + Math.round(Math.sin((x / 15) * Math.PI) * 3) + 1; pm.set(x, y, hex(cols[i])); pm.set(x, y + 1, hex(cols[i])); pm.set(x - 1, y, withAlpha(hex(cols[i]), 120)); pm.set(x + 1, y, withAlpha(hex(cols[i]), 120)); }); },
   star_map: (pm) => { frame(pm, 2, 2, 12, 11, '#6a5ac0'); pm.rect(3, 3, 10, 9, hex('#1f1a50')); for (const [x, y] of [[4, 4], [7, 6], [10, 5], [5, 9], [11, 10]]) pm.set(x, y, hex('#fff0a0')); pm.line(4, 4, 7, 6, hex('#a9c4ff')); pm.line(7, 6, 10, 5, hex('#a9c4ff')); pm.line(7, 6, 5, 9, hex('#a9c4ff')); },
 };
 function banner(pm, c, accent) { const p = R(c); pm.rect(3, 1, 10, 1, hex('#8a5a2a')); pm.rect(4, 2, 8, 10, p[2]); pm.poly([[4, 12], [12, 12], [8, 15]], p[2]); pm.vline(4, 2, 10, p[1]); pm.vline(11, 2, 10, p[3]); pm.circle(8, 6, 2, hex(accent)); pm.set(7, 5, WHITE); }
@@ -391,7 +400,7 @@ export function registerWalls(book) {
     if (mat !== 'glass') book.add(`wp_${mat}_window`, wallSprite(mat, 'window', 0));
     book.add(`wp_${mat}_door`, wallSprite(mat, 'door', 0));
   }
-  for (const m of ['wood', 'picket', 'stone', 'iron', 'bone']) { book.add(`wp_fence_${m}`, fenceSprite(m, false, 0)); book.add(`wp_gate_${m}`, fenceSprite(m, true, 0)); }
+  for (const m of ['wood', 'picket', 'stone', 'iron', 'bone', 'drift']) { book.add(`wp_fence_${m}`, fenceSprite(m, false, 0)); book.add(`wp_gate_${m}`, fenceSprite(m, true, 0)); }
   for (const id of Object.keys(FLOORFN)) { const pm = new Pixmap(16, 16); FLOORFN[id](pm); book.add(`f_${id}`, pm); }
   book.add('f_bridge_rope', bridge('rope')); book.add('f_bridge_stone', bridge('stone'));
   for (const id of Object.keys(DECOFN)) { const pm = new Pixmap(16, 16); DECOFN[id](pm); pm.outline(null, { amt: 0.6 }); book.add(`d_${id}`, pm); }

@@ -59,7 +59,8 @@ export function helpPanel(g, data, ui) {
     row('Building', 'Pick a piece, then tap or drag over the ground. "Rect" fills whole rooms in one swipe.'),
     h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Tips'),
     h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall to buy new lands (follow the glowing price tags).'),
-    h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more.'),
+    h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more. Pick a branch, tap a box to read about it: yellow boxes are ready, green ones are done.'),
+    h('div', { class: 'small' }, '• Every level gives a skill point for the Skills tree: tap a box and press Learn. New boxes open up as you learn the ones before them.'),
     h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows — sleeping in a bed skips the night!'),
     h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));
   return { title: 'How to play', icon: 'ui_book', body, sig: () => '' };

@@ -32,6 +32,9 @@ export const WALL_MATS = [
   ['mint', 'Mint Paint', { plank: 1, fiber: 1, petal_blue: 1 }, 'cottage_style', true],
   ['sky', 'Sky Paint', { plank: 1, petal_blue: 1 }, 'cottage_style', true],
   ['butter', 'Butter Paint', { plank: 1, petal_yellow: 1 }, 'cottage_style', true],
+  ['lilac', 'Lilac Paint', { plank: 1, petal_pink: 1, petal_blue: 1 }, 'pastel_palette', true],
+  ['peach', 'Peach Paint', { plank: 1, petal_pink: 1, petal_yellow: 1 }, 'pastel_palette', true],
+  ['seafoam', 'Seafoam Paint', { plank: 1, petal_blue: 1, petal_yellow: 1 }, 'pastel_palette', true],
   ['stone', 'Stone', { stone: 2 }, 'stonecraft', true],
   ['brick', 'Brick', { brick: 2 }, 'masonry', true],
   ['glass', 'Glass', { glass: 2 }, 'glassmaking', false],
@@ -61,7 +64,7 @@ BUILD.window_log.tech = null; BUILD.window_log.cost = { wood: 2 };
 BUILD.window_thatch.tech = null; BUILD.window_thatch.cost = { fiber: 3 };
 
 // fences (low, see-through) + gates
-const FENCES = [['wood', 'Wooden', { plank: 1 }, null], ['picket', 'White Picket', { plank: 1, clay: 1 }, 'cottage_style'], ['stone', 'Low Stone', { stone: 1 }, 'stonecraft'], ['iron', 'Iron', { iron_ingot: 1 }, 'fortification'], ['bone', 'Bone', { bone: 2 }, 'gothic_style']];
+const FENCES = [['wood', 'Wooden', { plank: 1 }, null], ['picket', 'White Picket', { plank: 1, clay: 1 }, 'cottage_style'], ['stone', 'Low Stone', { stone: 1 }, 'stonecraft'], ['iron', 'Iron', { iron_ingot: 1 }, 'fortification'], ['bone', 'Bone', { bone: 2 }, 'gothic_style'], ['drift', 'Driftwood', { plank: 1, sand: 1 }, 'driftwood']];
 for (const [mat, name, c, tech] of FENCES) {
   reg({ id: `fence_${mat}`, name: `${name} Fence`, cat: 'walls', kind: 'wall', piece: 'fence', mat, cost: { ...c }, tech, solid: true });
   const gc = {}; for (const k of Object.keys(c)) gc[k] = c[k] * 2;
@@ -80,6 +83,10 @@ const FLOORS = [
   ['brick', 'Brick Floor', { brick: 1 }, 'masonry'], ['checker', 'Checker Tile', { brick: 1, coal: 1 }, 'masonry'],
   ['sandstone', 'Sandstone Tile', { sand: 1, clay: 1 }, 'desertcraft'], ['ice', 'Ice Tile', { ice_shard: 1 }, 'frostcraft'],
   ['gold', 'Gilded Tile', { brick: 1, gold_ingot: 1 }, 'goldsmithing'], ['bone', 'Bone Tile', { bone: 2 }, 'gothic_style'],
+  ['boardwalk', 'Boardwalk', { plank: 1, sand: 1 }, 'driftwood'],
+  ['tile_mint', 'Mint Tile', { brick: 1, petal_blue: 1, petal_yellow: 1 }, 'pastel_palette'], ['tile_lilac', 'Lilac Tile', { brick: 1, petal_pink: 1, petal_blue: 1 }, 'pastel_palette'],
+  ['tile_butter', 'Butter Tile', { brick: 1, petal_yellow: 2 }, 'pastel_palette'],
+  ['carpet_lilac', 'Lilac Carpet', { cloth: 1, petal_pink: 1, petal_blue: 1 }, 'pastel_palette'], ['carpet_teal', 'Teal Carpet', { cloth: 1, petal_blue: 2 }, 'pastel_palette'],
   ['moss', 'Mossy Floor', { swamp_moss: 2 }, 'mycology'], ['obsidian', 'Obsidian Tile', { obsidian_plate: 1 }, 'obsidian_craft'],
   ['crystal', 'Crystal Tile', { crystal_bar: 1 }, 'crystal_craft'], ['star', 'Starlit Tile', { star_bar: 1 }, 'star_forging'],
 ];
@@ -87,11 +94,13 @@ for (const [id, name, cost, tech] of FLOORS) reg({ id: `floor_${id}`, name, cat:
 reg({ id: 'bridge_rope', name: 'Rope Bridge', cat: 'floors', kind: 'floor', water: true, cost: { rope: 1, plank: 1 }, tech: 'bridges', solid: false });
 reg({ id: 'bridge_stone', name: 'Stone Bridge', cat: 'floors', kind: 'floor', water: true, cost: { stone: 3 }, tech: 'masonry', solid: false });
 
-// ====================================================================== FURNITURE SETS (7 styles x 12 designs)
+// ====================================================================== FURNITURE SETS (9 styles x 12 designs)
 export const STYLES = [
   { id: 'rustic', name: 'Rustic', main: 'plank', soft: 'fiber', acc: null, tech: null, comfort: 0 },
   { id: 'cottage', name: 'Cottage', main: 'plank', soft: 'cloth', acc: 'petal_pink', tech: 'cottage_style', comfort: 1 },
+  { id: 'seaside', name: 'Seaside', main: 'plank', soft: 'cloth', acc: 'sand', tech: 'beach_style', comfort: 1 },
   { id: 'modern', name: 'Modern', main: 'iron_ingot', soft: 'cloth', acc: 'glass', tech: 'modern_style', comfort: 1 },
+  { id: 'bamboo', name: 'Bamboo', main: 'plank', soft: 'fiber', acc: 'clay', tech: 'zen_garden', comfort: 2 },
   { id: 'elegant', name: 'Elegant', main: 'plank', soft: 'cloth', acc: 'gold_ingot', tech: 'elegant_style', comfort: 2 },
   { id: 'gothic', name: 'Gothic', main: 'bone', soft: 'cloth', acc: 'spirit_dust', tech: 'gothic_style', comfort: 2 },
   { id: 'rainbow', name: 'Rainbow', main: 'prism_wood', soft: 'cloth', acc: 'crystal_bar', tech: 'prism_style', comfort: 3 },
@@ -112,7 +121,7 @@ export const DESIGNS = [
   ['rug', 'Rug', 2, 2, 0, 4, 1, 1, { kind: 'flat', solid: false }],
   ['nightstand', 'Nightstand', 1, 1, 3, 0, 1, 1, {}],
 ];
-const STYLE_LIGHT = { rustic: '#ffc477', cottage: '#ffd6a0', modern: '#d8f2ff', elegant: '#ffe08a', gothic: '#c9a0ff', rainbow: '#ffc8f0', celestial: '#b8c4ff' };
+const STYLE_LIGHT = { rustic: '#ffc477', cottage: '#ffd6a0', seaside: '#ffe9c0', bamboo: '#e0f0a8', modern: '#d8f2ff', elegant: '#ffe08a', gothic: '#c9a0ff', rainbow: '#ffc8f0', celestial: '#b8c4ff' };
 for (const st of STYLES) {
   for (const [did, dname, w, h, mq, sq, aq, comfort, ex] of DESIGNS) {
     const cost = {};
@@ -137,8 +146,10 @@ const WALLDECOS = [
   ['sconce', 'Wall Sconce', { iron_ingot: 1, coal: 1 }, 'ironworking'], ['wall_mirror', 'Wall Mirror', { glass: 2, plank: 1 }, 'glassmaking'],
   ['antlers', 'Antler Trophy', { bone: 3, plank: 1 }, 'gothic_style'], ['wall_shelf', 'Wall Shelf', { plank: 2, rope: 1 }, 'carpentry'],
   ['star_map', 'Star Map', { paper: 3, star_fragment: 1 }, 'celestial_style'],
+  ['conch_shell', 'Conch Shell', { sand: 3, clay: 1 }, 'shell_craft'], ['lifebuoy', 'Life Ring', { rope: 3, cloth: 1, petal_pink: 1 }, 'shell_craft'],
+  ['string_lights', 'String Lights', { rope: 2, glass: 1, coal: 1 }, 'lantern_festival'],
 ];
-for (const [id, name, cost, tech] of WALLDECOS) reg({ id, name, cat: 'walldeco', kind: 'walldeco', cost, tech, solid: false, comfort: 1, light: id === 'sconce' ? { r: 40, c: '#ffc477', flick: true } : undefined });
+for (const [id, name, cost, tech] of WALLDECOS) reg({ id, name, cat: 'walldeco', kind: 'walldeco', cost, tech, solid: false, comfort: 1, light: id === 'sconce' ? { r: 40, c: '#ffc477', flick: true } : id === 'string_lights' ? { r: 44, c: '#ffe0a0', flick: false } : undefined });
 
 // ====================================================================== STATIONS & MACHINES
 const S = (o) => reg({ cat: 'stations', ...o });
@@ -207,6 +218,7 @@ L({ id: 'lava_lamp', name: 'Lava Lamp', cost: { ember_stone: 4, glass: 2, obsidi
 L({ id: 'crystal_lamp', name: 'Crystal Lamp', cost: { crystal_shard: 3, gold_ingot: 1 }, tech: 'prism_style', light: { r: 60, c: '#ffb8f0', flick: false }, comfort: 3 });
 L({ id: 'star_lantern', name: 'Star Lantern', cost: { star_bar: 1, void_bar: 1 }, tech: 'celestial_style', light: { r: 80, c: '#c8d0ff', flick: false }, comfort: 4 });
 L({ id: 'stone_lantern', name: 'Stone Lantern', cost: { stone: 6, coal: 2 }, tech: 'garden_design', light: { r: 52, c: '#ffd8a0', flick: false }, comfort: 2 });
+L({ id: 'paper_lantern', name: 'Paper Lantern', cost: { paper: 3, plank: 2, coal: 1 }, tech: 'lantern_festival', light: { r: 56, c: '#ffb89c', flick: false }, comfort: 2 });
 
 // ====================================================================== DECOR & OUTDOORS
 const D = (o) => reg({ cat: 'decor', ...o });
@@ -237,6 +249,11 @@ D({ id: 'statue_angel', name: 'Angel Statue', w: 1, h: 2, cost: { stone: 30, gol
 D({ id: 'tent', name: 'Cozy Tent', w: 2, h: 2, cost: { cloth: 6, plank: 4, rope: 2 }, tech: 'weaving', behavior: 'bed', comfort: 2 });
 D({ id: 'hammock', name: 'Hammock', w: 2, h: 1, cost: { rope: 6, cloth: 3, plank: 2 }, tech: 'weaving', behavior: 'bed', solid: false, comfort: 3 });
 D({ id: 'swing', name: 'Garden Swing', w: 2, h: 2, cost: { plank: 8, rope: 6 }, tech: 'cottage_style', comfort: 3, behavior: 'seat', solid: false });
+D({ id: 'beach_umbrella', name: 'Beach Umbrella', w: 1, h: 2, cost: { plank: 4, cloth: 5, rope: 1 }, tech: 'beach_decor', comfort: 2 });
+D({ id: 'deck_chair', name: 'Deck Chair', cost: { plank: 4, cloth: 3 }, tech: 'beach_decor', behavior: 'seat', solid: false, comfort: 2 });
+D({ id: 'sandcastle', name: 'Sandcastle', cost: { sand: 12 }, tech: 'beach_decor', comfort: 1 });
+D({ id: 'shell_lamp', name: 'Shell Lamp', cost: { sand: 4, glass: 2, clay: 2 }, tech: 'shell_craft', light: { r: 46, c: '#ffd6c0', flick: false }, comfort: 2 });
+D({ id: 'hot_tub', name: 'Hot Tub', w: 2, h: 2, cost: { stone: 24, brick: 8, clay: 6, glass: 2 }, tech: 'hot_springs', comfort: 6 });
 D({ id: 'lighthouse', name: 'Lighthouse', w: 2, h: 3, cost: { stone: 60, brick: 30, glass: 8, lens: 2 }, tech: 'optics', light: { r: 110, c: '#fff0b0', flick: false }, comfort: 6 });
 // kitchen & bath & living extras
 D({ id: 'counter', name: 'Kitchen Counter', cost: { plank: 6, stone: 2 }, tech: 'kitchen', comfort: 1 });

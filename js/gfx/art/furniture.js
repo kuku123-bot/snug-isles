@@ -1,4 +1,4 @@
-// Furniture: 12 designs x 7 style palettes. Each sprite is bottom-aligned to its footprint (extra height extends upward).
+// Furniture: 12 designs x 9 style palettes. Each sprite is bottom-aligned to its footprint (extra height extends upward).
 import { Pixmap, hex, ramp, darker, lighter, mixC, withAlpha, ballShade, bayer, INK, A } from '../pixmap.js';
 import { RNG } from '../../util.js';
 import { STYLES, DESIGNS } from '../../data/build.js';
@@ -12,7 +12,9 @@ const R = (c) => ramp(hex(c));
 export const STYLE_PAL = {
   rustic: { wood: R('#c68a52'), cloth: R('#e8cfa0'), cloth2: R('#d8604a'), trim: R('#8a5a30'), pat: 'check' },
   cottage: { wood: R('#fbf6ee'), cloth: R('#ffb3cc'), cloth2: R('#ffffff'), trim: R('#e8a0bc'), pat: 'flower' },
+  seaside: { wood: R('#efe3cc'), cloth: R('#5fb8e8'), cloth2: R('#ffffff'), trim: R('#ff9a8a'), pat: 'wave' },
   modern: { wood: R('#8a96ae'), cloth: R('#4fd1b5'), cloth2: R('#f0f4f8'), trim: R('#d8e0ee'), pat: 'stripe' },
+  bamboo: { wood: R('#b9d46a'), cloth: R('#f1e6c8'), cloth2: R('#d9803a'), trim: R('#7a9a3a'), pat: 'leaf' },
   elegant: { wood: R('#6a3a2a'), cloth: R('#c8304a'), cloth2: R('#ffcf45'), trim: R('#ffcf45'), pat: 'trim' },
   gothic: { wood: R('#3a3050'), cloth: R('#7a3a9a'), cloth2: R('#2a1f3d'), trim: R('#c9a0ff'), pat: 'trim' },
   rainbow: { wood: R('#f6d8ff'), cloth: R('#ff9fd0'), cloth2: R('#9ff0e0'), trim: R('#ffe48a'), pat: 'rainbow' },
@@ -27,6 +29,8 @@ function patternFill(pm, x, y, w, h, st, base) {
     case 'check': for (let yy = 0; yy < h; yy += 2) for (let xx = (yy / 2) % 2 ? 0 : 2; xx < w; xx += 4) { pm.rect(x + xx, y + yy, 2, 2, c2[2]); } break;
     case 'flower': for (let yy = 1; yy < h - 1; yy += 4) for (let xx = (yy / 4) % 2 ? 1 : 3; xx < w - 1; xx += 5) { pm.set(x + xx, y + yy, c2[0]); pm.set(x + xx - 1, y + yy, c2[1]); pm.set(x + xx + 1, y + yy, c2[1]); pm.set(x + xx, y + yy - 1, c2[1]); pm.set(x + xx, y + yy + 1, c2[1]); pm.set(x + xx, y + yy, hex('#ffd84a')); } break;
     case 'stripe': for (let xx = 1; xx < w; xx += 4) pm.vline(x + xx, y, h, c2[2]); break;
+    case 'wave': for (let yy = 1; yy < h - 2; yy += 3) for (let xx = 0; xx < w; xx++) pm.set(x + xx, y + yy + ((xx >> 1) & 1), c2[2]); break;
+    case 'leaf': for (let yy = 1; yy < h - 2; yy += 4) for (let xx = (yy / 4) % 2 ? 1 : 3; xx < w - 1; xx += 5) { pm.set(x + xx, y + yy, c2[2]); pm.set(x + xx - 1, y + yy + 1, c2[1]); pm.set(x + xx + 1, y + yy + 1, c2[1]); } break;
     case 'trim': pm.hline(x, y, w, c2[2]); pm.hline(x, y + h - 1, w, c2[2]); for (let xx = 2; xx < w; xx += 4) pm.set(x + xx, y + h - 2, c2[1]); break;
     case 'rainbow': { const cols = ['#ff9fd0', '#ffe48a', '#9ff0e0', '#b8c8ff']; for (let xx = 0; xx < w; xx++) pm.vline(x + xx, y, h, hex(cols[Math.floor(xx / 3) % 4])); for (let yy = 0; yy < h; yy += 2) for (let xx = 0; xx < w; xx++) if ((xx + yy) % 4 === 0) pm.set(x + xx, y + yy, withAlpha(WHITE, 90)); break; }
     case 'stars': for (let i = 0; i < Math.floor(w * h / 14); i++) pm.set(x + ((i * 7) % w), y + ((i * 5) % h), c2[0]); break;
@@ -43,6 +47,8 @@ function chairBack(pm, st) {
     case 'check': for (const [x, y] of [[5, 4], [10, 4], [5, 6], [10, 6]]) pm.set(x, y, c2[2]); break; // quilted corners
     case 'flower': pm.set(8, 5, hex('#ffd84a')); pm.set(7, 5, c2[1]); pm.set(9, 5, c2[1]); pm.set(8, 4, c2[1]); pm.set(8, 6, c2[1]); break;
     case 'stripe': pm.vline(8, 4, 3, c[3]); break;
+    case 'wave': pm.hline(6, 5, 2, c2[2]); pm.hline(8, 6, 2, c2[2]); break;
+    case 'leaf': pm.set(8, 5, c2[2]); pm.set(7, 6, c2[1]); pm.set(9, 6, c2[1]); break;
     case 'trim': pm.hline(5, 3, 6, c2[2]); pm.set(8, 4, c2[1]); pm.set(8, 6, c2[1]); break; // tufted buttons
     case 'rainbow': { const cols = ['#ff9fd0', '#ffe48a', '#9ff0e0']; for (let i = 0; i < 3; i++) pm.hline(5, 4 + i, 6, hex(cols[i])); break; }
     case 'stars': pm.set(6, 4, c2[0]); pm.set(9, 6, c2[0]); pm.set(8, 4, c2[1]); break;
@@ -163,7 +169,7 @@ D.dresser = (st) => {
 };
 D.lamp = (st) => {
   const pm = new Pixmap(16, 28), P = STYLE_PAL[st], w = P.wood;
-  const glow = { rustic: '#ffd890', cottage: '#fff0c8', modern: '#e8f8ff', elegant: '#fff0a0', gothic: '#d8b8ff', rainbow: '#ffd8f4', celestial: '#d8e0ff' }[st];
+  const glow = { rustic: '#ffd890', cottage: '#fff0c8', seaside: '#fff6dc', bamboo: '#f4f8c8', modern: '#e8f8ff', elegant: '#fff0a0', gothic: '#d8b8ff', rainbow: '#ffd8f4', celestial: '#d8e0ff' }[st];
   pm.rect(5, 25, 6, 2, w[3]); pm.rect(6, 24, 4, 1, w[2]); pm.rect(7, 9, 2, 15, w[2]); pm.vline(7, 9, 15, w[1]); pm.vline(8, 9, 15, w[3]);
   // shade
   pm.poly([[3, 9], [13, 9], [11, 2], [5, 2]], hex(glow)); pm.poly([[3, 9], [8, 9], [8, 2], [5, 2]], lighter(hex(glow), 0.5)); pm.poly([[8, 9], [13, 9], [11, 2], [8, 2]], darker(hex(glow), 0.12));

@@ -9,8 +9,8 @@ Gather resources, buy new lands, research a big tech tree, automate your island,
 ## What's in it
 
 * **8 biomes** (meadow → desert, tundra, swamp, graveyard, volcano, crystal fields, starlit void), **4 bosses**, 30 creatures, 40 resource types
-* **69 technologies** in 8 tiers (stone age → starlit age), **101 recipes**, 42 skills
-* **295 build pieces**: 66 wall/window/door/fence styles, 27 floors, 16 wall decorations, **84 pieces of furniture in 7 styles**, lights, farms, animal pens, drills, turrets, warp pads…
+* **94 technologies** in 8 tiers (stone age → starlit age) and **6 branches** (Home, Tools, Farm, Magic, Adventure and the new Seaside & Fishing), **101 recipes**, **52 skills** in 5 branches. Research and Skills are simple trees of big picture buttons: pick a branch, tap a box, read what it unlocks, press the button
+* **345 build pieces**: 77 wall/window/door/fence styles, 33 floors, 19 wall decorations, **108 pieces of furniture in 9 styles** (new: Seaside and Bamboo), beach umbrellas, a hot tub, paper lanterns, lights, farms, animal pens, drills, turrets, warp pads…
 * **Automation**: furnaces and drills that load/unload from chests next to them, sprinklers, windmills, turrets
 * **Pets**: Mystery Eggs (found in chests, buried treasure and boss drops) hatch a bunny, duckling, chick, lizard, penguin… or a very rare unicorn that trots after you (and comes back after every reload); an **Old Key** in your bag doubles the next treasure chest
 * **68 Island Goals** — a gentle checklist with rewards that teaches the game and gives you things to aim for
@@ -67,6 +67,7 @@ node tools/e2e-touch.mjs                   # iPad-style touch: joystick, buttons
 node tools/e2e-mp.mjs chromium webkit      # two real browsers playing together (add `cloud` for the real PeerJS server)
 node tools/e2e-manual.mjs chromium chromium  # serverless copy/paste pairing
 node tools/e2e-invite.mjs chromium webkit    # the invite-link flow a partner uses (name, approval, auto-join next time)
+node tools/e2e-trees.mjs chromium webkit   # the Research and Skills trees (tap through them on iPad landscape/portrait and Mac)
 node tools/e2e-smooth.mjs chromium webkit  # the smooth look: GPU shader == CPU reference, photo, settings, context loss, slow-GPU fallback
 node tools/e2e-zoom.mjs                    # page zoom is impossible (pinch, double-tap, focus-zoom, shortcuts) and the picture never jumps
 node tools/e2e-relay.mjs chromium webkit     # the encrypted backup relay through the real public brokers (needs internet)
