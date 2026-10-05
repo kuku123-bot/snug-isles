@@ -261,21 +261,24 @@ export function spawnTick(sim) {
   let hostile = 0, passive = 0;
   for (const m of w.mobs.values()) { if (m.boss) continue; if (MOBS[m.type].hostile) hostile++; else passive++; }
   const per = players.length;
-  const capH = Math.round((3 + 3 * night * (0.5 + s.nightDanger * 0.5) + (s.nightDanger === 2 ? 2 * night : 0)) * dens * per);
+  const room = Math.min(1, 0.55 + 0.15 * w.ownedCount()); // a lone starting island gets a gentler crowd
+  const capH = Math.round((3 + 3 * night * (0.5 + s.nightDanger * 0.5) + (s.nightDanger === 2 ? 2 * night : 0)) * dens * per * room);
   const capP = 5 * per;
   const wantHostile = dens > 0 && hostile < capH && rng.next() < 0.55;
   const wantPassive = passive < capP && rng.next() < 0.3;
   if (!wantHostile && !wantPassive) return;
   const p = rng.pick(players);
-  for (let tries = 0; tries < 14; tries++) {
-    const a = rng.next() * TAU, r = (14 + rng.next() * 9) * TILE;
+  for (let tries = 0; tries < 20; tries++) {
+    // prefer a polite distance; a single 20x20 island is too small for that, so later tries come in closer
+    const far = tries < 10, minD = far ? 11 : 7;
+    const a = rng.next() * TAU, r = (far ? 14 + rng.next() * 9 : 7 + rng.next() * 7) * TILE;
     const x = p.x + Math.cos(a) * r, y = p.y + Math.sin(a) * r;
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     if (!w.inb(tx, ty) || !w.isTileOwned(tx, ty)) continue;
     const i = w.idx(tx, ty);
     if (w.solid[i] & 1) continue;
     let tooNear = false;
-    for (const q of players) if (Math.hypot(q.x - x, q.y - y) < 11 * TILE) tooNear = true;
+    for (const q of players) if (Math.hypot(q.x - x, q.y - y) < minD * TILE) tooNear = true;
     if (tooNear) continue;
     // don't spawn in/around player buildings
     let built = false;
