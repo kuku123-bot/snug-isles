@@ -94,7 +94,7 @@ export class App {
     if (q.get('quick')) {
       const preset = q.get('quick') === '1' ? 'cozy' : q.get('quick');
       this.createWorld({ name: 'Test Isles', seed: q.get('seed') || 'test', settings: presetSettings(preset), mode: 'solo' });
-    } else if (q.get('join') || q.get('relay')) this.screens.join('', { code: (q.get('join') || '').toUpperCase(), relayKey: q.get('relay') || '', auto: true });
+    } else if (q.get('join') || q.get('relay')) this.screens.join('', { code: (q.get('join') || '').toUpperCase(), relayKey: q.get('relay') || '', auto: !!this.profile.customized });
   }
 
   // ------------------------------------------------------------------ worlds

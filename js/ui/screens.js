@@ -86,7 +86,7 @@ export class Screens {
     this.frame('New world', body, { back: () => this.worlds(opts), width: 'min(96vw, 900px)', footer: h('div', { class: 'row', style: 'justify-content:flex-end' }, create) });
   }
 
-  character() {
+  character(ret = null) {
     const app = this.app, pr = app.profile;
     const look = { ...pr.look };
     const prev = h('div', { class: 'row', style: 'justify-content:center;gap:8px;min-height:190px;align-items:flex-end' });
@@ -103,19 +103,24 @@ export class Screens {
     const form = h('div', { class: 'col charform', style: 'gap:8px' });
     function rerender() { draw(); clear(form); form.append(h('div', { class: 'field' }, h('label', null, 'Name'), nameIn), h('div', { class: 'field' }, h('label', null, 'Hair style'), choices('hair', HAIR_STYLES)), h('div', { class: 'field' }, h('label', null, 'Hair color'), swatches('hairColor', HAIR_COLORS)), h('div', { class: 'field' }, h('label', null, 'Skin'), swatches('skin', SKIN_TONES)), h('div', { class: 'field' }, h('label', null, 'Outfit color'), swatches('outfit', OUTFIT_COLORS)), h('div', { class: 'field' }, h('label', null, 'Accessory'), choices('accessory', ACCESSORIES))); }
     rerender();
-    const save = this.btn('Looks great!', 'ui_check', () => { pr.look = look; pr.name = (nameIn.value || 'Friend').trim().slice(0, 12) || 'Friend'; app.saveProfile(); this.title(); }, 'good');
+    const save = this.btn('Looks great!', 'ui_check', () => { pr.look = look; pr.name = (nameIn.value || 'Friend').trim().slice(0, 12) || 'Friend'; pr.customized = true; app.saveProfile(); clearInterval(this.timer); ret ? ret() : this.title(); }, 'good');
     const rnd = this.btn('Surprise me', 'ui_star', () => { look.hair = Math.floor(Math.random() * HAIR_STYLES.length); look.hairColor = Math.floor(Math.random() * HAIR_COLORS.length); look.skin = Math.floor(Math.random() * SKIN_TONES.length); look.outfit = Math.floor(Math.random() * OUTFIT_COLORS.length); look.accessory = Math.floor(Math.random() * ACCESSORIES.length); rerender(); }, 'warn');
     const body = h('div', { class: 'row', style: 'align-items:flex-start;gap:16px;flex-wrap:wrap' }, h('div', { class: 'col', style: 'align-items:center;gap:10px;min-width:200px;flex:1' }, h('div', { class: 'panel', style: 'background:linear-gradient(#9ad8ff,#c8f0b0);padding:14px 10px;width:100%' }, prev), rnd), h('div', { class: 'scroll', style: 'flex:1.4;min-width:260px;max-height:calc(100vh - 200px)' }, form));
-    this.frame('Your character', body, { footer: h('div', { class: 'row', style: 'justify-content:flex-end' }, save), width: 'min(96vw, 820px)' });
+    this.frame('Your character', body, { back: ret || undefined, footer: h('div', { class: 'row', style: 'justify-content:flex-end' }, save), width: 'min(96vw, 820px)' });
   }
 
   join(note = '', preset = {}) {
     const app = this.app;
     const codeIn = h('input', { type: 'text', placeholder: 'ABCDE', maxlength: 8, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:34px;text-align:center;letter-spacing:8px;text-transform:uppercase;font-weight:700', value: preset.code || app.profile.lastCode || '' });
-    const keyIn = h('input', { type: 'text', placeholder: 'XXXX-XXXX-XXXX-XXXX', maxlength: 24, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:20px;text-align:center;letter-spacing:2px;text-transform:uppercase;font-weight:700', value: preset.relayKey ? formatRelayKey(parseRelayKey(preset.relayKey) || '') : '' });
+    const keyIn = h('input', { type: 'text', placeholder: 'XXXX-XXXX-XXXX-XXXX', maxlength: 24, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:20px;text-align:center;letter-spacing:2px;text-transform:uppercase;font-weight:700', value: preset.relayKey ? (formatRelayKey(parseRelayKey(preset.relayKey) || '') || preset.relayKey) : '' });
     for (const el of [codeIn, keyIn]) { el.addEventListener('focus', () => { app.input.typing = true; }); el.addEventListener('blur', () => { app.input.typing = false; }); }
     const status = h('div', { class: 'small', style: 'min-height:20px;text-align:center' }, note);
+    const nameIn = h('input', { type: 'text', value: app.profile.name || 'Friend', maxlength: 12, placeholder: 'Your name', autocomplete: 'off' });
+    nameIn.addEventListener('focus', () => { app.input.typing = true; }); nameIn.addEventListener('blur', () => { app.input.typing = false; });
+    const keep = () => ({ code: codeIn.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''), relayKey: keyIn.value });
     const go = this.btn('Join!', 'ui_link', () => {
+      const nm = (nameIn.value || '').trim().slice(0, 12);
+      if (nm && nm !== app.profile.name) { app.profile.name = nm; app.profile.customized = true; app.saveProfile(); }
       const c = codeIn.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
       const rk = keyIn.value.trim() ? keyIn.value : null;
       if (rk && !parseRelayKey(rk)) { status.textContent = 'The backup code has 16 letters and numbers (like ABCD-EFGH-JKMN-PQRS).'; return; }
@@ -127,7 +132,8 @@ export class Screens {
       h('summary', { style: 'cursor:pointer;font-weight:700' }, 'Joining does not work? Use a backup code'),
       h('div', { class: 'col', style: 'gap:6px;margin-top:6px' }, h('div', { class: 'small' }, 'Your partner can turn on "Backup connection" in Invite / players and read you a longer code. It works on stricter networks (a little slower).'), keyIn));
     const body = h('div', { class: 'col', style: 'gap:10px;align-items:stretch' },
-      h('div', { class: 'small' }, 'Ask your partner to open their world, tap "Invite / players" in the pause menu, and read you the code.'), h('div', { class: 'field' }, h('label', null, 'Room code'), codeIn), go, status, more,
+      h('div', { class: 'small' }, 'Ask your partner to open their world, tap "Invite / players" in the pause menu, and read you the code.'), h('div', { class: 'field' }, h('label', null, 'Room code'), codeIn),
+      h('div', { class: 'row', style: 'align-items:flex-end' }, h('div', { class: 'field grow' }, h('label', null, 'Your name'), nameIn), h('button', { class: 'btn small', onclick: () => { const k = keep(); app.profile.name = (nameIn.value || 'Friend').trim().slice(0, 12) || 'Friend'; this.character(() => this.join(note, { code: k.code, relayKey: k.relayKey })); } }, ic('ui_smile', 1), 'Change look')), go, status, more,
       h('div', { class: 'sep' }), h('button', { class: 'btn small', onclick: () => this.manual() }, 'Code not working? Pair manually'));
     this.frame('Join my partner', body, { back: () => this.together(), width: 'min(94vw, 440px)' });
     if (preset.auto) setTimeout(() => go.click(), 250); else setTimeout(() => codeIn.focus(), 100);
