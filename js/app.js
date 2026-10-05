@@ -88,7 +88,7 @@ export class App {
     if (q.get('quick')) {
       const preset = q.get('quick') === '1' ? 'cozy' : q.get('quick');
       this.createWorld({ name: 'Test Isles', seed: q.get('seed') || 'test', settings: presetSettings(preset), mode: 'solo' });
-    } else if (q.get('join')) this.screens.join(), this.joinGame(q.get('join').toUpperCase(), () => {});
+    } else if (q.get('join') || q.get('relay')) this.screens.join('', { code: (q.get('join') || '').toUpperCase(), relayKey: q.get('relay') || '', auto: true });
   }
 
   // ------------------------------------------------------------------ worlds
@@ -192,7 +192,7 @@ export class App {
 
   // ------------------------------------------------------------------ multiplayer (loaded on demand)
   async startHosting(game) { const m = await import('./net/session.js'); return m.startHosting(this, game); }
-  async joinGame(code, onStatus) { const m = await import('./net/session.js'); return m.joinGame(this, code, onStatus); }
+  async joinGame(code, onStatus, opts) { const m = await import('./net/session.js'); return m.joinGame(this, code, onStatus, opts); }
   async manualJoin(offer, onStatus) { const m = await import('./net/session.js'); return m.manualJoin(this, offer, onStatus); }
 
   // ------------------------------------------------------------------ loop

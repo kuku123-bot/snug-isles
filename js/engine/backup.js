@@ -5,7 +5,10 @@ export const BACKUP_KIND = 'snug-isles-world';
 export const MAX_BACKUP_BYTES = 80 * 1024 * 1024;
 
 export function makeBackup(data, meta, appVersion) {
-  return { kind: BACKUP_KIND, format: 1, saveVersion: SAVE_VERSION, app: appVersion, exported: Date.now(), meta: { ...meta, id: undefined }, data };
+  // the backup-connection secret belongs to the live session, not to a file that may travel
+  const clean = { ...data, shared: { ...(data.shared || {}), flags: { ...((data.shared && data.shared.flags) || {}) } } };
+  delete clean.shared.flags.relayKey; delete clean.shared.flags.room;
+  return { kind: BACKUP_KIND, format: 1, saveVersion: SAVE_VERSION, app: appVersion, exported: Date.now(), meta: { ...meta, id: undefined }, data: clean };
 }
 
 /** Read and validate a backup file's text. Throws an Error with a human-readable message when it is not usable. */

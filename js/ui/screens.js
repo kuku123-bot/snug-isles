@@ -1,4 +1,5 @@
 // Full-screen menus: title, worlds, new world, character, join. (DOM over the animated title scene)
+import { formatRelayKey, parseRelayKey } from '../net/relaykey.js';
 import { h, ic, clear, itemIc } from './dom.js';
 import { optionsEditor } from './options.js';
 import { PRESETS, presetSettings, DEFAULTS } from '../data/difficulty.js';
@@ -108,17 +109,28 @@ export class Screens {
     this.frame('Your character', body, { footer: h('div', { class: 'row', style: 'justify-content:flex-end' }, save), width: 'min(96vw, 820px)' });
   }
 
-  join(note = '') {
+  join(note = '', preset = {}) {
     const app = this.app;
-    const codeIn = h('input', { type: 'text', placeholder: 'ABCDE', maxlength: 8, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:34px;text-align:center;letter-spacing:8px;text-transform:uppercase;font-weight:700', value: app.profile.lastCode || '' });
-    codeIn.addEventListener('focus', () => { app.input.typing = true; }); codeIn.addEventListener('blur', () => { app.input.typing = false; });
+    const codeIn = h('input', { type: 'text', placeholder: 'ABCDE', maxlength: 8, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:34px;text-align:center;letter-spacing:8px;text-transform:uppercase;font-weight:700', value: preset.code || app.profile.lastCode || '' });
+    const keyIn = h('input', { type: 'text', placeholder: 'XXXX-XXXX-XXXX-XXXX', maxlength: 24, autocapitalize: 'characters', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', style: 'font-size:20px;text-align:center;letter-spacing:2px;text-transform:uppercase;font-weight:700', value: preset.relayKey ? formatRelayKey(parseRelayKey(preset.relayKey) || '') : '' });
+    for (const el of [codeIn, keyIn]) { el.addEventListener('focus', () => { app.input.typing = true; }); el.addEventListener('blur', () => { app.input.typing = false; }); }
     const status = h('div', { class: 'small', style: 'min-height:20px;text-align:center' }, note);
-    const go = this.btn('Join!', 'ui_link', () => { const c = codeIn.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length < 4) { status.textContent = 'Type the code your partner sees.'; return; } status.textContent = 'Connecting…'; app.joinGame(c, (msg) => { status.textContent = msg; }); }, 'good');
+    const go = this.btn('Join!', 'ui_link', () => {
+      const c = codeIn.value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const rk = keyIn.value.trim() ? keyIn.value : null;
+      if (rk && !parseRelayKey(rk)) { status.textContent = 'The backup code has 16 letters and numbers (like ABCD-EFGH-JKMN-PQRS).'; return; }
+      if (c.length < 4 && !rk) { status.textContent = 'Type the code your partner sees.'; return; }
+      status.textContent = 'Connecting…';
+      app.joinGame(c.length >= 4 ? c : '', (msg) => { status.textContent = msg; }, { relayKey: rk });
+    }, 'good');
+    const more = h('details', { open: !!preset.relayKey },
+      h('summary', { style: 'cursor:pointer;font-weight:700' }, 'Joining does not work? Use a backup code'),
+      h('div', { class: 'col', style: 'gap:6px;margin-top:6px' }, h('div', { class: 'small' }, 'Your partner can turn on "Backup connection" in Invite / players and read you a longer code. It works on stricter networks (a little slower).'), keyIn));
     const body = h('div', { class: 'col', style: 'gap:10px;align-items:stretch' },
-      h('div', { class: 'small' }, 'Ask your partner to open their world, tap "Invite / players" in the pause menu, and read you the code.'), h('div', { class: 'field' }, h('label', null, 'Room code'), codeIn), go, status,
+      h('div', { class: 'small' }, 'Ask your partner to open their world, tap "Invite / players" in the pause menu, and read you the code.'), h('div', { class: 'field' }, h('label', null, 'Room code'), codeIn), go, status, more,
       h('div', { class: 'sep' }), h('button', { class: 'btn small', onclick: () => this.manual() }, 'Code not working? Pair manually'));
     this.frame('Join my partner', body, { back: () => this.together(), width: 'min(94vw, 440px)' });
-    setTimeout(() => codeIn.focus(), 100);
+    if (preset.auto) setTimeout(() => go.click(), 250); else setTimeout(() => codeIn.focus(), 100);
   }
 
   manual() {

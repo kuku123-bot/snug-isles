@@ -20,7 +20,7 @@ await host.evaluate(() => { __snug.profile.name = 'Mochi'; __snug.game.me.name =
 await host.evaluate(() => __snug.startHosting(__snug.game));
 await host.waitForSelector('textarea.sdp', { timeout: 30000, state: 'attached' });
 ok(true, 'host panel shows the manual pairing block even though the matchmaking server is down');
-await host.click('details summary'); await host.getByRole('button', { name: 'Make invite code' }).click();
+await host.getByText('Manual pairing', { exact: false }).first().click(); await host.getByRole('button', { name: 'Make invite code' }).click();
 await host.waitForFunction(() => document.querySelector('textarea.sdp[readonly]').value.length > 50, null, { timeout: 15000 });
 const offer = await host.evaluate(() => document.querySelector('textarea.sdp[readonly]').value);
 ok(/^[ZR]/.test(offer) && offer.length < 4000, `invite code made (${offer.length} chars)`);

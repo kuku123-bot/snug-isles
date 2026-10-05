@@ -3,6 +3,8 @@ import { HostLink } from './host.js';
 import { ClientLink } from './client.js';
 import { restoreWorld } from '../sim/serialize.js';
 import { openHostPeer, connectToHost, manualHostOffer, manualGuestAnswer } from './transport.js';
+import { RelayHost, connectRelay } from './relay.js';
+import { makeRelayKey, parseRelayKey } from './relaykey.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -10,7 +12,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function startHosting(app, game) {
   if (game.net) { game.ui.open('mp'); return; }
   const sim = game.sim;
-  const st = { code: null, status: 'Opening your world…', sig: 0, peer: null, offer: null, closed: false };
+  const st = { code: null, status: 'Opening your world…', sig: 0, peer: null, offer: null, closed: false, relay: null, relayKey: null, relayStatus: '' };
   const hl = new HostLink(sim, {
     localPid: game.localPid, saveName: game.saveName, worldId: game.saveId,
     approve: game.settings.approveJoins === false ? null : (info, decide, link) => game.hud.askJoin(info, decide, link),
@@ -26,11 +28,24 @@ export async function startHosting(app, game) {
     tick: (dt) => hl.tick(dt),
     tellRemote: (pid, ev) => hl.tellRemote(pid, ev),
     broadcastSettings: () => hl.broadcastSettings(),
-    inviteUrl: () => (st.code ? `${location.origin}${location.pathname}?join=${st.code}` : ''),
+    get relayOn() { return !!st.relay; }, get relayKey() { return st.relayKey; }, get relayStatus() { return st.relayStatus; },
+    /** the encrypted backup connection through public relay servers, for networks that block direct connections */
+    async enableRelay() {
+      if (st.relay || st.closed) return;
+      let key = parseRelayKey(sim.world.shared.flags.relayKey);
+      if (!key) { key = makeRelayKey(); sim.world.shared.flags.relayKey = key; }
+      st.relayKey = key; st.relayStatus = 'Connecting to the relay servers…'; st.sig++;
+      const r = new RelayHost(key, { onConnection: (conn) => hl.attach(conn), onStatus: (s) => { st.relayStatus = s; st.sig++; } });
+      st.relay = r;
+      try { await r.start(); app.saveWorld(game); } catch (e) { st.relay = null; st.relayStatus = e.message || 'Could not reach the relay servers.'; st.sig++; throw e; }
+      st.sig++;
+    },
+    inviteUrl: () => (st.code ? `${location.origin}${location.pathname}?join=${st.code}${st.relay ? '&relay=' + st.relayKey : ''}` : ''),
     manual: (hh) => manualHostBlock(hh, st, hl, game),
     close() {
       if (st.closed) return; st.closed = true;
       try { hl.sendBackup(); } catch (e) { /* ignore */ }
+      try { st.relay && st.relay.stop(); } catch (e) { /* ignore */ }
       setTimeout(() => { hl.close(); }, 120);
       setTimeout(() => { try { st.peer && st.peer.destroy(); } catch (e) { /* ignore */ } }, 900);
     },
@@ -65,13 +80,27 @@ function manualHostBlock(hh, st, hl, game) {
 }
 
 // ------------------------------------------------------------------ joining
-export async function joinGame(app, code, onStatus) {
+export async function joinGame(app, code, onStatus, { relayKey = null } = {}) {
   try {
-    app.profile.lastCode = code; app.saveProfile();
-    onStatus('Connecting to the matchmaking server…');
-    const { peer, conn } = await connectToHost(code, { onStatus });
-    await finishJoin(app, conn, { peer, code, onStatus });
-  } catch (e) { onStatus(e.message || String(e)); }
+    const rk = relayKey ? parseRelayKey(relayKey) : null;
+    if (relayKey && !rk) throw new Error('That backup code does not look right (it has 16 letters and numbers).');
+    if (code) app.profile.lastCode = code;
+    if (rk) app.profile.lastRelayKey = rk;
+    app.saveProfile();
+    let conn = null, peer = null, usedRelay = false;
+    if (code) {
+      onStatus('Connecting to the matchmaking server…');
+      try { ({ peer, conn } = await connectToHost(code, { onStatus, attempts: rk ? 2 : 3 })); } catch (e) { if (!rk) throw e; onStatus('The direct connection did not work. Trying the backup relay…'); }
+    }
+    if (!conn) {
+      if (!rk) throw new Error('Type the room code your partner sees.');
+      ({ conn } = await connectRelay(rk, { onStatus })); usedRelay = true;
+    }
+    await finishJoin(app, conn, { peer, code, relayKey: rk, usedRelay, onStatus });
+  } catch (e) {
+    const hint = relayKey ? '' : ' Still stuck? Ask your partner to turn on "Backup connection" (Invite / players) and enter the backup code under "Joining does not work?".';
+    onStatus((e.message || String(e)) + hint);
+  }
 }
 
 export async function manualJoin(app, offerCode, onStatus) {
@@ -120,7 +149,7 @@ function lost(app, link, ctx, reason, final = false) {
   const game = app.game;
   if (!game || game.net !== link || game.mode !== 'client') return;
   if (game.lostState) return;
-  const state = { msg: reason, final: final || !ctx.code, tries: 0, stop: false };
+  const state = { msg: reason, final: final || !(ctx.code || ctx.relayKey), tries: 0, stop: false };
   game.lostState = state;
   game.ui.open('lost', { state });
   if (state.final) return;
@@ -130,7 +159,9 @@ function lost(app, link, ctx, reason, final = false) {
       await wait(i === 1 ? 800 : 2500);
       if (state.stop || app.game !== game) return;
       try {
-        const { conn } = await connectToHost(ctx.code, { timeoutMs: 9000 });
+        let conn = null;
+        if (ctx.code && !ctx.usedRelay) { try { ({ conn } = await connectToHost(ctx.code, { timeoutMs: 9000, attempts: ctx.relayKey ? 1 : 3 })); } catch (e) { if (!ctx.relayKey) throw e; } }
+        if (!conn && ctx.relayKey) { ({ conn } = await connectRelay(ctx.relayKey)); ctx.usedRelay = true; }
         const ok = await new Promise((resolve) => {
           const nl = new ClientLink(conn, {
             pid: app.profile.pid, name: app.profile.name, look: app.profile.look,

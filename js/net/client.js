@@ -69,7 +69,7 @@ export class ClientLink {
     // position updates
     this.posAcc += dt;
     const me = w.players.get(this.o.pid);
-    if (me && this.posAcc >= 1 / POS_HZ) {
+    if (me && this.posAcc >= 1 / (this.conn.lowRate ? POS_HZ / 2 : POS_HZ)) {
       this.posAcc = 0;
       const ls = this.lastSent;
       const moved = !ls || Math.abs(ls.x - me.x) > 0.15 || Math.abs(ls.y - me.y) > 0.15 || ls.ix !== (me.ix || 0) || ls.iy !== (me.iy || 0);

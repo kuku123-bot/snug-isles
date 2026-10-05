@@ -146,7 +146,15 @@ export class HostLink {
     if (!evs.length) return;
     for (const link of this.links.values()) {
       if (!link.ready) { link.backlog.push(...evs); continue; }
+      if (link.conn.lowRate) { (link.slow || (link.slow = [])).push(...evs); continue; } // sent by flushSlow at a gentler pace
       this.send(link, { t: 'ev', e: evs });
+    }
+  }
+  /** links over the backup relay get their events in batches (at most ~8 messages a second) */
+  flushSlow(now) {
+    for (const link of this.links.values()) {
+      if (!link.ready || !link.slow || !link.slow.length || now - (link.slowAt || 0) < 0.125) continue;
+      this.send(link, { t: 'ev', e: link.slow }); link.slow = []; link.slowAt = now;
     }
   }
 
@@ -160,12 +168,13 @@ export class HostLink {
     if (this.closed) return;
     const now = this.o.now();
     this.evAcc += dt; this.stAcc += dt; this.backupAcc += dt;
-    if (this.evAcc >= 1 / EV_HZ) { this.evAcc = 0; this.flush(); }
+    if (this.evAcc >= 1 / EV_HZ) { this.evAcc = 0; this.flush(); this.flushSlow(now); }
     if (this.stAcc >= 1 / ST_HZ) {
       this.stAcc = 0;
       for (const link of this.links.values()) {
         if (!link.ready) continue;
         if (link.conn.buffered > 300000) continue; // clog: skip this tick
+        if (link.conn.lowRate && (link.stSkip = !link.stSkip)) continue; // relay: every other state update
         this.send(link, buildStateMsg(this.sim, link));
         const p = this.world.players.get(link.pid);
         if (p && p.rev !== link.psRev) { link.psRev = p.rev; this.send(link, buildPrivateMsg(p)); }
