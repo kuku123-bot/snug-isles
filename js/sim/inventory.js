@@ -1,7 +1,7 @@
 // Inventory helpers: slot arrays hold {id, n} or null. Pure functions over arrays.
-import { ITEMS } from '../data/items.js';
+import { ITEMS, STACK } from '../data/items.js';
 
-export const stackMax = (id) => (ITEMS[id] ? ITEMS[id].stack : 99);
+export const stackMax = (id) => (ITEMS[id] ? ITEMS[id].stack : STACK);
 export const makeInv = (n) => new Array(n).fill(null);
 
 /** Does an item satisfy an ingredient token ('@fish' = any fish) */

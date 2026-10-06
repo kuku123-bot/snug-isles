@@ -129,6 +129,152 @@ ok(fl1 - fl0 >= 2, `right thumb painted at the same time (${fl1 - fl0} floors)`)
 await shot('build-two-thumbs');
 await ev(() => __snug.game.builder.stop());
 
+console.log('furniture: the preview rests in front of you, and the Rotate and Place buttons turn and put it down');
+{
+  await ev(() => {
+    const g = __snug.game, w = g.world, me = g.me;
+    g.builder.stop();
+    w.settings.buildCost = 0; w.settings.enemyDensity = 0; w.techs.add('cottage_style');
+    window.__clear = (cw, ch) => {
+      for (let r = 3; r < 60; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
+        for (let y = y0 - 1; y < y0 + ch + 1 && good; y++) for (let x = x0 - 1; x < x0 + cw + 1 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0 || w.wall[w.idx(x, y)] || w.floor[w.idx(x, y)]) good = false; } // trees and rocks do not count: they are cleared below
+        if (!good) continue;
+        for (let y = y0 - 1; y < y0 + ch + 1; y++) for (let x = x0 - 1; x < x0 + cw + 1; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); }
+        return [x0, y0];
+      }
+      return null;
+    };
+  });
+  const [cx0, cy0] = await ev(() => window.__clear(7, 6));
+  await ev(([x, y]) => { const g = __snug.game, me = g.me; me.x = (x + 3) * 16; me.y = (y + 2) * 16; g.pstate(me.pid).dir = 0; g.builder.start('rustic_sofa'); }, [cx0, cy0]);
+  await page.waitForTimeout(400);
+  const bar = await ev(() => [...document.querySelectorAll('.buildbar button')].map((b) => b.textContent.trim()));
+  ok(bar.includes('Rotate') && bar.includes('Place'), `the build bar has Rotate and Place on a touch screen (${bar.join(' / ')})`);
+  let g1 = await ev(() => { const b = __snug.game.builder; return { ok: b.ok, rot: b.rot, tx: b.tx, ty: b.ty, fp: b.footprint() }; });
+  ok(g1.ok && g1.rot === 0 && g1.fp[0] === 2, `with no finger down the preview sits in front of the player, green (${JSON.stringify(g1)})`);
+  const btn = async (name) => { const r = await page.locator('.buildbar button', { hasText: name }).first().boundingBox(); await touch.tap(r.x + r.width / 2, r.y + r.height / 2); await page.waitForTimeout(200); };
+  await btn('Rotate');
+  g1 = await ev(() => { const b = __snug.game.builder; return { rot: b.rot, fp: b.footprint(), ok: b.ok }; });
+  ok(g1.rot === 1 && g1.fp[0] === 1 && g1.fp[1] === 2, `tapping Rotate turns it (${JSON.stringify(g1)})`);
+  await shot('rotate-place');
+  await btn('Place');
+  const sofa = await ev(() => { const t = [...__snug.game.world.things.values()].find((q) => q.type === 'rustic_sofa'); return t ? { rot: t.rot, w: t.w, h: t.h } : null; });
+  ok(sofa && sofa.rot === 1 && sofa.w === 1 && sofa.h === 2, `tapping Place put it down turned (${JSON.stringify(sofa)})`);
+  // red when it does not fit: Place says why instead of building
+  await btn('Place');
+  const toast = await ev(() => document.querySelector('#toasts') ? document.querySelector('#toasts').textContent : '');
+  ok(/Occupied|in the way|already|Someone/i.test(toast), `Place on top of it refuses and says why ("${toast.slice(0, 40)}")`);
+  await ev(() => __snug.game.builder.stop());
+}
+
+console.log('painting with a finger: the picker, sliders, swatches, building in a color and the brush');
+{
+  const [px, py] = await ev(() => window.__clear(8, 6));
+  await ev(([x, y]) => { const g = __snug.game, me = g.me; me.x = (x + 2.5) * 16; me.y = (y + 4) * 16; g.builder.start('floor_plank'); g.builder.setColor(0, false); localStorage.removeItem('snug.paint.recent'); }, [px, py]);
+  await page.waitForTimeout(300);
+  const colorOf = (hx) => ev((hx) => { const n = parseInt(hx.slice(1), 16), q = (v) => Math.round(v * 31 / 255); return 0x8000 | (q(n >> 16 & 255) << 10) | (q(n >> 8 & 255) << 5) | q(n & 255); }, hx);
+  const tileXY = (tx, ty) => ev(([x, y]) => { const g = __snug.game; const [cx, cy] = g.view.toClient((x + 0.5) * 16 - g.camX, (y + 0.5) * 16 - g.camY); return { x: cx, y: cy }; }, [tx, ty]);
+  const tapBtn = async (name) => { const r = await page.locator('.buildbar button', { hasText: name }).first().boundingBox(); await touch.tap(r.x + r.width / 2, r.y + r.height / 2); await page.waitForTimeout(250); };
+  const tapSel = async (sel) => { const r = await page.locator(sel).first().boundingBox(); await touch.tap(r.x + r.width / 2, r.y + r.height / 2); await page.waitForTimeout(200); };
+  const col = () => ev(() => __snug.game.builder.col);
+  await tapBtn('Color');
+  ok(await page.locator('.buildside .cp').isVisible(), 'tapping Color opens the picker');
+  const sw = await page.locator('.cp-swatches .cp-sw').first().boundingBox();
+  ok(sw.width >= 28 && sw.height >= 28, `swatches are big enough for a finger (${Math.round(sw.width)}x${Math.round(sw.height)})`);
+  const th = await page.locator('.cp-thumb').first().boundingBox();
+  ok(th.width >= 28, `slider thumbs too (${Math.round(th.width)}px)`);
+  const pb = await page.locator('.buildside .cp').boundingBox();
+  ok(pb.x + pb.width <= W + 1 && pb.y >= 0 && pb.y + pb.height <= H + 1, `the picker fits on the screen (${Math.round(pb.width)}x${Math.round(pb.height)} in ${W}x${H})`);
+  const bb = await page.locator('.buildbar').boundingBox();
+  ok(pb.y + pb.height <= bb.y + 2, 'and it does not cover the build buttons');
+  await tapSel('.cp-sw[title="Red"]');
+  const red = await colorOf('#e0525c');
+  ok((await col()) === red, 'a finger tap on a swatch chooses it');
+  // the finger places a floor tile in that color
+  await touch.tap((await tileXY(px + 2, py + 2)).x, (await tileXY(px + 2, py + 2)).y); await page.waitForTimeout(250);
+  ok((await ev(([x, y]) => { const w = __snug.game.world; return w.floorCol[w.idx(x, y)]; }, [px + 2, py + 2])) === red, 'a tap in the world builds the floor in red');
+  // a finger on a slider track
+  const before = await col();
+  const hue = await rect('.cp-slider:nth-child(1) .cp-track');
+  await touch.drag(hue.l + hue.w * 0.1, hue.y, hue.l + hue.w * 0.7, hue.y + 3, 400, 8);
+  ok((await col()) !== before, 'dragging a slider with a finger changes the color');
+  const mid = await col();
+  const sat = await rect('.cp-slider:nth-child(2) .cp-track');
+  await touch.drag(sat.l + sat.w * 0.5, sat.y, sat.l + sat.w + 120, sat.y + 80, 300, 6);
+  ok((await col()) !== mid && (await col()) >= 0x8000, 'a finger sliding past the end of the track stays in range');
+  await shot('paint-picker');
+  // the brush with a finger: lay a row, color it in one stroke
+  await ev(([x, y]) => { const g = __snug.game; g.me.x = (x + 2.5) * 16; g.me.y = (y + 4) * 16; for (let i = 0; i < 5; i++) g.cmd({ c: 'build', bid: 'floor_plank', tx: x + i, ty: y + 1 }); }, [px, py]);
+  await page.waitForTimeout(300);
+  await tapBtn('Paint');
+  ok(await ev(() => __snug.game.builder.paint), 'the Paint button turns the brush on with a finger');
+  await tapSel('.cp-sw[title="Butter"]');
+  const butter = await colorOf('#f7e08e');
+  const a = await tileXY(px, py + 1), b = await tileXY(px + 4, py + 1);
+  await touch.drag(a.x, a.y, b.x, b.y, 450, 16);
+  await page.waitForTimeout(250);
+  const row = await ev(([x, y]) => { const w = __snug.game.world; return [0, 1, 2, 3, 4].map((i) => w.floorCol[w.idx(x + i, y + 1)]); }, [px, py]);
+  ok(row.every((c) => c === butter), 'one finger stroke colors the whole row: ' + row.join(','));
+  await shot('paint-brushed');
+  await tapBtn('Done');
+  ok(await page.locator('.buildside .cp').count() === 0, 'Done closes the picker');
+}
+
+console.log('sitting and sleeping with the Use button and the joystick');
+{
+  const [fx, fy] = await ev(() => window.__clear(7, 4));
+  const ids = await ev(([x, y]) => { const w = __snug.game.world; return { chair: w.addThing('rustic_chair', x + 1, y + 1, { rot: 0 }).id, bed: w.addThing('rustic_bed', x + 5, y + 1, { rot: 2 }).id }; }, [fx, fy]);
+  await ev(([x, y]) => { const me = __snug.game.me; me.x = (x + 1.5) * 16; me.y = (y + 3) * 16; }, [fx, fy]);
+  await page.waitForTimeout(300);
+  const use = await rect('.tbtn:not(.big):not(.sm)');
+  await touch.tap(use.x, use.y); await page.waitForTimeout(300);
+  ok(await ev((id) => { const me = __snug.game.me; return !!me.sit && me.sit.id === id; }, ids.chair), 'the Use button sits you on the chair');
+  await shot('sitting');
+  await touch.tap(use.x, use.y); await page.waitForTimeout(300);
+  ok(await ev(() => !__snug.game.me.sit), 'and gets you up again');
+  await ev(([x, y]) => { const me = __snug.game.me; me.x = (x + 5.5) * 16; me.y = (y + 3.2) * 16; }, [fx, fy]);
+  await page.waitForTimeout(300);
+  await touch.tap(use.x, use.y); await page.waitForTimeout(300);
+  ok(await ev(() => __snug.game.me.sleeping), 'the Use button lies you in the bed');
+  await shot('sleeping');
+  // push the joystick: out of bed onto free ground, then walk off
+  const bx = await ev(() => __snug.game.me.x);
+  await touch.down(190, H - 200); await page.waitForTimeout(80);
+  for (let i = 1; i <= 6; i++) { await touch.move(190 + i * 12, H - 200); await page.waitForTimeout(60); }
+  await page.waitForTimeout(500);
+  await touch.up(); await page.waitForTimeout(150);
+  const after = await ev(() => { const g = __snug.game, me = g.me; return { sleeping: me.sleeping, x: me.x, free: g.world.boxFree(me.x, me.y - 3, 4, 3) }; });
+  ok(!after.sleeping && after.free && after.x - bx > 6, `the joystick gets you out of bed and walking, never stuck (${(after.x - bx).toFixed(1)}px)`);
+}
+
+console.log('dragging items with a finger');
+{
+  await ev(() => { const me = __snug.game.me; for (let i = 0; i < me.inv.length; i++) me.inv[i] = null; me.inv[10] = { id: 'plank', n: 50 }; me.inv[2] = { id: 'stone', n: 7 }; me.inv[13] = { id: 'wood', n: 9999 }; me.rev++; __snug.game.ui.open('inventory'); });
+  await page.waitForTimeout(450);
+  const slot = (i) => ev((i) => { const el = [...document.querySelectorAll('#ui .slot[data-ref]')].find((e) => e.dataset.ref === JSON.stringify({ k: 'p', i })); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, i);
+  const fdrag = async (A, B) => {
+    await touch.down(A.x, A.y); await page.waitForTimeout(40);
+    for (let i = 1; i <= 3; i++) { await touch.move(A.x + 4 * i, A.y + 4 * i); await page.waitForTimeout(30); }
+    for (let i = 1; i <= 10; i++) { await touch.move(A.x + (B.x - A.x) * i / 10, A.y + (B.y + 40 - A.y) * i / 10); await page.waitForTimeout(30); } // the picture rides 40px above the finger
+    await touch.up(); await page.waitForTimeout(250);
+  };
+  const inv = () => ev(() => __snug.game.me.inv.map((s) => (s ? s.id + ':' + s.n : null)));
+  await fdrag(await slot(10), await slot(2));
+  let i = await inv();
+  ok(i[2] === 'plank:50' && i[10] === 'stone:7', 'a finger drags a stack onto another slot and they swap');
+  await fdrag(await slot(13), await slot(5));
+  i = await inv();
+  ok(i[5] === 'wood:9999' && i[13] === null, 'dragging onto the hotbar row holds it');
+  ok((await ev(() => document.querySelectorAll('#ui .slot.sel').length)) === 0, 'lifting the finger does not select the slot');
+  await shot('bag-after-drag');
+  const xb = await rect('.scrim .xbtn'); await touch.tap(xb.x, xb.y); await page.waitForTimeout(250);
+  const hot = (i) => ev((i) => { const r = document.querySelectorAll('.hotbar .slot')[i].getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, i);
+  await fdrag(await hot(5), await hot(0));
+  i = await inv();
+  ok(i[0] === 'wood:9999' && i[5] === null, 'the hotbar can be rearranged with a finger too');
+}
+
 console.log('portrait shows a rotate hint');
 await page.setViewportSize({ width: H, height: W }); await page.waitForTimeout(500);
 ok(await ev(() => !document.querySelector('#rotate').classList.contains('hidden')), 'rotate hint visible in portrait');

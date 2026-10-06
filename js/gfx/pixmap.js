@@ -202,6 +202,12 @@ export class Pixmap {
     }
     return out;
   }
+  /** exact quarter turn clockwise (w and h swap) */
+  rot90() {
+    const p = new Pixmap(this.h, this.w);
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) p.d[x * p.w + (this.h - 1 - y)] = this.d[y * this.w + x];
+    return p;
+  }
   flipX() {
     const p = new Pixmap(this.w, this.h);
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) p.d[y * this.w + (this.w - 1 - x)] = this.d[y * this.w + x];

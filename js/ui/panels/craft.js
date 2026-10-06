@@ -75,12 +75,12 @@ export function craftPanel(g, data, ui) {
     else if (r.station !== 'hand') detail.append(h('div', { class: 'chip ok', style: 'align-self:flex-start' }, ic('ui_check', 1), `${STATION_NAMES[r.station]} nearby`));
     const q = h('div', { class: 'row' },
       h('button', { class: 'btn small icon', onclick: () => { qty = Math.max(1, qty - 1); renderDetail(); } }, ic('ui_minus', 1)), h('b', { style: 'min-width:32px;text-align:center;font-size:20px' }, qty),
-      h('button', { class: 'btn small icon', onclick: () => { qty = Math.min(99, qty + 1); renderDetail(); } }, ic('ui_plus', 1)),
-      h('button', { class: 'btn small', onclick: () => { qty = Math.max(1, Math.min(99, maxCraft(r, s))); renderDetail(); } }, 'Max'));
+      h('button', { class: 'btn small icon', onclick: () => { qty = Math.min(999, qty + 1); renderDetail(); } }, ic('ui_plus', 1)),
+      h('button', { class: 'btn small', onclick: () => { qty = Math.max(1, Math.min(999, maxCraft(r, s))); renderDetail(); } }, 'Max'));
     const craft = h('button', { class: 'btn good' + (s.can ? '' : ' disabled'), style: 'font-size:19px', onclick: () => { if (!s.can) { g.audio.play('error'); return; } g.cmd({ c: 'craft', rid: r.id, n: qty }); } }, ic('ui_hammer', 2), 'Craft');
     detail.append(q, craft);
   }
-  function maxCraft(r, s) { let m = 99; for (const k in r.in) m = Math.min(m, Math.floor(countAll(s.src, k) / r.in[k])); return m; }
+  function maxCraft(r, s) { let m = 999; for (const k in r.in) m = Math.min(m, Math.floor(countAll(s.src, k) / r.in[k])); return m; }
   const panel = { title: 'Crafting', icon: 'ui_hammer', body, sig: () => { const p = me(); return `${p.rev}:${w().techs.size}:${w().rev}:${w().coins}:${Math.floor(g.t * 2)}`; }, refresh: render };
   render();
   return panel;

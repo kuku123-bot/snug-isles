@@ -3,7 +3,7 @@ export const KEYMAP = {
   up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
   dash: ['Space', 'ShiftLeft', 'ShiftRight'], interact: ['KeyE', 'KeyF'],
   inventory: ['Tab', 'KeyI'], craft: ['KeyC'], build: ['KeyB'], tech: ['KeyT'], skills: ['KeyK'], map: ['KeyM'],
-  menu: ['Escape'], rotate: ['KeyR'], remove: ['KeyX'], emote: ['KeyG'], zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'],
+  menu: ['Escape'], rotate: ['KeyR'], remove: ['KeyX'], paint: ['KeyV'], emote: ['KeyG'], zoomIn: ['Equal', 'NumpadAdd'], zoomOut: ['Minus', 'NumpadSubtract'],
   prevSlot: ['KeyQ', 'BracketLeft'], nextSlot: ['BracketRight'], chat: ['Enter'], photo: ['KeyP'],
 };
 const CODE_TO_ACTION = {};
@@ -12,6 +12,7 @@ for (const a in KEYMAP) for (const c of KEYMAP[a]) (CODE_TO_ACTION[c] = CODE_TO_
 export class Input {
   constructor(target) {
     this.keys = new Set();
+    this.shiftAtPress = false;
     this.edges = new Set(); // actions pressed since last frame
     this.mouse = { x: 0, y: 0, cx: 0, cy: 0, down: false, right: false, inside: false, moved: false };
     this.pointerType = 'mouse';
@@ -38,7 +39,7 @@ export class Input {
       }
       if (e.repeat) return;
       this.keys.add(e.code);
-      if (acts) for (const a of acts) this.edges.add(a);
+      if (acts) { for (const a of acts) this.edges.add(a); this.shiftAtPress = e.shiftKey; } // (Shift as it was at that key press, not a frame later)
       if (/^Digit[1-8]$/.test(e.code)) this.digitPressed = +e.code.slice(5) - 1;
       this.lastInputKind = this.lastInputKind === 'touch' ? 'mouse' : this.lastInputKind;
     });

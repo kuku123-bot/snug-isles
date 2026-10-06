@@ -14,6 +14,9 @@ import { BIOMES } from '../data/biomes.js';
 import { calcStats, HOTBAR } from '../sim/player.js';
 import { landPrice } from '../sim/worldgen.js';
 import { wallDefOf } from '../sim/world.js';
+import { turnSprite } from '../data/facing.js';
+import { exitSpot, unstickSpot, standsFree } from '../sim/furniture.js';
+import { initDrag } from '../ui/drag.js';
 import { nightness, phaseOf } from '../sim/daynight.js';
 import { renderText } from '../gfx/bitfont.js';
 import { hex, INK } from '../gfx/pixmap.js';
@@ -68,6 +71,7 @@ export class Game {
     this.ui = new UI(this);
     this.hud = new HUD(this, hudRoot);
     this.builder = new Builder(this);
+    initDrag(this); // drag items between slots
     const touchRoot = document.getElementById('touch');
     this.touch = new TouchControls(this, touchRoot);
     this.attachPointer();
@@ -237,6 +241,8 @@ export class Game {
     const a = [[0, 1], [0, -1], [st.flip ? -1 : 1, 0]][st.dir];
     return [me.x + a[0] * 22, me.y - 6 + a[1] * 22];
   }
+  /** holding something you can hit with (a pickaxe/axe or a sword) */
+  armed() { const me = this.me, sel = me && me.inv[me.sel], it = sel && ITEMS[sel.id]; return !!(it && (it.tool === 'pick' || it.weapon === 'sword')); }
   /** nearest hittable thing/mob around the player (for touch/gamepad auto-aim) */
   nearestTarget(range) {
     const me = this.me, w = this.world;
@@ -254,6 +260,15 @@ export class Game {
       const dd = (cx - px) ** 2 + (cy - py) ** 2;
       if (dd < bd) { bd = dd; best = { x: cx, y: cy, kind: nd.kind }; }
     }
+    // nothing to chop, mine or fight: a wild critter close by is the target (never a pet)
+    if (!best) {
+      let cb = (range * 0.7) ** 2;
+      for (const m of w.mobs.values()) {
+        const d = MOBS[m.type]; if (d.hostile || m.pet || m.hp <= 0) continue;
+        const dx = m.x - px, dy = m.y - d.h * 0.4 - py, dd = dx * dx + dy * dy;
+        if (dd < cb) { cb = dd; best = { x: m.x, y: m.y - d.h * 0.4, kind: 'mob' }; }
+      }
+    }
     return best;
   }
 
@@ -269,7 +284,7 @@ export class Game {
     for (const m of w.mobs.values()) {
       const d = MOBS[m.type];
       const dd = (m.x - wx) ** 2 + (m.y - d.h * 0.45 - wy) ** 2;
-      if (dd < best && (d.hostile || true)) { best = dd; hov.mobId = m.id; hov.kind = d.hostile ? 'mob' : 'pet'; hov.mob = m; }
+      if (dd < best) { best = dd; hov.mobId = m.id; hov.kind = d.hostile ? 'mob' : m.pet ? 'pet' : 'critter'; hov.mob = m; }
     }
     if (hov.mobId) { this.hover = hov; return; }
     const tx = Math.floor(wx / TILE), ty = Math.floor(wy / TILE);
@@ -284,7 +299,7 @@ export class Game {
       const inter = (bd && INTERACTIVE.has(bd.behavior)) || (nd && (nd.kind === 'treasure'));
       const hit = nd && nd.kind === 'node' && !t.dep;
       if (!inter && !hit) continue;
-      const sprH = this.sprites.size('t_' + t.type)[1], sprW = this.sprites.size('t_' + t.type)[0];
+      const sn = t.rot && bd ? turnSprite(bd, t.rot) : 't_' + t.type, [sprW, sprH] = this.sprites.size(sn);
       const x0 = t.x * TILE + (t.w * TILE - sprW) / 2, x1 = x0 + sprW, y1 = (t.y + t.h) * TILE, y0 = y1 - Math.min(sprH, 34);
       if (wx >= x0 + 2 && wx <= x1 - 2 && wy >= y0 && wy <= y1) {
         if (inter) { hov.thingId = t.id; hov.kind = 'thing'; hov.interactive = true; hov.thing = t; this.hover = hov; return; }
@@ -307,6 +322,8 @@ export class Game {
       if (hv.kind === 'thing' && hv.interactive) { this.tryInteract(hv.thing); this.suppressUse = true; return; }
       if (hv.kind === 'door') { this.cmd({ c: 'door', tx: hv.tx, ty: hv.ty }); this.suppressUse = true; return; }
       if (hv.kind === 'pet') { this.cmd({ c: 'pet', id: hv.mobId }); this.suppressUse = true; return; }
+      // a wild critter: with a tool or sword in hand a click hits it (hunting), with anything else it is a pat. E / right-click always pats.
+      if (hv.kind === 'critter' && !this.armed()) { this.cmd({ c: 'pet', id: hv.mobId }); this.suppressUse = true; return; }
     }
     this.suppressUse = false;
   }
@@ -395,7 +412,7 @@ export class Game {
     const w = this.world;
     let kind = null;
     let bestMob = 28 * 28;
-    for (const m of w.mobs.values()) { const d = MOBS[m.type]; if (!d.hostile) continue; const dd = (m.x - aim[0]) ** 2 + (m.y - d.h * 0.4 - aim[1]) ** 2; if (dd < bestMob) { bestMob = dd; kind = 'mob'; } }
+    for (const m of w.mobs.values()) { const d = MOBS[m.type]; if (!d.hostile && (m.pet || m.hp <= 0)) continue; const dd = (m.x - aim[0]) ** 2 + (m.y - d.h * 0.4 - aim[1]) ** 2; if (dd < Math.min(bestMob, d.hostile ? bestMob : (d.r + 12) ** 2)) { bestMob = dd; kind = 'mob'; } }
     if (!kind) {
       for (const t of w.thingsNear(aim[0], aim[1], 26)) { const nd = NODES[t.type]; if (nd && nd.kind === 'node' && !t.dep) { kind = 'node'; break; } if (nd && nd.kind === 'dig') kind = 'dig'; }
     }
@@ -462,14 +479,15 @@ export class Game {
     }
     if (ui.blocking) return;
     if (inp.pressed('interact')) this.tryInteract();
-    if (inp.pressed('rotate')) this.builder.rotate();
+    if (inp.pressed('rotate')) this.builder.rotate(inp.shiftAtPress ? -1 : 1);
     if (inp.pressed('photo')) this.photo();
     if (inp.pressed('remove')) { if (this.builder.active) this.builder.toggleRemove(); else this.builder.startRemove(); }
+    if (inp.pressed('paint')) { if (this.builder.active) this.builder.togglePaint(); else this.builder.startPaint(); }
     if (inp.pressed('zoomIn')) this.zoom(1);
     if (inp.pressed('zoomOut')) this.zoom(-1);
     if (me) {
       if (inp.digitPressed >= 0) this.selectSlot(inp.digitPressed);
-      if (inp.wheel) this.selectSlot((me.sel + (inp.wheel > 0 ? 1 : -1) + HOTBAR) % HOTBAR);
+      if (inp.wheel) { if (this.builder.active && this.builder.def && !this.builder.remove && !this.builder.paint && (this.builder.def.kind === 'thing' || this.builder.def.kind === 'flat')) this.builder.rotate(inp.wheel > 0 ? 1 : -1); else this.selectSlot((me.sel + (inp.wheel > 0 ? 1 : -1) + HOTBAR) % HOTBAR); }
       if (inp.pressed('nextSlot')) this.selectSlot((me.sel + 1) % HOTBAR);
       if (inp.pressed('prevSlot')) this.selectSlot((me.sel + HOTBAR - 1) % HOTBAR);
     }
@@ -506,8 +524,19 @@ export class Game {
     let [ix, iy] = blocked ? [0, 0] : inp.moveVec();
     me.ix = ix; me.iy = iy;
     if (me.dead > 0) { ix = iy = 0; }
-    if ((me.sleeping || me.sit) && (ix || iy)) { me.sleeping = false; me.sit = null; this.cmd({ c: 'wake' }); }
+    if ((me.sleeping || me.sit) && (ix || iy)) {
+      // get up right now (no round trip to the host): a bed is solid, so step out beside it, on the same spot the host works out
+      const spot = me.sleeping || !standsFree(w, me.x, me.y) ? exitSpot(w, me) : null;
+      me.sleeping = false; me.sit = null;
+      if (spot) { me.x = spot.x; me.y = spot.y; }
+      this.cmd({ c: 'wake' });
+    }
     if (me.sleeping || me.sit) { ix = iy = 0; }
+    else if (me.dead <= 0) {
+      // never stay stuck inside something solid (an old save, a piece placed on top of you): step out to the nearest free spot
+      const free = unstickSpot(w, me.x, me.y);
+      if (free) { me.x = free.x; me.y = free.y; this.kb.vx = this.kb.vy = 0; }
+    }
     // dash
     if (!blocked && me.dead <= 0 && (inp.pressed('dash') || this.touch.dashPressed) && this.dashT <= 0 && me.energy >= 25 && me.dashCd <= 0.05 && !this.builder.active) {
       this.touch.dashPressed = false;

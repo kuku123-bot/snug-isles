@@ -2,7 +2,7 @@
 import { TILE, hash32, hashf, clamp, TAU } from '../util.js';
 import { composeLand, NB, GROUND_VARIANTS, DECOS } from '../gfx/art/terrain.js';
 import { wallSprite, fenceSprite } from '../gfx/art/walls.js';
-import { playerFrame, playerSleep, lookKey } from '../gfx/art/player.js';
+import { playerFrame, playerSleep, playerSleepHead, lookKey } from '../gfx/art/player.js';
 import { GROUND_IDS } from '../data/biomes.js';
 import { BUILD } from '../data/build.js';
 import { NODES } from '../data/nodes.js';
@@ -11,10 +11,17 @@ import { ITEMS } from '../data/items.js';
 import { CROPS } from '../data/crops.js';
 import { wallDefOf, floorDefOf, decoDefOf, thingDef } from '../sim/world.js';
 import { nightness, phaseOf, ambientColor } from '../sim/daynight.js';
+import { turnable, turnSprite, footprintFor } from '../data/facing.js';
+import { tintPixmap } from '../gfx/tint.js';
+import { colorHex } from '../data/paint.js';
+import { paintTarget } from '../sim/commands.js';
+import { furnitureUnder, nearestSlot, pillowAt } from '../sim/furniture.js';
 
 const SKY_DEEP = '#3388dc';
 const ANIM_RATE = { campfire: 6, torch: 7, brazier: 6, candelabra: 6, lava_lamp: 2, star_lantern: 2, warp_pad: 4, fountain: 5, fireplace: 6, cauldron: 3, crystal_ball: 2, mushroom_lamp: 2, star_orb: 2, portal_ring: 3, fairy_ring: 2, forge: 5, arcane_altar: 2, prism_workshop: 2, star_forge: 2, alchemy_table: 3, world_heart: 2, windmill: 4 };
 const MULTI = ['bed', 'seat'];
+const SEAT_LIP = 6; // rows of a seat's picture (from the bottom) drawn over whoever sits in it
+const SIT_DY = [0, -6, 0]; // how far (px) a seated person is moved down for the front, back and side views
 
 export class Renderer {
   constructor(canvas, sprites, book) {
@@ -90,18 +97,26 @@ export class Renderer {
       return composeLand(this.book.get(`g_${kind}_${v}`), kind, mask, ng.some(Boolean) ? nb : null);
     });
   }
-  _wallSprite(i, x, y) {
+  _wallSprite(i, x, y, colOver) { // colOver: show it in another color (the paint brush preview)
     const w = this.world, W = w.W;
     const code = w.wall[i], d = wallDefOf(code);
     const fenceLike = (p) => p === 'fence' || p === 'gate';
     const same = (xx, yy) => { if (xx < 0 || yy < 0 || xx >= W || yy >= w.H) return false; const c = w.wall[yy * W + xx]; if (!c) return false; return fenceLike(wallDefOf(c).piece) === fenceLike(d.piece); };
     const open = w.wallState[i] ? 1 : 0;
+    const col = colOver === undefined ? w.wallCol[i] : colOver;
     if (fenceLike(d.piece)) {
-      const mask = (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0);
-      return this.sprites.dyn(`F|${code}|${mask}|${open}`, () => fenceSprite(d.mat, d.piece === 'gate', mask, open));
+      const mask = (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0), key = `F|${code}|${mask}|${open}`;
+      const rec = this.sprites.dyn(key, () => fenceSprite(d.mat, d.piece === 'gate', mask, open));
+      return col ? this._painted(key, rec, col) : rec;
     }
-    const mask = (same(x, y - 1) ? 1 : 0) | (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0);
-    return this.sprites.dyn(`W|${code}|${mask}|${open}`, () => wallSprite(d.mat, d.piece, mask, open));
+    const mask = (same(x, y - 1) ? 1 : 0) | (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0), key = `W|${code}|${mask}|${open}`;
+    const rec = this.sprites.dyn(key, () => wallSprite(d.mat, d.piece, mask, open));
+    return col ? this._painted(key, rec, col) : rec;
+  }
+  /** a sprite painted with a color: made once per (sprite, color), then reused. `key` names the sprite `rec` is (flipped ones add '|flip'). */
+  _painted(key, rec, col) {
+    const sp = this.sprites, k = key + '|p' + col;
+    return sp.map.get(k) || sp.addPixmap(k, tintPixmap(sp.pixmapOf(rec), col));
   }
 
   // ------------------------------------------------------------------ pools
@@ -166,7 +181,10 @@ export class Renderer {
           if (dc && !w.occ[i] && !w.wall[i]) sp.drawS(ctx, dc, px, py);
         }
         const f = w.floor[i];
-        if (f) { const fd = floorDefOf(f); sp.draw(ctx, 'f_' + fd.id.replace(/^floor_/, ''), px, py); }
+        if (f) {
+          const nm = 'f_' + floorDefOf(f).id.replace(/^floor_/, ''), fc = w.floorCol[i];
+          if (fc) { const rec = sp.get(nm); if (rec) sp.drawS(ctx, this._painted(nm, rec, fc), px, py); } else sp.draw(ctx, nm, px, py);
+        }
       }
     }
     // flat things (rugs etc.)
@@ -196,9 +214,18 @@ export class Renderer {
     for (const p of w.players.values()) {
       if (!p.online) continue;
       const px = p.rx === undefined ? p.x : p.rx, py = p.ry === undefined ? p.y : p.ry;
-      let sy = py;
-      if (p.sleeping || p.sit) sy += 3;
-      this._push(sy, 3, p);
+      let sy = py, furn = null;
+      if (p.sleeping || p.sit) {
+        furn = furnitureUnder(w, p, p.sleeping ? 'bed' : 'seat');
+        if (!furn) sy += 3;
+        else {
+          const bottom = (furn.y + furn.h) * TILE;
+          if (p.sleeping) sy = bottom + 0.3; // on top of the bed
+          else if (nearestSlot(furn, p.x, p.y).dir === 2) sy = bottom - 0.3; // facing away: the backrest is in front of them
+          else { sy = bottom + 0.3; this._push(bottom + 0.6, 5, furn, thingDef(furn.type)); } // the front edge of the seat goes over their legs
+        }
+      }
+      this._push(sy, 3, p, furn);
     }
     for (const d of w.drops.values()) {
       if (d.x < camX - 20 || d.x > camX + VW + 20 || d.y < camY - 20 || d.y > camY + VH + 20) continue;
@@ -210,7 +237,8 @@ export class Renderer {
         case 0: this._drawThing(ctx, e.a, e.b, ox, oy, t, g); break;
         case 1: this._drawWall(ctx, e.a, e.b, e.c, ox, oy, g); break;
         case 2: this._drawMob(ctx, e.a, ox, oy, t, g); break;
-        case 3: this._drawPlayer(ctx, e.a, ox, oy, t, g); break;
+        case 3: this._drawPlayer(ctx, e.a, ox, oy, t, g, e.b); break;
+        case 5: this._drawSeatLip(ctx, e.a, e.b, ox, oy, t); break;
         case 4: this._drawDrop(ctx, e.a, ox, oy, t, g); break;
       }
     }
@@ -219,7 +247,7 @@ export class Renderer {
     this._drawProjectiles(ctx, w, ox, oy, g);
     this._drawBobbers(ctx, g, ox, oy);
     this._drawLandTags(ctx, g, ox, oy);
-    if (g.build && g.build.active) this._drawBuildGhost(ctx, g, ox, oy);
+    if (g.builder && g.builder.active) this._drawBuildGhost(ctx, g, ox, oy, t);
     g.fx.drawParticles(ctx, ox, oy);
 
     // ---- lighting & weather
@@ -234,7 +262,7 @@ export class Renderer {
 
   // ------------------------------------------------------------------ things
   thingSpriteName(th, d, t) {
-    let base = 't_' + th.type;
+    let base = th.rot && turnable(d) ? turnSprite(d, th.rot) : 't_' + th.type;
     if (th.dep) { const dn = base + '_dep'; if (this.sprites.has(dn)) return dn; return base; }
     const s = th.s;
     if (s && s.w && this.sprites.has(base + '_on')) {
@@ -256,8 +284,9 @@ export class Renderer {
     const name = this.thingSpriteName(th, d, t);
     let spr = sp.get(name);
     if (!spr) return;
-    let flip = th.flip && d.kind !== 'node';
+    let flip = th.flip && d.kind !== 'node' && !th.rot;
     if (flip) spr = sp.flipped(name);
+    if (th.col) spr = this._painted(flip ? name + '|flip' : name, spr, th.col);
     let dx = th.x * TILE + (th.w * TILE - spr.w) / 2 + ox, dy = (th.y + th.h) * TILE - spr.h + oy;
     const sh = g.fx.shakes.get(th.id);
     if (sh) dx += Math.sin(sh * 70) * Math.min(1.4, sh * 8);
@@ -307,7 +336,10 @@ export class Renderer {
     if (alpha < 1) ctx.globalAlpha = alpha;
     sp.drawS(ctx, rec, px, py);
     const dc = w.deco[i];
-    if (dc) sp.draw(ctx, 'd_' + decoDefOf(dc).id, px, py + 4);
+    if (dc) {
+      const nm = 'd_' + decoDefOf(dc).id, dcol = w.decoCol[i];
+      if (dcol) { const r = sp.get(nm); if (r) sp.drawS(ctx, this._painted(nm, r, dcol), px, py + 4); } else sp.draw(ctx, nm, px, py + 4);
+    }
     if (alpha < 1) ctx.globalAlpha = 1;
   }
 
@@ -359,7 +391,19 @@ export class Renderer {
   }
 
   // ------------------------------------------------------------------ players
-  _drawPlayer(ctx, p, ox, oy, t, g) {
+  /** the front edge of a seat, drawn again over the people sitting in it so their legs are in the seat, not in front of it */
+  _drawSeatLip(ctx, th, d, ox, oy, t) {
+    const sp = this.sprites, name = this.thingSpriteName(th, d, t);
+    let spr = sp.get(name);
+    if (!spr) return;
+    const flip = th.flip && !th.rot;
+    if (flip) spr = sp.flipped(name);
+    if (th.col) spr = this._painted(flip ? name + '|flip' : name, spr, th.col);
+    const n = Math.min(SEAT_LIP, spr.h);
+    const lip = sp.dyn(`lip|${name}${flip ? '|f' : ''}|${n}|p${th.col || 0}`, () => sp.pixmapOf(spr).crop(0, spr.h - n, spr.w, n));
+    sp.drawS(ctx, lip, th.x * TILE + (th.w * TILE - spr.w) / 2 + ox, (th.y + th.h) * TILE - n + oy);
+  }
+  _drawPlayer(ctx, p, ox, oy, t, g, furn) {
     const sp = this.sprites;
     const st = g.pstate(p.pid);
     const px = Math.round((p.rx === undefined ? p.x : p.rx) + ox), py = Math.round((p.ry === undefined ? p.y : p.ry) + oy);
@@ -372,10 +416,38 @@ export class Renderer {
     }
     const look = p.look;
     if (p.sleeping) {
+      if (furn) {
+        // head on the pillow of the bed, turned the way the bed lies
+        const pl = pillowAt(furn, thingDef(furn.type)), w = g.world;
+        const spr = sp.dyn(`psh|${lookKey(look)}|${pl.head}`, () => playerSleepHead(look, pl.head));
+        // two in one bed share the pillow, side by side
+        let n = 0, k = 0;
+        for (const q of w.players.values()) if (q.online && q.sleeping && !q.dead && furnitureUnder(w, q, 'bed') === furn) { if (q === p) k = n; n++; }
+        const off = (k - (n - 1) / 2) * 5, side = pl.head === 1 || pl.head === 3;
+        const hx = Math.round(pl.x + ox + (side ? 0 : off) - spr.w / 2), hy = Math.round(pl.y + oy + (side ? off : 0) - spr.h / 2);
+        sp.drawS(ctx, spr, hx, hy);
+        this._nameTag(ctx, name, hx + (spr.w >> 1), hy - 4 - (side ? 0 : k * 9), g, p); // (stacked, so two names in one bed stay readable)
+        return;
+      }
       const spr = sp.dyn('psl|' + lookKey(look), () => playerSleep(look));
-      ctx.fillStyle = 'rgba(30,20,64,0.2)';
       sp.drawS(ctx, spr, px - 7, py - 14);
       this._nameTag(ctx, name, px, py - 22, g, p);
+      return;
+    }
+    if (p.sit && furn) {
+      // sitting on a cushion, facing the way the seat faces
+      const slot = nearestSlot(furn, p.x, p.y), view = slot.dir === 0 ? 0 : slot.dir === 2 ? 1 : 2;
+      const key = `pls|${lookKey(look)}|${view}`;
+      let spr = sp.dyn(key, () => playerFrame(look, view, 0, { sit: true }));
+      if (slot.dir === 3) spr = sp.dyn(key + '|f', () => sp.pixmapOf(sp.map.get(key)).flipX());
+      const hurtS = st.hurt > 0 && Math.floor(st.hurt * 18) % 2 === 0;
+      const sx = Math.round(slot.x + ox) - 8, sy2 = Math.round(slot.y + oy) - 20 + SIT_DY[view];
+      if (hurtS) ctx.globalAlpha = 0.6;
+      sp.drawS(ctx, spr, sx, sy2);
+      ctx.globalAlpha = 1;
+      const em = g.fx.emotes.get(p.id);
+      if (em) { const a = em.t > 1.8 ? 1 - (em.t - 1.8) / 0.4 : 1; ctx.globalAlpha = Math.max(0, a); const spr2 = sp.get('emote_' + ['heart', 'bang', 'ask', 'note', 'star', 'sweat', 'zzz', 'happy'][(em.e | 0) % 8]); sp.drawS(ctx, spr2, sx + 2, sy2 - 13 - Math.round(Math.sin(em.t * 6) * 1)); ctx.globalAlpha = 1; }
+      this._nameTag(ctx, name, sx + 8, sy2 - 2, g, p);
       return;
     }
     const dir = st.dir, flip = st.flip;
@@ -497,41 +569,106 @@ export class Renderer {
       if (bn) { ctx.fillStyle = bn; ctx.fillRect(x - 11, y + 8, 22, 3); ctx.fillStyle = 'rgba(42,31,61,0.6)'; ctx.fillRect(x - 11, y + 11, 22, 1); }
     }
   }
-  _drawBuildGhost(ctx, g, ox, oy) {
-    const b = g.build, sp = this.sprites, w = g.world;
-    if (!b.def) return;
+  /** a box over some tiles: green = it fits, red = blocked */
+  _ghostBox(ctx, x, y, wd, ht, ok, a = 1) {
+    ctx.fillStyle = ok ? `rgba(120,255,160,${0.3 * a})` : `rgba(255,90,110,${0.42 * a})`;
+    ctx.fillRect(x, y, wd, ht);
+    ctx.strokeStyle = ok ? `rgba(200,255,215,${0.95 * a})` : `rgba(255,160,170,${0.95 * a})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, wd - 1, ht - 1);
+  }
+  _ghostLabel(ctx, g, text, color, x, y) {
+    if (this.labels) { this.labels.add(text, color, x, y, { k: 0.95 }); return; }
+    const txt = g.fx.textSprite(text, color, '#2a1f3d');
+    ctx.drawImage(txt, Math.round(x - txt.width / 2), Math.round(y - txt.height / 2));
+  }
+  /** build mode: a see-through picture of the piece where it would go (turned the way it will face), green or red, with the reason when it will not go */
+  _drawBuildGhost(ctx, g, ox, oy, t) {
+    const b = g.builder, sp = this.sprites, w = g.world, me = g.me;
+    const pulse = 0.8 + 0.2 * Math.sin(t * 5.5);
+    // reach: a faint ring around the player
+    if (me && b.range) { ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(Math.round(me.x + ox), Math.round(me.y - 4 + oy), b.range, 0, TAU); ctx.stroke(); }
+    if (b.remove) {
+      // the tool shows exactly what it would take away: red over a piece, only an outline over empty ground
+      for (const [tx, ty] of b.tiles || [[b.tx, b.ty]]) {
+        const ok = b.okAt ? b.okAt(tx, ty) : b.ok;
+        const th = ok ? w.thingAt(tx, ty) || w.flatAt(tx, ty) : null;
+        if (th) this._ghostBox(ctx, th.x * TILE + ox, th.y * TILE + oy, th.w * TILE, th.h * TILE, false, pulse);
+        else if (ok) this._ghostBox(ctx, tx * TILE + ox, ty * TILE + oy, TILE, TILE, false, pulse);
+        else { ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(tx * TILE + ox + 0.5, ty * TILE + oy + 0.5, TILE - 1, TILE - 1); }
+      }
+      return;
+    }
+    if (b.pick) {
+      // the color dropper: a white frame over the piece whose color it would copy
+      const th = w.thingAt(b.tx, b.ty) || w.flatAt(b.tx, b.ty), pl = th && BUILD[th.type] && !BUILD[th.type].hidden ? th : null;
+      const x = (pl ? pl.x : b.tx) * TILE + ox, y = (pl ? pl.y : b.ty) * TILE + oy, wd = (pl ? pl.w : 1) * TILE, ht = (pl ? pl.h : 1) * TILE;
+      ctx.fillStyle = `rgba(255,255,255,${0.18 * pulse})`; ctx.fillRect(x, y, wd, ht);
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, wd - 1, ht - 1);
+      return;
+    }
+    if (b.paint) {
+      // the brush shows each piece it would color, already in the new color (original look when "Original" is chosen)
+      for (const [tx, ty] of b.tiles || [[b.tx, b.ty]]) {
+        const ok = b.okAt ? b.okAt(tx, ty) : b.ok, tg = ok ? paintTarget(w, tx, ty, b.col) : null;
+        if (!tg) { ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(tx * TILE + ox + 0.5, ty * TILE + oy + 0.5, TILE - 1, TILE - 1); continue; }
+        const i = w.idx(tx, ty), px = tx * TILE + ox, py = ty * TILE + oy;
+        let bx = px, by = py, bw = TILE, bh = TILE;
+        ctx.globalAlpha = 0.85;
+        if (tg.layer === 'thing') {
+          const th = tg.thing, d = BUILD[th.type], name = this.thingSpriteName(th, d, t);
+          let spr = sp.get(name);
+          const flip = th.flip && d.kind !== 'node' && !th.rot;
+          if (spr && flip) spr = sp.flipped(name);
+          if (spr && b.col) spr = this._painted(flip ? name + '|flip' : name, spr, b.col);
+          bx = th.x * TILE + ox; by = th.y * TILE + oy; bw = th.w * TILE; bh = th.h * TILE;
+          if (spr) sp.drawS(ctx, spr, bx + (bw - spr.w) / 2, (th.y + th.h) * TILE - spr.h + oy);
+        } else if (tg.layer === 'wall') sp.drawS(ctx, this._wallSprite(i, tx, ty, b.col), px, py - 4);
+        else if (tg.layer === 'deco') { const nm = 'd_' + decoDefOf(w.deco[i]).id, r = sp.get(nm); if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py + 4); }
+        else { const nm = 'f_' + floorDefOf(w.floor[i]).id.replace(/^floor_/, ''), r = sp.get(nm); if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py); }
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgba(255,255,255,${0.9 * pulse})`; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+      }
+      return;
+    }
     const d = b.def;
+    if (!d) return;
+    if (d.kind === 'thing' || d.kind === 'flat') {
+      const [fw, fh] = footprintFor(d, b.rot), px = b.tx * TILE + ox, py = b.ty * TILE + oy;
+      const name = turnSprite(d, b.rot);
+      let spr = sp.get(name);
+      const mirrored = !!b.flip && !turnable(d);
+      if (spr && mirrored) spr = sp.flipped(name);
+      if (spr && b.col) spr = this._painted(mirrored ? name + '|flip' : name, spr, b.col);
+      this._ghostBox(ctx, px, py, fw * TILE, fh * TILE, b.ok, pulse * 0.8);
+      if (spr) {
+        ctx.globalAlpha = b.ok ? 0.72 : 0.5;
+        sp.drawS(ctx, spr, px + (fw * TILE - spr.w) / 2, (b.ty + fh) * TILE - spr.h + oy);
+        ctx.globalAlpha = 1;
+      }
+      if (!b.ok && b.reason) this._ghostLabel(ctx, g, b.reason, '#ffd0d6', px + fw * TILE / 2, py - 6);
+      return;
+    }
+    // walls, floors and wall decorations: one ghost per tile (a rectangle while dragging)
     const tiles = b.tiles || [[b.tx, b.ty]];
-    ctx.globalAlpha = 0.65;
     for (const [tx, ty] of tiles) {
       const ok = b.okAt ? b.okAt(tx, ty) : b.ok;
       const px = tx * TILE + ox, py = ty * TILE + oy;
+      ctx.globalAlpha = ok ? 0.7 : 0.5;
       if (d.kind === 'wall') {
-        const i = w.idx(tx, ty), fenceLike = d.piece === 'fence' || d.piece === 'gate';
+        const fenceLike = d.piece === 'fence' || d.piece === 'gate';
         const wallHere = (x, y) => w.inb(x, y) && w.wall[w.idx(x, y)] > 0;
         const mask = fenceLike ? (wallHere(tx + 1, ty) ? 2 : 0) | (wallHere(tx - 1, ty) ? 4 : 0) : (wallHere(tx, ty - 1) ? 1 : 0) | (wallHere(tx + 1, ty) ? 2 : 0) | (wallHere(tx - 1, ty) ? 4 : 0);
-        const spr = sp.dyn(`WG|${d.id}|${mask}`, () => fenceLike ? fenceSprite(d.mat, d.piece === 'gate', mask, 0) : wallSprite(d.mat, d.piece, mask, 0));
-        sp.drawS(ctx, spr, px, py - 4);
-      } else if (d.kind === 'floor') {
-        sp.draw(ctx, 'f_' + d.id.replace(/^floor_/, ''), px, py);
-      } else if (d.kind === 'walldeco') {
-        sp.draw(ctx, 'd_' + d.id, px, py);
-      } else {
-        const name = 't_' + d.id;
-        let spr = sp.get(name);
-        if (b.flip) spr = sp.flipped(name);
-        sp.drawS(ctx, spr, tx * TILE + ((d.w || 1) * TILE - spr.w) / 2 + ox, (ty + (d.h || 1)) * TILE - spr.h + oy);
+        const wkey = `WG|${d.id}|${mask}`, wrec = sp.dyn(wkey, () => fenceLike ? fenceSprite(d.mat, d.piece === 'gate', mask, 0) : wallSprite(d.mat, d.piece, mask, 0));
+        sp.drawS(ctx, b.col ? this._painted(wkey, wrec, b.col) : wrec, px, py - 4);
+      } else if (d.kind === 'floor' || d.kind === 'walldeco') {
+        const nm = d.kind === 'floor' ? 'f_' + d.id.replace(/^floor_/, '') : 'd_' + d.id, r = sp.get(nm);
+        if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py);
       }
-      // footprint tint
-      ctx.fillStyle = ok ? 'rgba(120,255,160,0.35)' : 'rgba(255,90,110,0.45)';
-      const fw = d.kind === 'thing' || d.kind === 'flat' ? (d.w || 1) : 1, fh = d.kind === 'thing' || d.kind === 'flat' ? (d.h || 1) : 1;
-      ctx.fillRect(px, py, fw * TILE, fh * TILE);
-      if (d.kind === 'thing' || d.kind === 'flat') break;
+      ctx.globalAlpha = 1;
+      this._ghostBox(ctx, px, py, TILE, TILE, ok, pulse * 0.8);
     }
-    ctx.globalAlpha = 1;
-    // range ring around the player
-    const me = g.me;
-    if (me && b.range) { ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(Math.round(me.x + ox), Math.round(me.y - 4 + oy), b.range, 0, TAU); ctx.stroke(); }
+    if (!b.ok && b.reason && tiles.length === 1) this._ghostLabel(ctx, g, b.reason, '#ffd0d6', tiles[0][0] * TILE + TILE / 2 + ox, tiles[0][1] * TILE + oy - 6);
   }
 
   // ------------------------------------------------------------------ lighting & weather

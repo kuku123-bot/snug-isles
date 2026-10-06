@@ -43,6 +43,19 @@ const ICONS = [
   icon('ui_trash', (pm) => { const c = R('#aab4cc'); pm.rect(3, 4, 10, 2, c[2]); pm.rect(6, 2, 4, 2, c[2]); pm.rect(4, 6, 8, 9, c[2]); pm.rect(4, 6, 1, 9, c[1]); pm.rect(11, 6, 1, 9, c[3]); for (const x of [6, 8, 10]) pm.vline(x, 8, 5, c[4]); }),
   icon('ui_unlock', (pm) => { const m = R('#aab4cc'), g = R('#5fe08a'); pm.ring(10, 5.5, 2.2, 4, m[2]); pm.rect(3, 7, 10, 8, g[2]); pm.rect(3, 7, 10, 1, g[0]); pm.rect(7, 9, 2, 3, g[4]); }),
   icon('ui_fish', (pm) => { const c = R('#6ac8ff'); pm.ellipse(7, 8, 5.5, 3.6, c[2]); pm.poly([[11, 8], [15, 4], [15, 12]], c[3]); pm.set(4, 7, hex('#2a1f3d')); pm.set(3, 6, WHITE); }),
+  icon('ui_palette', (pm) => {
+    const w = R('#e8bf8a');
+    pm.ellipse(8, 8.5, 7, 6, w[2]); pm.ellipse(7, 7.5, 5.6, 4.4, w[1]); pm.hline(3, 12, 8, w[3]);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (Math.hypot(x + 0.5 - 6.5, y + 0.5 - 12) < 1.7) pm.set(x, y, 0); // the thumb hole
+    pm.circle(4.5, 7.5, 1.5, hex('#ff5f7a')); pm.circle(7.5, 4.6, 1.5, hex('#ffd84a')); pm.circle(11.5, 5.8, 1.5, hex('#5cc7ff')); pm.circle(12, 9.6, 1.4, hex('#7ed957'));
+  }),
+  icon('ui_dropper', (pm) => {
+    const g = R('#cfeeff'), m = R('#aab4cc');
+    pm.circle(12, 4, 2.6, hex('#ff8fb3')); pm.set(11, 3, hex('#ffc2d6'));
+    pm.line(10, 6, 12, 8, m[2]); pm.line(9, 6, 12, 9, m[3]);
+    pm.line(10, 7, 4, 13, g[2]); pm.line(11, 8, 5, 14, g[2]); pm.line(10, 8, 5, 13, g[1]);
+    pm.rect(3, 13, 2, 2, hex('#ff5f7a')); pm.set(3, 12, hex('#ff5f7a'));
+  }),
   icon('ui_sword', (pm) => { const b = R('#cfd6e8'); for (let i = 0; i < 9; i++) { pm.set(5 + i, 10 - i, b[1]); pm.set(6 + i, 10 - i, b[2]); } pm.line(3, 8, 8, 13, hex('#ffd84a')); pm.line(2, 13, 5, 10, hex('#a86f3d')); }),
 ];
 

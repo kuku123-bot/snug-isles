@@ -16,7 +16,7 @@ import { Sim } from './sim/sim.js';
 import { serializeWorld, restoreWorld, saveMeta } from './sim/serialize.js';
 import { presetSettings, PRESETS, OPTIONS, sanitizeSettings } from './data/difficulty.js';
 import { saveWorldRecord, loadWorldRecord, listWorlds, deleteWorld, requestPersistence, lsGet, lsSet, uid } from './engine/storage.js';
-import { makeBackup, parseBackup, backupFileName, MAX_BACKUP_BYTES } from './engine/backup.js';
+import { makeBackup, parseBackup, backupFileName, MAX_BACKUP_BYTES, needsUpdateCopy, updateCopyId, updateCopyMeta } from './engine/backup.js';
 import { strHash } from './util.js';
 import { DEFAULT_LOOK } from './sim/player.js';
 
@@ -185,9 +185,19 @@ export class App {
     const id = uid();
     await this.beginGame(sim, { mode, saveId: id, name });
   }
+  /** The first time a newer version of the game opens a world that an older version saved, keep a copy of it exactly as it was (the world list shows it as
+   *  "... (before the update)"), so an update can never be the end of an island. Called before anything is changed or re-saved; never blocks loading. */
+  async keepCopyBeforeUpdate(id, data) {
+    try {
+      const meta = (await listWorlds()).find((m) => m.id === id);
+      if (!needsUpdateCopy(meta)) return;
+      await saveWorldRecord(updateCopyId(id), data, updateCopyMeta(meta, data, id));
+    } catch (e) { console.warn('could not keep a copy before updating', e); }
+  }
   async startSaved(id, mode = 'solo') {
     const data = await loadWorldRecord(id);
     if (!data) { alert('That world could not be loaded.'); return; }
+    await this.keepCopyBeforeUpdate(id, data);
     const { sim } = restoreWorld(data);
     sim.addPlayer(this.profile.pid, this.profile.name, this.profile.look);
     await this.beginGame(sim, { mode, saveId: id, name: data.name || 'Our Isles' });

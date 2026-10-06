@@ -3,6 +3,7 @@
 import { clamp, TILE } from '../util.js';
 import { serializeWorld } from '../sim/serialize.js';
 import { PROTOCOL, BUILD_ID, MAX_PLAYERS, ST_HZ, EV_HZ, sendMsg, Reader, packJSON, buildStateMsg, buildPrivateMsg, publicPlayer, interpolate } from './protocol.js';
+import { standUp } from '../sim/furniture.js';
 
 const BACKUP_EVERY = 240;
 const TIMEOUT = 14;
@@ -66,7 +67,7 @@ export class HostLink {
         if (!p || !link.ready) return;
         const x = clamp(+m.x || 0, 0, w.pxW()), y = clamp(+m.y || 0, 0, w.pxH());
         p.x = x; p.y = y; p.ix = m.ix | 0; p.iy = m.iy | 0;
-        if ((p.ix || p.iy) && (p.sleeping || p.sit)) { p.sleeping = false; p.sit = null; p.rev++; }
+        if ((p.ix || p.iy) && (p.sleeping || p.sit)) standUp(this.sim, p, false); // they already stepped out on their own screen
         const buf = p.buf || (p.buf = []);
         buf.push({ t: this.o.now(), x, y });
         while (buf.length > 6) buf.shift();

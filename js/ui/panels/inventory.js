@@ -3,13 +3,15 @@ import { h, ic, itemIc, tip, esc, clear } from '../dom.js';
 import { ITEMS, itemDesc } from '../../data/items.js';
 import { calcStats, HOTBAR, EQUIP_SLOTS } from '../../sim/player.js';
 import { xpForLevel } from '../../data/skills.js';
+import { refKey, isLifted, dragEpoch } from '../drag.js';
 
 export function slotEl(stack, o = {}) {
-  const el = h('div', { class: 'slot' + (stack ? '' : ' empty') + (o.sel ? ' sel' : '') + (o.dim ? ' dim' : '') });
+  const el = h('div', { class: 'slot' + (stack ? '' : ' empty') + (o.sel ? ' sel' : '') + (o.dim ? ' dim' : '') + (o.hot ? ' hot' : '') });
+  if (o.ref) { el.dataset.ref = refKey(o.ref); if (isLifted(o.ref)) el.dataset.lift = '1'; } // draggable and a place to drop (js/ui/drag.js)
   if (o.key) el.appendChild(h('span', { class: 'k' }, o.key));
   if (stack) {
     el.appendChild(itemIc(stack.id, 2));
-    if (stack.n > 1) el.appendChild(h('span', { class: 'n' }, stack.n));
+    if (stack.n > 1) el.appendChild(h('span', { class: 'n' + (stack.n >= 1000 ? ' n4' : stack.n >= 100 ? ' n3' : '') }, stack.n));
     tip(el, () => `<b>${esc(ITEMS[stack.id].name)}</b>${ITEMS[stack.id].sell ? ` <span style="opacity:.7">· ${ITEMS[stack.id].sell}c</span>` : ''}<br>${esc(itemDesc(ITEMS[stack.id])).replace(/\n/g, '<br>')}`);
   } else if (o.ghost) el.appendChild(ic(o.ghost, 2, 'ghost'));
   if (o.onclick) el.addEventListener('click', o.onclick);
@@ -21,6 +23,7 @@ export function slotEl(stack, o = {}) {
 export function inventoryPanel(g, data, ui) {
   const me = () => g.me;
   let sel = null; // {k:'p', i} | {k:'e', slot}
+  let epoch = dragEpoch();
   const body = h('div', { class: 'row', style: 'align-items:flex-start;gap:14px;flex-wrap:wrap' });
   const gridWrap = h('div', { class: 'col' });
   const side = h('div', { class: 'col', style: 'min-width:230px;max-width:290px;flex:1' });
@@ -65,17 +68,19 @@ export function inventoryPanel(g, data, ui) {
     const cols = 8;
     const grid = h('div', { class: 'grid', style: `grid-template-columns:repeat(${cols},auto)` });
     for (let i = 0; i < p.inv.length; i++) {
+      if (i === 0) grid.appendChild(h('div', { class: 'gridlab' }, ic('ui_star', 1), h('b', null, 'Hotbar'), h('span', { class: 'muted' }, ` · what you hold: keys 1-${HOTBAR}`)));
+      if (i === HOTBAR) grid.appendChild(h('div', { class: 'gridlab' }, ic('ui_bag', 1), h('b', null, 'Backpack')));
       const st = p.inv[i];
-      grid.appendChild(slotEl(st, { key: i < HOTBAR ? String(i + 1) : null, sel: sel && sel.k === 'p' && sel.i === i, onclick: () => clickSlot({ k: 'p', i }), onctx: () => { sel = st ? { k: 'p', i } : null; useSelected(); }, onlong: () => { if (st) { sel = { k: 'p', i }; render(); } } }));
+      grid.appendChild(slotEl(st, { ref: { k: 'p', i }, hot: i < HOTBAR, key: i < HOTBAR ? String(i + 1) : null, sel: sel && sel.k === 'p' && sel.i === i, onclick: () => clickSlot({ k: 'p', i }), onctx: () => { sel = st ? { k: 'p', i } : null; useSelected(); } }));
     }
-    gridWrap.append(h('div', { class: 'row small muted' }, ic('ui_bag', 1), `${p.inv.filter(Boolean).length}/${p.inv.length} slots · tap an item, then tap where it goes. Tap again to use.`), grid,
+    gridWrap.append(h('div', { class: 'row small muted' }, ic('ui_bag', 1), `${p.inv.filter(Boolean).length}/${p.inv.length} slots · drag an item to move it (drop it on the hotbar to hold it), or tap it and tap where it goes. Tap again to use.`), grid,
       h('div', { class: 'row' }, h('button', { class: 'btn small', onclick: () => { g.cmd({ c: 'sort' }); } }, ic('ui_sort', 1), 'Sort')));
     // equipment
     const eq = h('div', { class: 'row', style: 'justify-content:space-between' });
     const eqNames = { head: 'Hat', body: 'Tunic', feet: 'Boots', charm: 'Charm' };
     for (const slot of EQUIP_SLOTS) {
       const st = p.equip[slot];
-      eq.appendChild(h('div', { class: 'col', style: 'align-items:center;gap:2px' }, slotEl(st, { sel: sel && sel.k === 'e' && sel.slot === slot, onclick: () => clickSlot({ k: 'e', slot }) }), h('span', { class: 'small muted' }, eqNames[slot])));
+      eq.appendChild(h('div', { class: 'col', style: 'align-items:center;gap:2px' }, slotEl(st, { ref: { k: 'e', slot }, sel: sel && sel.k === 'e' && sel.slot === slot, onclick: () => clickSlot({ k: 'e', slot }) }), h('span', { class: 'small muted' }, eqNames[slot])));
     }
     side.append(h('b', null, 'Wearing'), eq);
     // selected item
@@ -105,7 +110,7 @@ export function inventoryPanel(g, data, ui) {
     side.append(h('div', { class: 'sep' }), line('Level', `${p.level}  (${Math.floor(p.xp)}/${xpForLevel(p.level)} xp)`), line('Hearts', `${Math.ceil(p.hp / 4)} / ${Math.ceil(st.maxHp / 4)}`), line('Defense', `${Math.round(st.defense * 100)}%`),
       line('Move speed', `${Math.round(st.speed / 66 * 100)}%`), line('Pickup range', `${Math.round(st.magnet)}`), line('Luck', `+${Math.round(st.luck * 100)}%`), line('Cozy', p.cozy >= 10 ? `${p.cozy} ♥` : '—'));
   }
-  const panel = { title: 'Bag', icon: 'ui_bag', body, sig: () => `${me().rev}:${sel ? (sel.k + (sel.i ?? sel.slot)) : ''}:${me().inv.length}`, refresh: () => render() };
+  const panel = { title: 'Bag', icon: 'ui_bag', body, sig: () => `${me().rev}:${sel ? (sel.k + (sel.i ?? sel.slot)) : ''}:${me().inv.length}:${dragEpoch()}`, refresh: () => { if (epoch !== dragEpoch()) { epoch = dragEpoch(); sel = null; } render(); } };
   render();
   return panel;
 }

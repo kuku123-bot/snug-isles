@@ -16,6 +16,7 @@ export function buildPanel(g, data, ui) {
   const subtabs = h('div', { class: 'tabs', style: 'margin-top:-2px' });
   const grid = h('div', { class: 'grid scroll', style: 'grid-template-columns:repeat(auto-fill,minmax(104px,1fr));max-height:30vh;padding:4px 2px 6px' });
   const head = h('div', { class: 'row' }, h('h3', { class: 'grow', style: 'font-size:20px' }, 'Build'),
+    h('button', { class: 'btn small blue', title: 'Color pieces you already built (V)', onclick: () => { g.builder.startPaint(); } }, ic('ui_palette', 1), 'Paint tool'),
     h('button', { class: 'btn small red', onclick: () => { g.builder.startRemove(); } }, ic('ui_trash', 1), 'Remove tool'),
     h('div', { class: 'xbtn', style: 'width:36px;height:36px', onclick: () => ui.close() }, ic('ui_cross', 2)));
   const inner = h('div', { class: 'panel' }, head, tabs, subtabs, grid);

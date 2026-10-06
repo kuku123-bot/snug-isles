@@ -15,6 +15,7 @@ import { updateMobs, spawnTick, updateProjectiles, hurtPlayer } from './combat.j
 import { updateMachines, MACHINE_BEHAVIORS } from './machines.js';
 import { depleteNode } from './gather.js';
 import { exec as execCommand } from './commands.js';
+import { standUp, exitSpot, exitFrom } from './furniture.js';
 import { nightness } from './daynight.js';
 
 export const PICKUP_DELAY = 0.45;
@@ -105,7 +106,7 @@ export class Sim {
     if (w.players.size === 1 && w.settings.startKit !== 'bare') w.coins += w.settings.startKit === 'generous' ? 120 : 25;
     return p;
   }
-  removePlayer(pid) { const p = this.world.players.get(pid); if (p) { p.online = false; p.sleeping = false; p.sit = null; } }
+  removePlayer(pid) { const p = this.world.players.get(pid); if (p) { standUp(this, p); p.online = false; } }
 
   toast(pid, text, kind = 'info') { this.world.tell(pid, { t: 'toast', text, kind }); }
 
@@ -219,7 +220,7 @@ export class Sim {
       if (this.nightness() < 0.05 && this.dayPhase() < 0.4) {
         this.skipping = false;
         for (const p of ps) {
-          if (p.sleeping) { p.sleeping = false; this.onWake(p); }
+          if (p.sleeping) { standUp(this, p); this.onWake(p); }
         }
         this.bump('slept');
         w.emit(['wake']);
@@ -253,6 +254,8 @@ export class Sim {
         if (p.dead <= 0) this.respawn(p);
         continue;
       }
+      // whatever you were lying or sitting on is gone (taken apart by your partner, say): get up
+      if ((p.sleeping && p.bed && !w.things.has(p.bed)) || (p.sit && p.sit.id && !w.things.has(p.sit.id))) standUp(this, p);
       // buffs
       for (const k in p.buffs) { p.buffs[k].t -= dt; if (p.buffs[k].t <= 0) { delete p.buffs[k]; p.stats = null; touch(p); } }
       // energy
@@ -280,9 +283,9 @@ export class Sim {
   respawn(p) {
     const w = this.world, st = calcStats(w, p);
     p.dead = 0; p.hp = st.maxHp; p.energy = st.maxEnergy; p.hunger = Math.max(p.hunger, 60);
-    p.sleeping = false; p.sit = null; p.shield = 3;
+    p.sleeping = false; p.sit = null; p.bed = 0; p.shield = 3;
     let sp = null;
-    if (p.spawn) { const t = w.things.get(p.spawn.id); if (t) sp = { x: (t.x + t.w / 2) * TILE, y: (t.y + t.h + 0.6) * TILE }; }
+    if (p.spawn) { const t = w.things.get(p.spawn.id); if (t) sp = exitFrom(w, t, [t.x, t.y]); } // beside the bed you set, never inside it
     if (!sp) sp = this.spawn;
     p.x = sp.x; p.y = sp.y; p.vx = p.vy = 0;
     w.tell(p.pid, { t: 'teleport', x: p.x, y: p.y });
@@ -293,7 +296,9 @@ export class Sim {
   // ------------------------------------------------------------------ cozy rooms (flood fill)
   computeCozy(p) {
     const w = this.world;
-    const sx = Math.floor(p.x / TILE), sy = Math.floor((p.y - 2) / TILE);
+    let at = p;
+    if (p.sleeping) at = exitSpot(w, p) || p; // lying in a (solid) bed: the room is the one you would step out into
+    const sx = Math.floor(at.x / TILE), sy = Math.floor((at.y - 2) / TILE);
     if (!w.inb(sx, sy) || (w.solid[w.idx(sx, sy)] & 1)) { p.cozy = 0; p.room = 0; return; }
     const LIM = 260;
     const seen = new Set([w.idx(sx, sy)]);

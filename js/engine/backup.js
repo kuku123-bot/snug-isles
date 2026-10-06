@@ -1,5 +1,5 @@
 // World backup files: a plain JSON file the players can keep anywhere (Files app, AirDrop, Messages…). Pure functions, no DOM.
-import { restoreWorld, SAVE_VERSION } from '../sim/serialize.js';
+import { restoreWorld, SAVE_VERSION, SAVE_EPOCH } from '../sim/serialize.js';
 
 export const BACKUP_KIND = 'snug-isles-world';
 export const MAX_BACKUP_BYTES = 80 * 1024 * 1024;
@@ -27,4 +27,14 @@ export function parseBackup(text) {
 export function backupFileName(name, day) {
   const safe = String(name || 'Our Isles').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 40) || 'world';
   return `snug-isles-${safe}-day${day || 1}.json`;
+}
+
+// ---- the copy kept the first time a newer version opens a world (so an update can never be the end of an island)
+/** was this world last saved by an older generation of the game? (worlds saved before epochs existed have none; a copy of a world is never copied again) */
+export const needsUpdateCopy = (meta) => !(meta && (meta.copyOf || meta.before)) && ((meta && meta.epoch) || 1) < SAVE_EPOCH;
+export const updateCopyId = (id) => 'before-' + id;
+/** the world-list entry for that copy: the same island, named so nobody mistakes it for the live one */
+export function updateCopyMeta(meta, data, id) {
+  const { id: _own, ...rest } = meta || {};
+  return { ...rest, name: `${rest.name || data.name || 'Our Isles'} (before the update)`, epoch: SAVE_EPOCH, before: id };
 }

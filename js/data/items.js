@@ -1,10 +1,11 @@
 // Item catalog (things that live in inventories). Structures/blueprints are NOT items: see build.js.
 import { prettyId } from '../util.js';
 
+export const STACK = 9999; // how many of a normal item fit in one slot
 export const ITEMS = {};
 const add = (id, name, cat, sell, o = {}) => {
   if (ITEMS[id]) throw new Error('dup item ' + id);
-  ITEMS[id] = { id, name: name || prettyId(id), cat, sell, stack: cat === 'tool' || cat === 'weapon' || cat === 'armor' || cat === 'charm' ? 1 : 99, ...o };
+  ITEMS[id] = { id, name: name || prettyId(id), cat, sell, stack: cat === 'tool' || cat === 'weapon' || cat === 'armor' || cat === 'charm' ? 1 : STACK, ...o };
   return ITEMS[id];
 };
 
@@ -69,7 +70,7 @@ const POTIONS = [
   ['potion_fireproof', 'Fireproof Potion', 60, { buff: ['fireproof', 240, 1] }], ['potion_luck', 'Lucky Potion', 70, { buff: ['luck', 240, 2] }],
   ['elixir_xp', 'Elixir of Wisdom', 140, { buff: ['xp', 300, 2] }],
 ];
-for (const [id, name, sell, p] of POTIONS) add(id, name, 'potion', sell, { potion: p, stack: 30 });
+for (const [id, name, sell, p] of POTIONS) add(id, name, 'potion', sell, { potion: p, stack: 999 });
 
 // ---------------------------------------------------------------- tools & weapons
 export const TIERS = [
@@ -117,7 +118,7 @@ for (const [id, name, sell] of FISH) add(id, name, 'food', sell, { fish: true, f
 // ---------------------------------------------------------------- misc
 add('pet_egg', 'Mystery Egg', 'misc', 90, { stack: 5, hatch: true });
 add('treasure_key', 'Old Key', 'misc', 30, { stack: 5, key: true });
-add('boss_token', 'Boss Trophy', 'misc', 300, { stack: 20 });
+add('boss_token', 'Boss Trophy', 'misc', 300, { stack: 999 });
 
 export const isTool = (it) => it && (it.cat === 'tool' || it.cat === 'weapon');
 export const itemName = (id) => (ITEMS[id] ? ITEMS[id].name : prettyId(id));

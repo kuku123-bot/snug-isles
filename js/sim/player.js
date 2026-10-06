@@ -18,7 +18,7 @@ export function makePlayer(world, pid, name, look) {
     hp: BASE_HP, energy: 100, hunger: 100,
     inv: makeInv(BASE_SLOTS), equip: { head: null, body: null, feet: null, charm: null }, sel: 0,
     xp: 0, level: 1, sp: 0, skills: {}, buffs: {},
-    spawn: null, dead: 0, sleeping: false, sit: null, online: true,
+    spawn: null, dead: 0, sleeping: false, sit: null, bed: 0, online: true,
     cd: 0, dashCd: 0, fish: null, cozy: 0, shield: 0, wind: 0, stats: null, pet: null,
     rev: 1, // bumped whenever private state changes (inventory, hp, xp...)
     id: 0,
@@ -75,6 +75,7 @@ export function calcStats(world, p) {
     maxEnergy: 100 + fx('energy'),
     regenMul: (st.regen === 'fast' ? 2.2 : st.regen === 'none' ? 0 : 1) * (1 + fx('regen')),
     slots: BASE_SLOTS + fx('slots'),
+    chestSlots: fx('chestSlots'),
     luck: fx('luck') + (charm.luck || 0) + 0.1 * buffPow(p, 'luck'),
     lightBonus: fx('lightR') + (charm.night ? 0.25 : 0) + 0.25 * buffPow(p, 'night'),
     buildDiscount: Math.min(0.7, fx('buildDiscount')),

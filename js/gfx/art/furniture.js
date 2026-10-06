@@ -21,7 +21,7 @@ export const STYLE_PAL = {
   celestial: { wood: R('#3a3a7a'), cloth: R('#5a4ab8'), cloth2: R('#d8e0ff'), trim: R('#ffe48a'), pat: 'stars' },
 };
 
-function patternFill(pm, x, y, w, h, st, base) {
+export function patternFill(pm, x, y, w, h, st, base) {
   const P = STYLE_PAL[st];
   const c1 = base || P.cloth, c2 = P.cloth2;
   pm.rect(x, y, w, h, c1[2]);
@@ -55,7 +55,7 @@ function chairBack(pm, st) {
   }
 }
 
-function legs(pm, p, xs, y, h) { for (const x of xs) { pm.rect(x, y, 2, h, p[3]); pm.set(x, y, p[2]); } }
+export function legs(pm, p, xs, y, h) { for (const x of xs) { pm.rect(x, y, 2, h, p[3]); pm.set(x, y, p[2]); } }
 
 const D = {};
 D.bed = (st) => {

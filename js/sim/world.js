@@ -2,6 +2,8 @@
 // All mutations go through the mutator methods below so they can be replicated to the other player as events.
 import { TILE } from '../util.js';
 import { BUILD, WALL_IDS, FLOOR_IDS, WALLDECO_IDS } from '../data/build.js';
+import { turnable, normRot, footprintFor } from '../data/facing.js';
+import { normColor } from '../data/paint.js';
 import { NODES } from '../data/nodes.js';
 import { BIOMES, GROUND_IDS } from '../data/biomes.js';
 
@@ -42,6 +44,9 @@ export class World {
     this.wall = new Uint8Array(n);
     this.wallState = new Uint8Array(n);
     this.deco = new Uint8Array(n);
+    this.floorCol = new Uint16Array(n); // paint color of the piece on each tile (0 = not painted); see data/paint.js
+    this.wallCol = new Uint16Array(n);
+    this.decoCol = new Uint16Array(n);
     this.occ = new Int32Array(n); // thing id covering the tile (solid-ish things and nodes)
     this.occFlat = new Int32Array(n); // flat decor (rugs) id
     this.solid = new Uint8Array(n).fill(1); // bit0 blocks walkers, bit1 blocks flyers (everything starts as open sea = blocked)
@@ -134,39 +139,45 @@ export class World {
     this.landRev++; this.rev++;
   }
 
-  setFloor(x, y, code, silent = false) {
+  // The piece on a tile layer and its paint color travel together. `col` left out keeps the color when the piece stays the same, else the new piece is unpainted;
+  // putting the same piece with another color is how a piece gets repainted.
+  setFloor(x, y, code, silent = false, col) {
     const i = this.idx(x, y);
-    if (this.floor[i] === code) return;
-    this.floor[i] = code;
+    const c = code ? (col === undefined ? (this.floor[i] === code ? this.floorCol[i] : 0) : normColor(col)) : 0;
+    if (this.floor[i] === code && this.floorCol[i] === c) return;
+    this.floor[i] = code; this.floorCol[i] = c;
     this.recalcSolid(i);
     this.tileDirty.push(i);
     this.rev++;
-    if (!silent) this.emit(['f', i, code]);
+    if (!silent) this.emit(['f', i, code, c]);
   }
-  setWall(x, y, code, state = 0, silent = false) {
+  setWall(x, y, code, state = 0, silent = false, col) {
     const i = this.idx(x, y);
+    const c = code ? (col === undefined ? (this.wall[i] === code ? this.wallCol[i] : 0) : normColor(col)) : 0;
     this.wall[i] = code;
     this.wallState[i] = code ? state : 0;
-    if (!code) this.deco[i] = 0;
+    this.wallCol[i] = c;
+    if (!code) { this.deco[i] = 0; this.decoCol[i] = 0; }
     this.recalcSolid(i);
     this.tileDirty.push(i);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (this.inb(x + dx, y + dy)) this.tileDirty.push(this.idx(x + dx, y + dy));
     this.rev++;
-    if (!silent) this.emit(['w', i, code, this.wallState[i]]);
+    if (!silent) this.emit(['w', i, code, this.wallState[i], c]);
   }
   setWallState(x, y, state, silent = false) {
     const i = this.idx(x, y);
     this.wallState[i] = state;
     this.recalcSolid(i);
     this.tileDirty.push(i);
-    if (!silent) this.emit(['w', i, this.wall[i], state]);
+    if (!silent) this.emit(['w', i, this.wall[i], state, this.wallCol[i]]);
   }
-  setDeco(x, y, code, silent = false) {
+  setDeco(x, y, code, silent = false, col) {
     const i = this.idx(x, y);
-    this.deco[i] = code;
+    const c = code ? (col === undefined ? (this.deco[i] === code ? this.decoCol[i] : 0) : normColor(col)) : 0;
+    this.deco[i] = code; this.decoCol[i] = c;
     this.tileDirty.push(i);
     this.rev++;
-    if (!silent) this.emit(['d', i, code]);
+    if (!silent) this.emit(['d', i, code, c]);
   }
 
   // ---------------------------------------------------------------- things
@@ -185,13 +196,14 @@ export class World {
       if (b) b.delete(t.id);
     }
   }
-  /** Create a thing. opts: {id?, flip, hp, s, dep, silent}. */
+  /** Create a thing. opts: {id?, flip, rot (0..3, furniture that can be turned), col (paint color), hp, s, dep, silent}. w/h are the footprint as turned. */
   addThing(type, x, y, opts = {}) {
     const d = thingDef(type);
     if (!d) throw new Error('unknown thing ' + type);
     const id = opts.id || this.nextId++;
     if (id >= this.nextId) this.nextId = id + 1;
-    const t = { id, type, x, y, w: d.w || 1, h: d.h || 1, flip: opts.flip ? 1 : 0, hp: opts.hp !== undefined ? opts.hp : (d.hp || 0), dep: opts.dep ? 1 : 0, s: opts.s || null, t: 0 };
+    const rot = turnable(d) ? normRot(opts.rot) : 0, [fw, fh] = footprintFor(d, rot);
+    const t = { id, type, x, y, w: fw, h: fh, flip: opts.flip ? 1 : 0, rot, col: normColor(opts.col), hp: opts.hp !== undefined ? opts.hp : (d.hp || 0), dep: opts.dep ? 1 : 0, s: opts.s || null, t: 0 };
     this.things.set(id, t);
     const flat = d.kind === 'flat';
     for (let yy = 0; yy < t.h; yy++) for (let xx = 0; xx < t.w; xx++) {
@@ -201,7 +213,7 @@ export class World {
     }
     this._bucketAdd(t);
     this.rev++;
-    if (!opts.silent) this.emit(['ta', id, type, x, y, t.flip, t.hp, t.dep, t.s]);
+    if (!opts.silent) this.emit(['ta', id, type, x, y, t.flip, t.hp, t.dep, t.s, t.rot, t.col]);
     if (this.hooks.thingChanged) this.hooks.thingChanged(t, 'add');
     return t;
   }
@@ -224,7 +236,7 @@ export class World {
     if (this.hooks.thingChanged) this.hooks.thingChanged(t, 'remove');
     return t;
   }
-  /** patch fields of a thing: {hp, dep, s, flip}. Replicated. */
+  /** patch fields of a thing: {hp, dep, s, flip, col}. Replicated. */
   patchThing(id, patch, silent = false) {
     const t = this.things.get(id);
     if (!t) return null;
@@ -233,6 +245,7 @@ export class World {
     if (patch.dep !== undefined) { if (!!patch.dep !== !!t.dep) solidChange = true; t.dep = patch.dep ? 1 : 0; }
     if (patch.s !== undefined) t.s = patch.s;
     if (patch.flip !== undefined) t.flip = patch.flip ? 1 : 0;
+    if (patch.col !== undefined) t.col = normColor(patch.col);
     if (solidChange) {
       const d = thingDef(t.type);
       if (!(d && d.kind === 'flat')) for (let yy = 0; yy < t.h; yy++) for (let xx = 0; xx < t.w; xx++) this.recalcSolid(this.idx(t.x + xx, t.y + yy));

@@ -9,7 +9,7 @@ import { CROPS, cropStage } from '../data/crops.js';
 import { invAdd, stackMax, invCount } from './inventory.js';
 import { shoot } from './combat.js';
 import { lootFish } from './loot.js';
-import { calcStats, techFx } from './player.js';
+import { calcStats, techFx, skillFx } from './player.js';
 import { rollNodeDrops } from './gather.js';
 
 export const MACHINE_BEHAVIORS = new Set(['processor', 'farm', 'producer', 'drill', 'turret', 'sprinkler']);
@@ -24,6 +24,28 @@ export function newState(behavior, conf) {
     case 'storage': return { inv: new Array((conf && conf.slots) || 20).fill(null) };
     default: return {};
   }
+}
+/** extra slots every chest, barrel and cupboard gets: the best Warehouse Keeper of anyone in the world (plus any technology that adds some) */
+export function storageBonus(world) {
+  let skill = 0;
+  for (const p of world.players.values()) skill = Math.max(skill, skillFx(p, 'chestSlots'));
+  return Math.round(skill + techFx(world, 'chestSlots'));
+}
+/** top up storage to its normal size + the bonus (only ever grows, so nothing is lost). `only` = just that one thing. Returns true if anything grew. */
+export function growStorage(world, only) {
+  const bonus = storageBonus(world);
+  if (bonus <= 0) return false;
+  let changed = false;
+  for (const t of only ? [only] : world.things.values()) {
+    const d = BUILD[t.type];
+    if (!d || d.behavior !== 'storage' || (d.conf && d.conf.grave) || !t.s || !t.s.inv) continue;
+    const want = ((d.conf && d.conf.slots) || 20) + bonus;
+    if (t.s.inv.length >= want) continue;
+    while (t.s.inv.length < want) t.s.inv.push(null);
+    world.patchThing(t.id, { s: t.s });
+    changed = true;
+  }
+  return changed;
 }
 export function ensureState(t) {
   const d = BUILD[t.type];

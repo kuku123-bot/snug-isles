@@ -1,5 +1,5 @@
 // Creatures. ai: 'hop' | 'walk' | 'fly' | 'shoot' | 'passive' | 'boss'.
-// drops: [item|'coin', min, max, chance]. Passive critters cannot be hurt (pettable: they just look cute).
+// drops: [item|'coin', min, max, chance]. Passive critters are pettable (E / right-click) and can be hunted: a swing only hits one if it is aimed right at it. A hatched pet can never be hurt.
 export const MOBS = {};
 const mob = (id, name, o) => {
   MOBS[id] = { id, name, hp: 10, dmg: 2, spd: 24, r: 5, aggro: 80, xp: 3, ai: 'walk', atkcd: 1.0, drops: [], hostile: true, w: 14, h: 12, tier: 1, ...o };
@@ -34,13 +34,13 @@ mob('mushroom_walker', 'Spore Walker', { hp: 40, dmg: 4, spd: 24, ai: 'shoot', x
 mob('fire_imp', 'Fire Imp', { hp: 52, dmg: 7, spd: 36, ai: 'shoot', xp: 24, tier: 5, aggro: 120, keep: 65, atkcd: 1.5, w: 14, h: 16, proj: { spd: 85, dmg: 7, color: '#ff7a3d' }, drops: [['ember_stone', 1, 2, 0.6], ['charcoal', 1, 2, 0.5], ['coin', 3, 7, 0.6]] });
 
 // --- passive critters
-mob('bunny', 'Bunny', { hp: 6, ai: 'passive', hostile: false, spd: 40, flee: true, w: 12, h: 12, xp: 0 });
-mob('snow_bunny', 'Snow Bunny', { hp: 6, ai: 'passive', hostile: false, spd: 40, flee: true, w: 12, h: 12, xp: 0 });
-mob('chick', 'Chick', { hp: 4, ai: 'passive', hostile: false, spd: 26, w: 10, h: 10, xp: 0 });
-mob('duck', 'Duckling', { hp: 4, ai: 'passive', hostile: false, spd: 24, w: 12, h: 10, xp: 0 });
-mob('penguin', 'Penguin', { hp: 6, ai: 'passive', hostile: false, spd: 22, w: 12, h: 14, xp: 0 });
-mob('lizard', 'Sunny Lizard', { hp: 4, ai: 'passive', hostile: false, spd: 44, flee: true, w: 14, h: 8, xp: 0 });
-mob('unicorn', 'Tiny Unicorn', { hp: 10, ai: 'passive', hostile: false, spd: 36, w: 16, h: 16, xp: 0 });
+mob('bunny', 'Bunny', { hp: 6, ai: 'passive', hostile: false, spd: 40, flee: true, w: 12, h: 12, xp: 1, drops: [['wool', 1, 2, 0.8], ['coin', 1, 1, 0.3]] });
+mob('snow_bunny', 'Snow Bunny', { hp: 6, ai: 'passive', hostile: false, spd: 40, flee: true, w: 12, h: 12, xp: 1, drops: [['wool', 1, 2, 0.8], ['ice_shard', 0, 1, 0.3]] });
+mob('chick', 'Chick', { hp: 4, ai: 'passive', hostile: false, spd: 26, w: 10, h: 10, xp: 1, drops: [['feather', 1, 2, 0.9], ['egg', 0, 1, 0.3]] });
+mob('duck', 'Duckling', { hp: 4, ai: 'passive', hostile: false, spd: 24, w: 12, h: 10, xp: 1, drops: [['feather', 1, 2, 0.9], ['egg', 0, 1, 0.2]] });
+mob('penguin', 'Penguin', { hp: 6, ai: 'passive', hostile: false, spd: 22, w: 12, h: 14, xp: 1, drops: [['feather', 1, 3, 0.9], ['ice_shard', 0, 1, 0.3]] });
+mob('lizard', 'Sunny Lizard', { hp: 4, ai: 'passive', hostile: false, spd: 44, flee: true, w: 14, h: 8, xp: 1, drops: [['sand', 0, 1, 0.5], ['coin', 1, 2, 0.5]] });
+mob('unicorn', 'Tiny Unicorn', { hp: 10, ai: 'passive', hostile: false, spd: 36, w: 16, h: 16, xp: 3, drops: [['spirit_dust', 1, 2, 0.9], ['petal_pink', 0, 2, 0.5]] });
 
 // --- bosses (summoned at altars; see structures)
 mob('slime_king', 'Slime King', { boss: true, hp: 320, dmg: 6, spd: 26, ai: 'boss', xp: 160, tier: 2, aggro: 400, w: 40, h: 32, r: 14, patterns: ['hop', 'summon', 'slam'], summon: 'slime_green', drops: [['coin', 40, 60, 1], ['slime_goo', 6, 10, 1], ['boss_token', 1, 1, 1], ['pet_egg', 0, 1, 0.5]] });

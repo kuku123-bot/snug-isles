@@ -17,6 +17,8 @@ export class AudioEngine {
 
   /** must be called from a user gesture */
   unlock() {
+    // a browser driven by a test program (Playwright, Selenium... set navigator.webdriver) never makes a sound, so testing the game is silent; ?sound=1 turns it back on
+    if (!this.ctx && typeof navigator !== 'undefined' && navigator.webdriver && !/[?&]sound=1/.test(typeof location !== 'undefined' ? location.search : '')) { this.enabled = false; return; }
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) { this.enabled = false; return; }

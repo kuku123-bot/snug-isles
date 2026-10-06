@@ -77,9 +77,16 @@ export function playerFrame(look, dir, frame, o = {}) {
   } else {
     // right-facing
     const lf = step > 0 ? 1 : step < 0 ? -1 : 0;
-    // legs: one forward one back
-    pm.rect(6 + lf, 17, 2, 2, pants); pm.rect(8 - lf, 17, 2, 2, darker(pants, 0.15));
-    pm.rect(5 + lf, 19, 3, 2, shoe); pm.rect(8 - lf, 19, 3, 2, darker(shoe, 0.2));
+    if (o.sit) {
+      // seated: thighs run forward along the seat, the lower legs hang down at the knee
+      pm.rect(7, 16, 7, 2, darker(pants, 0.15)); // far thigh, peeking out above
+      pm.rect(6, 17, 8, 2, pants); // near thigh
+      pm.rect(12, 19, 2, 2, pants); pm.rect(12, 20, 3, 1, shoe);
+    } else {
+      // legs: one forward one back
+      pm.rect(6 + lf, 17, 2, 2, pants); pm.rect(8 - lf, 17, 2, 2, darker(pants, 0.15));
+      pm.rect(5 + lf, 19, 3, 2, shoe); pm.rect(8 - lf, 19, 3, 2, darker(shoe, 0.2));
+    }
     pm.rect(5, 12 + bob, 6, 5, outfit[2]); pm.rect(5, 12 + bob, 1, 5, outfit[1]); pm.rect(10, 12 + bob, 1, 5, outfit[3]); pm.rect(5, 16 + bob, 6, 1, outfit[3]);
     // far arm (behind), near arm swing
     drawHairBack(pm, look, hair, hy, 2);
@@ -98,8 +105,7 @@ export function playerFrame(look, dir, frame, o = {}) {
   }
   pm.outline(null, { amt: 0.68 });
   // soft contact shadow under the feet
-  const sh = withAlpha(hex('#1e1440'), 70);
-  for (let x = 3; x < 13; x++) pm.under(x, 20, sh);
+  if (!o.sit) { const sh = withAlpha(hex('#1e1440'), 70); for (let x = 3; x < 13; x++) pm.under(x, 20, sh); }
   return pm;
 }
 
@@ -182,6 +188,33 @@ export function playerSleep(look) {
   pm.rect(4, 5, 2, 1, EYE); pm.rect(8, 5, 2, 1, EYE);
   pm.set(3, 6, withAlpha(BLUSH, 200)); pm.set(10, 6, withAlpha(BLUSH, 200));
   pm.outline(null, { amt: 0.65 });
+  return pm;
+}
+
+/**
+ * A sleeping head on the pillow, lying on its back (12x11 before turning). head = the way the top of the head points: 2 up, 1 right, 0 down, 3 left.
+ * Only the head and shoulders are drawn: the bed's own blanket covers the rest.
+ */
+export function playerSleepHead(look, head = 2) {
+  const { skin, hair, outfit } = pal(look);
+  let pm = new Pixmap(12, 11);
+  const st = look.hair;
+  if (st === 1 || st === 5) { pm.rect(1, 3, 2, 6, hair[2]); pm.rect(9, 3, 2, 6, hair[3]); } // long hair spreads over the pillow
+  if (st === 2) { pm.ellipse(1.8, 6.5, 1.8, 2.8, hair[2]); pm.ellipse(10.2, 6.5, 1.8, 2.8, hair[3]); } // pigtails
+  if (st === 3) pm.ellipse(6, 1.2, 2.4, 1.8, hair[2]); // bun
+  pm.rect(2, 8, 8, 3, outfit[2]); pm.rect(2, 8, 8, 1, outfit[1]); pm.rect(2, 10, 8, 1, outfit[3]); // pyjama shoulders
+  pm.ellipse(6, 5, 4.6, 4.1, skin[2]);
+  pm.rect(2, 6, 1, 2, skin[1]); pm.rect(9, 6, 1, 2, skin[3]);
+  pm.ellipse(6, 2.8, 4.9, 2.9, hair[2]); // hair over the forehead
+  pm.rect(3, 1, 3, 1, hair[1]); pm.set(2, 3, hair[3]); pm.set(9, 3, hair[3]);
+  pm.rect(3, 4, 6, 1, hair[2]); pm.rect(3, 4, 1, 1, hair[3]);
+  // closed eyes, blush and a tiny smile
+  pm.hline(3, 6, 2, EYE); pm.hline(7, 6, 2, EYE); pm.set(3, 5, hair[3]); pm.set(8, 5, hair[3]);
+  pm.set(2, 7, withAlpha(BLUSH, 210)); pm.set(9, 7, withAlpha(BLUSH, 210));
+  pm.hline(5, 8, 2, hex('#b8465a'));
+  pm.outline(null, { amt: 0.65 });
+  const turns = ((2 - head) % 4 + 4) % 4; // quarter turns clockwise from "head up"
+  for (let i = 0; i < turns; i++) pm = pm.rot90();
   return pm;
 }
 

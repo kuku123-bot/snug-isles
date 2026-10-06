@@ -114,7 +114,7 @@ test('layout code copes with odd data: cycles, unknown parents, empty lists, one
 });
 
 // every effect key a technology or skill can have is wired into the stats (so a bonus is never a lie)
-const STAT = { toolDmg: 'toolDmg', toolSpeed: 'toolSpeed', speed: 'speed', slots: 'slots', buildDiscount: 'buildDiscount', xp: 'xpMul', drop: 'dropMul', machine: 'machineMul', cropGrowth: 'cropGrowth', cropYield: 'cropYield', animal: 'animal', food: 'foodMul', potion: 'potionMul', luck: 'luck', lightR: 'lightBonus', regen: 'regenMul', sell: 'sellMul', landDiscount: 'landDiscount', coins: 'coinMul', rare: 'rare', rareFish: 'rareFish', energy: 'maxEnergy', cozy: 'cozyMul' };
+const STAT = { toolDmg: 'toolDmg', toolSpeed: 'toolSpeed', speed: 'speed', slots: 'slots', buildDiscount: 'buildDiscount', xp: 'xpMul', drop: 'dropMul', machine: 'machineMul', cropGrowth: 'cropGrowth', cropYield: 'cropYield', animal: 'animal', food: 'foodMul', potion: 'potionMul', luck: 'luck', lightR: 'lightBonus', regen: 'regenMul', sell: 'sellMul', landDiscount: 'landDiscount', coins: 'coinMul', rare: 'rare', rareFish: 'rareFish', energy: 'maxEnergy', cozy: 'cozyMul', chestSlots: 'chestSlots' };
 test('every technology bonus changes the stat it promises', () => {
   const sim = makeSim('classic'), p = sim.addPlayer('a', 'Alice', {});
   const base = { ...calcStats(sim.world, p) };

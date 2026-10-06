@@ -67,7 +67,7 @@ export class Screens {
     for (const m of rows) {
       const card = h('div', { class: 'save-card' },
         h('div', { class: 'row', style: 'gap:0;flex:none' }, ...(m.players || []).slice(0, 2).map((p) => portrait(p.look, 3))),
-        h('div', { class: 'grow' }, h('b', { style: 'font-size:18px' }, m.name || 'Our Isles'), h('div', { class: 'small' }, `Day ${m.day || 1} · ${m.lands || 1} land${(m.lands || 1) > 1 ? 's' : ''} · ${(m.players || []).map((p) => p.name).join(' & ') || '—'}`), h('div', { class: 'small muted' }, `${m.preset || 'Classic'} · ${timeAgo(m.updated)}`)),
+        h('div', { class: 'grow' }, h('b', { style: 'font-size:18px' }, m.name || 'Our Isles'), h('div', { class: 'small' }, `Day ${m.day || 1} · ${m.lands || 1} land${(m.lands || 1) > 1 ? 's' : ''} · ${(m.players || []).map((p) => p.name).join(' & ') || '—'}`), h('div', { class: 'small muted' }, `${m.preset || 'Classic'} · ${timeAgo(m.updated)}`), m.before ? h('div', { class: 'small', style: 'color:#a8283a;font-weight:600' }, 'A safety copy, kept when the game updated. Your island is the other card; you can delete this one whenever you like.') : null),
         h('div', { class: 'col', style: 'gap:6px' }, this.btn(opts.host ? 'Host' : 'Play', 'ui_check', () => app.startSaved(m.id, opts.host ? 'host' : 'solo'), 'good'),
           h('div', { class: 'row', style: 'gap:6px' },
             h('button', { class: 'btn small', title: 'Save a backup file', onclick: async (e) => { e.stopPropagation(); try { const r = await app.exportWorld(m.id); if (r !== 'cancelled') note.textContent = r === 'shared' ? 'Backup shared — keep it somewhere safe!' : 'Backup saved to your downloads.'; } catch (err) { note.textContent = err.message || String(err); } } }, ic('ui_bag', 1), 'Backup'),

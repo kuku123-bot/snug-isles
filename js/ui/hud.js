@@ -2,6 +2,7 @@
 import { h, ic, itemIc, tip, esc, clear } from './dom.js';
 import { ITEMS, itemDesc } from '../data/items.js';
 import { calcStats, HOTBAR } from '../sim/player.js';
+import { refKey } from './drag.js';
 import { xpForLevel } from '../data/skills.js';
 import { nightness, phaseOf, clockText } from '../sim/daynight.js';
 import { fmtNum } from '../util.js';
@@ -10,6 +11,7 @@ import { BUILD, WALL_IDS } from '../data/build.js';
 import { MOBS } from '../data/mobs.js';
 import { GOAL_BY_ID, nextGoal } from '../data/goals.js';
 import { census } from '../sim/goals.js';
+import { colorRGB } from '../data/paint.js';
 
 const GROUND_RGB = { water: [51, 136, 220], grass: [108, 194, 78], sand: [241, 220, 154], snow: [236, 244, 255], swamp: [79, 143, 98], grave: [127, 115, 146], volcano: [93, 74, 83], crystal: [203, 184, 244], void: [43, 33, 88] };
 
@@ -72,7 +74,7 @@ export class HUD {
     this.slots = [];
     const hot = h('div', { class: 'hotbar' });
     for (let i = 0; i < HOTBAR; i++) {
-      const s = h('div', { class: 'slot', onclick: () => { g.selectSlot(i); }, onpointerdown: (e) => { e.stopPropagation(); } });
+      const s = h('div', { class: 'slot', dataset: { ref: refKey({ k: 'p', i }) }, onclick: () => { g.selectSlot(i); }, onpointerdown: (e) => { e.stopPropagation(); } });
       this.slots.push(s); hot.appendChild(s);
     }
     this.hotbar = hot;
@@ -81,11 +83,13 @@ export class HUD {
     this.bossName = h('div', { class: 'nm' }); this.bossFill = h('i');
     this.bossEl = h('div', { class: 'bossbar', style: 'display:none' }, this.bossName, h('div', { class: 'bar' }, this.bossFill));
     this.buildBar = h('div', { class: 'buildbar', style: 'display:none' });
+    this.buildSide = h('div', { class: 'buildside', style: 'display:none' }); // the color picker: beside the world, not over the place you are building
     // join requests live above every panel (the "Play together" window would otherwise cover them)
     let jr = document.getElementById('joinreqs');
     if (!jr) { jr = h('div', { id: 'joinreqs', class: 'joinreqs' }); document.getElementById('app').appendChild(jr); }
     jr.replaceChildren(); this.joinReqs = jr;
-    root.append(tl, tc, tr, this.pickups, this.statusRow, this.bossEl, this.buildBar, hot);
+    root.append(tl, tc, tr, this.pickups, this.statusRow, this.bossEl, this.buildBar, this.buildSide, hot);
+    window.addEventListener('resize', () => this.layoutBuildSide());
     this.last = {};
     this.refreshAll();
   }
@@ -144,7 +148,7 @@ export class HUD {
       s.appendChild(h('span', { class: 'k' }, String(i + 1)));
       if (st) {
         s.appendChild(itemIc(st.id, 2));
-        if (st.n > 1) s.appendChild(h('span', { class: 'n' }, st.n));
+        if (st.n > 1) s.appendChild(h('span', { class: 'n' + (st.n >= 1000 ? ' n4' : st.n >= 100 ? ' n3' : '') }, st.n));
       }
       s.onpointerenter = null;
       if (st) tip(s, () => `<b>${esc(ITEMS[st.id].name)}</b><br>${esc(itemDesc(ITEMS[st.id])).replace(/\n/g, '<br>')}`);
@@ -198,11 +202,12 @@ export class HUD {
       else this.cozyEl.style.display = 'none';
     }
     // buffs
-    const bk = Object.keys(p.buffs).filter((k) => p.buffs[k].t > 0).map((k) => k + Math.ceil(p.buffs[k].t / 10)).join(',');
+    const bk = Object.keys(p.buffs).filter((k) => p.buffs[k].t > 0).map((k) => k + Math.ceil(p.buffs[k].t / 10)).join(',') + (p.sleeping ? '|z' : '') + (p.sit ? '|s' : '');
     if (force || L.buffs !== bk) {
       L.buffs = bk; clear(this.statusRow);
       for (const k of Object.keys(p.buffs)) { const b = p.buffs[k]; if (b.t > 0) this.statusRow.appendChild(h('div', { class: 'status' }, `${k[0].toUpperCase() + k.slice(1)} ${Math.ceil(b.t)}s`)); }
-      if (p.sleeping) this.statusRow.appendChild(h('div', { class: 'status' }, 'Zzz...'));
+      if (p.sleeping) this.statusRow.appendChild(h('div', { class: 'status' }, 'Zzz... move to get up'));
+      else if (p.sit) this.statusRow.appendChild(h('div', { class: 'status' }, 'Sitting... move to get up'));
     }
     // partner
     const partner = g.partner();
@@ -241,9 +246,9 @@ export class HUD {
         if (gr) {
           c = GROUND_RGB[GROUND_IDS[gr]];
           const wc = w.wall[i];
-          if (wc) c = [110, 74, 58];
-          else if (w.floor[i]) c = [c[0] * 0.8 + 40, c[1] * 0.75 + 30, c[2] * 0.7 + 10];
-          else if (w.occ[i]) { const t = w.things.get(w.occ[i]); const dd = t && BUILD[t.type]; c = dd ? [200, 150, 90] : [c[0] * 0.7, c[1] * 0.8, c[2] * 0.7]; }
+          if (wc) c = w.wallCol[i] ? colorRGB(w.wallCol[i]) : [110, 74, 58]; // painted pieces show their color on the map too
+          else if (w.floor[i]) c = w.floorCol[i] ? colorRGB(w.floorCol[i]) : [c[0] * 0.8 + 40, c[1] * 0.75 + 30, c[2] * 0.7 + 10];
+          else if (w.occ[i]) { const t = w.things.get(w.occ[i]); const dd = t && BUILD[t.type]; c = dd ? (t.col ? colorRGB(t.col) : [200, 150, 90]) : [c[0] * 0.7, c[1] * 0.8, c[2] * 0.7]; }
         } else if (w.isLandOwned && false) c = c;
       } else c = [29, 21, 48];
       d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
@@ -256,5 +261,27 @@ export class HUD {
   }
 
   /** build mode bar */
+  /** the panel at the side of the screen while building (null hides it) */
+  setBuildSide(node) {
+    clear(this.buildSide);
+    if (node) { this.buildSide.style.display = 'block'; this.buildSide.appendChild(node); this.layoutBuildSide(); } else this.buildSide.style.display = 'none';
+  }
+  /** keep the side panel (the color picker) under the HUD buttons and clear of the build bar (the bar is centred: on a narrow screen the two would meet);
+   *  when there is too little room it switches to its compact size, and past that it scrolls */
+  layoutBuildSide() {
+    const side = this.buildSide;
+    if (!side || side.style.display === 'none') return;
+    const vr = this.root.getBoundingClientRect(), hb = this.root.querySelector('.hbtns');
+    const top = Math.round((hb ? hb.getBoundingClientRect().bottom : vr.top + 100) + 8 - vr.top);
+    side.classList.remove('tight');
+    side.style.top = top + 'px'; side.style.maxHeight = '';
+    let bottom = vr.height - 8;
+    if (this.buildBar.style.display !== 'none') {
+      const b = this.buildBar.getBoundingClientRect(), s = side.getBoundingClientRect();
+      if (b.right > s.left - 6 && b.left < s.right) bottom = Math.min(bottom, b.top - vr.top - 8);
+    }
+    side.style.maxHeight = Math.max(150, bottom - top) + 'px';
+    if (side.scrollHeight > side.clientHeight + 1) side.classList.add('tight');
+  }
   setBuildBar(node) { clear(this.buildBar); if (node) { this.buildBar.style.display = 'flex'; this.buildBar.appendChild(node); } else this.buildBar.style.display = 'none'; }
 }

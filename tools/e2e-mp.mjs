@@ -101,11 +101,131 @@ await host.evaluate(() => { const g = __snug.game, me = g.me; me.inv[6] = { id: 
 await guest.waitForTimeout(2500);
 const petSeen = await guest.evaluate(() => { const w = __snug.game.world, h = [...w.players.values()].find((p) => p.name === 'Mochi'); return [...w.mobs.values()].some((m) => Math.hypot(m.x - h.x, m.y - h.y) < 70 && ['bunny', 'chick', 'duck', 'lizard', 'penguin', 'snow_bunny', 'unicorn'].includes(m.type)); });
 ok(petSeen, "the guest sees the host's new pet next to the host");
+console.log('turned furniture, sitting and sleeping together');
+{
+  // the host builds a turned sofa and bed (a real build command); the guest must see them turned
+  const spot = await host.evaluate(() => {
+    const g = __snug.game, w = g.world, me = g.me;
+    w.settings.buildCost = 0; w.settings.enemyDensity = 0; w.settings.sleep = 'any'; w.techs.add('cottage_style'); w.techs.add('carpentry');
+    for (let r = 3; r < 60; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
+      for (let y = y0 - 1; y < y0 + 5 && good; y++) for (let x = x0 - 1; x < x0 + 8 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || ((w.solid[w.idx(x, y)] & 1) && !w.thingAt(x, y)) || w.wall[w.idx(x, y)]) good = false; } // (trees and rocks can be cleared away)
+      if (!good) continue;
+      for (let y = y0 - 1; y < y0 + 5; y++) for (let x = x0 - 1; x < x0 + 8; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); }
+      me.x = (x0 + 3) * 16; me.y = (y0 + 3) * 16;
+      g.cmd({ c: 'build', bid: 'rustic_sofa', tx: x0 + 1, ty: y0 + 1, rot: 1 });
+      g.cmd({ c: 'build', bid: 'rustic_bed', tx: x0 + 4, ty: y0 + 1, rot: 3 });
+      return [x0, y0];
+    }
+    return null;
+  });
+  await guest.waitForTimeout(900);
+  if (process.env.MPDEBUG) console.log('  · patch', spot, await host.evaluate(() => [...__snug.game.world.things.values()].filter((t) => t.type === 'rustic_sofa' || t.type === 'rustic_bed').map((t) => [t.type, t.x, t.y, t.rot])));
+  const seenG = await guest.evaluate(() => { const w = __snug.game.world, f = (type) => { const t = [...w.things.values()].find((q) => q.type === type); return t ? { id: t.id, rot: t.rot || 0, w: t.w, h: t.h, x: t.x, y: t.y } : null; }; return { sofa: f('rustic_sofa'), bed: f('rustic_bed') }; });
+  ok(seenG.sofa && seenG.sofa.rot === 1 && seenG.sofa.w === 1 && seenG.sofa.h === 2, `the guest sees the sofa turned (${JSON.stringify(seenG.sofa)})`);
+  ok(seenG.bed && seenG.bed.rot === 3 && seenG.bed.w === 2 && seenG.bed.h === 1, `and the bed turned (${JSON.stringify(seenG.bed)})`);
+  // both sit on the sofa, one cushion each
+  await guest.evaluate((id) => { const t = __snug.game.world.things.get(id), me = __snug.game.me; me.x = (t.x + 2) * 16; me.y = (t.y + 0.5) * 16 + 4; }, seenG.sofa.id);
+  await guest.waitForTimeout(400); // (the host learns where the guest is from its position reports)
+  await guest.evaluate((id) => __snug.game.cmd({ c: 'interact', id }), seenG.sofa.id);
+  await host.evaluate((id) => { const g = __snug.game, t = g.world.things.get(id), me = g.me; me.x = (t.x + 2) * 16; me.y = (t.y + 1.5) * 16 + 4; g.cmd({ c: 'interact', id }); }, seenG.sofa.id);
+  await guest.waitForTimeout(900);
+  const sit = await host.evaluate(() => { const w = __snug.game.world, me = __snug.game.me, gi = [...w.players.values()].find((p) => p.name === 'Gigi'); return { host: me.sit, guest: gi.sit }; });
+  ok(sit.host && sit.guest, 'both of them sit on the sofa (the host sees the guest sitting)');
+  ok(sit.host.i !== undefined && (await guest.evaluate(() => __snug.game.me.sit && __snug.game.me.sit.i)) !== sit.host.i, 'on different cushions');
+  const seenSit = await guest.evaluate(() => [...__snug.game.world.players.values()].filter((p) => p.sit).map((p) => p.name).sort());
+  ok(seenSit.length === 2, `the guest sees both sitting (${seenSit})`);
+  if (process.env.SHOTS) { await host.screenshot({ path: '.scratch/mp-sitting.png' }); }
+  // the guest walks off: up, free, and the host agrees
+  await guest.keyboard.down('KeyD'); await guest.waitForTimeout(500); await guest.keyboard.up('KeyD');
+  await host.waitForTimeout(500);
+  const up = await host.evaluate(() => { const gi = [...__snug.game.world.players.values()].find((p) => p.name === 'Gigi'); return { sit: gi.sit }; });
+  ok(!up.sit && !(await guest.evaluate(() => __snug.game.me.sit)), 'walking gets the guest up, on both screens');
+  await host.keyboard.down('KeyA'); await host.waitForTimeout(400); await host.keyboard.up('KeyA');
+  // the guest lies down in the bed, in the daytime, then steps out: never stuck
+  await guest.evaluate((id) => { const t = __snug.game.world.things.get(id), me = __snug.game.me; me.x = (t.x + 1) * 16; me.y = (t.y + 2) * 16 + 2; }, seenG.bed.id);
+  await guest.waitForTimeout(400);
+  await guest.evaluate((id) => __snug.game.cmd({ c: 'interact', id }), seenG.bed.id);
+  await host.waitForTimeout(900);
+  ok(await guest.evaluate(() => __snug.game.me.sleeping) && await host.evaluate(() => [...__snug.game.world.players.values()].find((p) => p.name === 'Gigi').sleeping), 'the guest lies in the bed and the host sees them asleep');
+  if (process.env.SHOTS) { await host.screenshot({ path: '.scratch/mp-sleeping.png' }); }
+  await guest.keyboard.down('KeyS'); await guest.waitForTimeout(150); await guest.keyboard.up('KeyS');
+  await guest.waitForTimeout(500);
+  const out = await guest.evaluate(() => { const g = __snug.game, me = g.me; return { sleeping: me.sleeping, x: me.x, y: me.y, free: g.world.boxFree(me.x, me.y - 3, 4, 3) }; });
+  const hostSees = await host.evaluate(() => { const g = __snug.game, gi = [...g.world.players.values()].find((p) => p.name === 'Gigi'); return { sleeping: gi.sleeping, x: gi.x, y: gi.y, free: g.world.boxFree(gi.x, gi.y - 3, 4, 3) }; });
+  ok(!out.sleeping && out.free && !hostSees.sleeping && hostSees.free, `a key press gets the guest out of bed onto free ground on both screens (${out.x.toFixed(0)},${out.y.toFixed(0)} / ${hostSees.x.toFixed(0)},${hostSees.y.toFixed(0)})`);
+  const gx0 = out.x;
+  await guest.keyboard.down('KeyD');
+  let walked = 0;
+  for (let i = 0; i < 15 && walked <= 12; i++) { await guest.waitForTimeout(100); walked = (await guest.evaluate(() => __snug.game.me.x)) - gx0; } // (up to 1.5 s: a busy test machine must not decide this)
+  await guest.keyboard.up('KeyD');
+  ok(walked > 12, 'and they can walk away from the bed');
+  // night: the guest sleeps, the night skips, dawn steps them out
+  await host.evaluate(() => { const w = __snug.game.world; w.time = w.settings.dayLength * 0.8; });
+  await guest.waitForTimeout(500);
+  await guest.evaluate((id) => { const t = __snug.game.world.things.get(id), me = __snug.game.me; me.x = (t.x + 1) * 16; me.y = (t.y + 2) * 16 + 2; }, seenG.bed.id);
+  await guest.waitForTimeout(400);
+  await guest.evaluate((id) => __snug.game.cmd({ c: 'interact', id }), seenG.bed.id);
+  await host.waitForTimeout(1000);
+  if (process.env.MPDEBUG) console.log('  · night', await host.evaluate(() => { const g = __snug.game, gi = [...g.world.players.values()].find((p) => p.name === 'Gigi'); return { skipping: g.sim.skipping, time: g.world.time, night: g.sim.nightness(), gsleep: gi.sleeping, rule: g.world.settings.sleep, dl: g.world.settings.dayLength }; }));
+  await guest.waitForFunction(() => !__snug.game.me.sleeping, null, { timeout: 25000 }).catch(() => {});
+  await guest.waitForTimeout(700);
+  const dawn = await guest.evaluate(() => { const g = __snug.game, me = g.me; return { sleeping: me.sleeping, free: g.world.boxFree(me.x, me.y - 3, 4, 3), x: me.x, y: me.y }; });
+  const dawnHost = await host.evaluate(() => { const g = __snug.game, gi = [...g.world.players.values()].find((p) => p.name === 'Gigi'); return { sleeping: gi.sleeping, x: gi.x, y: gi.y, night: g.sim.nightness() }; });
+  ok(!dawn.sleeping && dawn.free, `the night passes and the guest wakes standing on free ground (host says night=${dawnHost.night.toFixed(2)})`);
+  ok(Math.hypot(dawn.x - dawnHost.x, dawn.y - dawnHost.y) < 6, `both screens agree where the guest is (${Math.hypot(dawn.x - dawnHost.x, dawn.y - dawnHost.y).toFixed(1)}px apart)`);
+}
 const rtt = await guest.evaluate(() => __snug.game.net.rtt);
 console.log(`  · guest ping ${rtt.toFixed(0)} ms`);
 
 await host.screenshot({ path: '.scratch/mp-host.png' });
 await guest.screenshot({ path: '.scratch/mp-guest.png' });
+
+console.log('painting together: colors built by one player show on the other screen, in both directions');
+{
+  const q5 = (hx) => { const n = parseInt(hx.slice(1), 16), f = (v) => Math.round(v * 31 / 255); return 0x8000 | (f(n >> 16 & 255) << 10) | (f((n >> 8) & 255) << 5) | f(n & 255); };
+  const RED = q5('#e0525c'), BLUE = q5('#4a8be0'), PINK = q5('#f6b8c8');
+  const spot = await host.evaluate(() => {
+    const g = __snug.game, w = g.world, me = g.me;
+    w.settings.buildCost = 0; w.techs.add('cottage_style'); w.techs.add('carpentry');
+    for (let r = 3; r < 60; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
+      for (let y = y0 - 1; y < y0 + 5 && good; y++) for (let x = x0 - 1; x < x0 + 8 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0 || w.wall[w.idx(x, y)] || w.floor[w.idx(x, y)]) good = false; }
+      if (!good) continue;
+      for (let y = y0 - 1; y < y0 + 5; y++) for (let x = x0 - 1; x < x0 + 8; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); }
+      me.x = (x0 + 3) * 16; me.y = (y0 + 4) * 16;
+      return [x0, y0];
+    }
+    return null;
+  });
+  await guest.waitForTimeout(500);
+  await host.evaluate(([x, y, R, B, P]) => { const g = __snug.game; g.cmd({ c: 'build', bid: 'floor_plank', tx: x, ty: y, col: R }); g.cmd({ c: 'build', bid: 'wall_plank', tx: x + 1, ty: y, col: B }); g.cmd({ c: 'build', bid: 'rustic_sofa', tx: x + 3, ty: y + 1, col: P }); g.cmd({ c: 'build', bid: 'floor_plank', tx: x + 2, ty: y }); }, [...spot, RED, BLUE, PINK]);
+  await guest.waitForTimeout(900);
+  const seen = await guest.evaluate(([x, y]) => { const w = __snug.game.world, s = [...w.things.values()].find((t) => t.type === 'rustic_sofa' && t.x === x + 3 && t.y === y + 1); return { floor: w.floorCol[w.idx(x, y)], wall: w.wallCol[w.idx(x + 1, y)], sofa: s ? s.col : -1, plain: w.floorCol[w.idx(x + 2, y)] }; }, spot);
+  ok(seen.floor === RED && seen.wall === BLUE && seen.sofa === PINK && seen.plain === 0, `the guest sees the host's red floor, blue wall and pink sofa (${JSON.stringify(seen)})`);
+  // the guest repaints (the host executes it and the result comes back to both)
+  await guest.evaluate(([x, y]) => { const me = __snug.game.me; me.x = (x + 3) * 16; me.y = (y + 4) * 16; }, spot);
+  await guest.waitForTimeout(450); // (the host learns where the guest is from its position reports)
+  await guest.evaluate(([x, y, B]) => { const g = __snug.game; g.cmd({ c: 'paint', tx: x, ty: y, col: B }); g.cmd({ c: 'paint', tx: x + 3, ty: y + 1, col: B }); g.cmd({ c: 'paint', tiles: [[x + 2, y]], col: B }); }, [...spot, BLUE]);
+  await host.waitForTimeout(900);
+  const onHost = await host.evaluate(([x, y]) => { const w = __snug.game.world, s = [...w.things.values()].find((t) => t.type === 'rustic_sofa' && t.x === x + 3 && t.y === y + 1); return { floor: w.floorCol[w.idx(x, y)], sofa: s.col, plain: w.floorCol[w.idx(x + 2, y)] }; }, spot);
+  ok(onHost.floor === BLUE && onHost.sofa === BLUE && onHost.plain === BLUE, `what the guest painted shows on the host (${JSON.stringify(onHost)})`);
+  const back = await guest.evaluate(([x, y]) => { const w = __snug.game.world, s = [...w.things.values()].find((t) => t.type === 'rustic_sofa' && t.x === x + 3 && t.y === y + 1); return { floor: w.floorCol[w.idx(x, y)], sofa: s.col }; }, spot);
+  ok(back.floor === BLUE && back.sofa === BLUE, 'and on the guest\'s own screen');
+  // a painted door keeps its color while it opens and closes, on both screens
+  await host.evaluate(([x, y, R]) => __snug.game.cmd({ c: 'build', bid: 'door_plank', tx: x + 5, ty: y + 2, col: R }), [...spot, RED]);
+  await guest.waitForTimeout(700);
+  const doorInfo = await host.evaluate(([x, y]) => { const w = __snug.game.world, i = w.idx(x + 5, y + 2); return { code: w.wall[i], col: w.wallCol[i] }; }, spot);
+  if (doorInfo.code) {
+    await host.evaluate(([x, y]) => { const g = __snug.game, w = g.world; w.setWallState(x + 5, y + 2, 1); }, spot);
+    await guest.waitForTimeout(700);
+    const gd = await guest.evaluate(([x, y]) => { const w = __snug.game.world, i = w.idx(x + 5, y + 2); return { col: w.wallCol[i], open: w.wallState[i] }; }, spot);
+    ok(gd.col === RED && gd.open === 1, `an opened painted door keeps its color on the other screen (${JSON.stringify(gd)})`);
+  }
+  // the picture itself on the guest's screen: the blue floor tile really is blue
+  const px = await guest.evaluate(([x, y]) => { const g = __snug.game, c = g.renderer.canvas.getContext('2d'); g.fx.flash = 0; g.fx.parts.length = 0; g.fx.pops.length = 0; g.render(); const d = c.getImageData(Math.round((x + 0.5) * 16 - g.camX), Math.round((y + 0.5) * 16 - g.camY), 1, 1).data; return [d[0], d[1], d[2]]; }, spot);
+  ok(px[2] > px[0] + 25, `the painted floor is drawn blue on the guest's screen (${px})`);
+}
 
 console.log('reconnect after a dropped connection');
 await guest.evaluate(() => { window.__oldLink = __snug.game.net; __snug.game.net.conn.close(); });

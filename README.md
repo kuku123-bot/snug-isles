@@ -11,7 +11,10 @@ Gather resources, buy new lands, research a big tech tree, automate your island,
 * **8 biomes** (meadow → desert, tundra, swamp, graveyard, volcano, crystal fields, starlit void), **4 bosses**, 30 creatures, 40 resource types
 * **94 technologies** in 8 tiers (stone age → starlit age) and **6 branches** (Home, Tools, Farm, Magic, Adventure and the new Seaside & Fishing), **101 recipes**, **52 skills** in 5 branches. Research and Skills are simple trees of big picture buttons: pick a branch, tap a box, read what it unlocks, press the button
 * **345 build pieces**: 77 wall/window/door/fence styles, 33 floors, 19 wall decorations, **108 pieces of furniture in 9 styles** (new: Seaside and Bamboo), beach umbrellas, a hot tub, paper lanterns, lights, farms, animal pens, drills, turrets, warp pads…
+* **Building you can see**: a see-through preview shows exactly where a piece will go (green = fits, red = it does not, with the reason), and **furniture turns four ways** (R, Shift+R, the mouse wheel or the Rotate button; 74 pieces have a front, back and side view). Chairs, sofas and benches seat one person per cushion, beds take your head on the pillow, and you always step out beside them.
+* **Any color you like**: the **Color** button in building mode opens a picker (24 swatches, hue / softness / lightness sliders, a hex box, your recent colors). Walls, floors, wall decorations and furniture are built in that color, and the **Paint** brush (V) recolors what is already standing, free of charge; **Pick** copies the color of a piece you built; *Original* takes paint off. Your partner sees every change, and colors are saved with the world.
 * **Automation**: furnaces and drills that load/unload from chests next to them, sprinklers, windmills, turrets
+* **Big bags**: every slot holds up to 9999, and you can drag items between slots, onto the hotbar, onto your clothes and into chests. The *Pack Mule* and *Warehouse Keeper* skills add bag slots and chest slots. Wild critters (bunnies, chicks, ducks…) can be hunted; pets never can.
 * **Pets**: Mystery Eggs (found in chests, buried treasure and boss drops) hatch a bunny, duckling, chick, lizard, penguin… or a very rare unicorn that trots after you (and comes back after every reload); an **Old Key** in your bag doubles the next treasure chest
 * **68 Island Goals** — a gentle checklist with rewards that teaches the game and gives you things to aim for
 * **20 world rules** (monsters, damage, health, alertness, night danger, boss strength, yield, regrowth, XP, land price, build cost, research cost, hunger, regeneration, what happens when you faint, sleep rules, day length, weather…) with five presets from *Dreamy Builder* (no monsters, free everything) to *Nightmare*
@@ -35,7 +38,7 @@ Open the site on any modern browser (Safari on iPad, Chrome/Safari on Mac). On i
 
 ### Privacy
 
-There is no account and no game server. Worlds live in your browser. To connect two devices the game uses free public services: the PeerJS cloud server (only to introduce you; it sees the 5-letter room code), Google/Cloudflare/Nextcloud STUN servers (to learn your public address), and — only if you turn on the backup connection — the HiveMQ/EMQX/Mosquitto public MQTT servers, which only ever see encrypted bytes. As with any direct (peer-to-peer) connection, your partner's device can see your IP address.
+There is no account and no game server. Worlds live in your browser. **Updates never touch them**: new versions only ever add to the save format, the first time a new version opens a world it keeps a copy of it exactly as it was (the world list shows it as "… (before the update)"), and `tools/compat.mjs` / `tools/e2e-upgrade.mjs` prove it on every release against the version that is live. To connect two devices the game uses free public services: the PeerJS cloud server (only to introduce you; it sees the 5-letter room code), Google/Cloudflare/Nextcloud STUN servers (to learn your public address), and — only if you turn on the backup connection — the HiveMQ/EMQX/Mosquitto public MQTT servers, which only ever see encrypted bytes. As with any direct (peer-to-peer) connection, your partner's device can see your IP address.
 
 ### Keep your world safe
 
@@ -51,14 +54,16 @@ Worlds live in the browser's storage. *Your worlds → Backup* saves a file (sha
 | Dash | `Space` | dash button |
 | Photo | `P` (or the pause menu): saves a clean picture of what you see | pause menu → *Take a photo* (share sheet) |
 | Menus | `I` bag · `C` craft · `B` build · `T` research · `K` skills · `M` map · `G` emote | top-right buttons |
-| Build | pick a piece, click/drag; `R` flips, `X` removes | pick a piece, drag to paint; furniture: slide the ghost and lift to place; **Rect** fills a whole room |
+| Build | pick a piece, click/drag; `R` / `Shift+R` / wheel turn it, `X` removes, `V` paints | pick a piece, drag to paint; furniture: slide the preview and lift to place, or tap **Rotate** and **Place**; **Rect** fills a whole room |
+| Move items | drag a slot onto another slot, the hotbar, *Wearing* or a chest | drag with a finger (the picture rides above it) |
+| Sit / lie down | `E` on a chair, sofa or bed; `E` again or any move gets you up | the hand button; the joystick gets you up |
 
 ## Development
 
 ```bash
 npm install
 npm run dev        # build + serve on http://localhost:5173 and rebuild on change
-npm test           # 85+ tests: simulation, rules, content reachability, saves, networking (Node)
+npm test           # 130+ tests: simulation, rules, content reachability, saves, networking, furniture, dragging (Node)
 npm run build      # production bundle in dist/
 
 # browser tests (Playwright: Chromium + WebKit)

@@ -9,6 +9,8 @@ import { registerItems } from './items.js';
 import { registerWalls } from './walls.js';
 import { registerFurniture } from './furniture.js';
 import { registerStructures } from './structures.js';
+import { registerTurns } from './turns.js';
+import { turnsOf } from '../../data/facing.js';
 import { registerUi } from './ui.js';
 import { registerPlayerBits } from './player.js';
 import { renderText } from '../bitfont.js';
@@ -24,7 +26,7 @@ export function expectedSprites() {
   for (const id in MOBS) names.push('m_' + id + '_0');
   for (const id in BUILD) {
     const d = BUILD[id];
-    if (d.kind === 'thing' || d.kind === 'flat') names.push('t_' + id);
+    if (d.kind === 'thing' || d.kind === 'flat') { names.push('t_' + id); if (turnsOf(d) && !d.hidden) for (let r = 1; r <= 3; r++) names.push(`t_${id}_r${r}`); }
     else if (d.kind === 'floor') names.push('f_' + id.replace(/^floor_/, '').replace(/^bridge_/, 'bridge_'));
     else if (d.kind === 'walldeco') names.push('d_' + id);
     else if (d.kind === 'wall') names.push('wp_' + (d.piece === 'fence' || d.piece === 'gate' ? `${d.piece}_${d.mat}` : `${d.mat}_${d.piece}`));
@@ -41,6 +43,7 @@ export function buildBook() {
   registerWalls(book);
   registerFurniture(book);
   registerStructures(book);
+  registerTurns(book);
   registerPlayerBits(book);
   registerUi(book);
   const missing = [];

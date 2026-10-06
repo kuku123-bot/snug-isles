@@ -114,9 +114,17 @@ export function killPlayer(sim, p) {
 }
 
 // ------------------------------------------------------------------ damage to mobs
+/** can a swing aimed at (ax, ay) hit this creature? Hostile ones always; a cute critter only when the aim is right on it; a hatched pet never. */
+export function canHit(m, ax, ay) {
+  const def = MOBS[m.type];
+  if (!def || m.hp <= 0) return false;
+  if (def.hostile) return true;
+  return !m.pet && Math.hypot(m.x - ax, m.y - def.h * 0.4 - ay) <= def.r + 12;
+}
+
 export function hurtMob(sim, m, dmg, sx, sy, p = null, o = {}) {
   const w = sim.world, def = MOBS[m.type];
-  if (m.hp <= 0 || !def || (!def.hostile && !o.force)) return false;
+  if (m.hp <= 0 || !def || m.pet || (!def.hostile && !o.force && !o.critter)) return false;
   let d = dmg * (0.92 + sim.rng.next() * 0.16);
   let crit = false;
   if (p) {
@@ -126,7 +134,7 @@ export function hurtMob(sim, m, dmg, sx, sy, p = null, o = {}) {
   d = Math.max(1, Math.round(d));
   m.hp -= d;
   m.hit = 0.16;
-  m.agg = true;
+  if (def.hostile) m.agg = true; else { m.panic = 4; m.fx = sx; m.fy = sy; } // a hurt critter runs away from whoever hit it
   const a = Math.atan2(m.y - sy, m.x - sx);
   const kb = (o.knock === undefined ? 60 : o.knock) * (def.boss ? 0.15 : 1);
   m.kx = Math.cos(a) * kb; m.ky = Math.sin(a) * kb;
@@ -174,7 +182,7 @@ export function meleeAttack(sim, p, item, ax, ay, o = {}) {
   const hits = [];
   for (const m of w.mobs.values()) {
     const def = MOBS[m.type];
-    if (!def.hostile || m.hp <= 0) continue;
+    if (!canHit(m, ax, ay)) continue;
     const mx = m.x, my = m.y - def.h * 0.4;
     const dx = mx - cx, dy = my - cy, d = Math.hypot(dx, dy);
     if (d > reach + def.r + 2) continue;
@@ -185,7 +193,7 @@ export function meleeAttack(sim, p, item, ax, ay, o = {}) {
   }
   hits.sort((a, b) => a[0] - b[0]);
   let n = 0;
-  for (const [, m] of hits.slice(0, o.maxHits || 3)) { if (hurtMob(sim, m, base, cx, cy, p, { knock: item.knock || 60 })) n++; }
+  for (const [, m] of hits.slice(0, o.maxHits || 3)) { if (hurtMob(sim, m, base, cx, cy, p, { knock: item.knock || 60, critter: true })) n++; }
   return n;
 }
 
@@ -450,6 +458,12 @@ function aiShoot(sim, m, def, tgt, d, chasing, dt) {
 
 function aiPassive(sim, m, def, tgt, d, dt) {
   const rng = sim.rng;
+  if (m.panic > 0) { // just got hit: bolt away from the attacker
+    m.panic -= dt;
+    seekMove(sim, m, def, Math.atan2(m.y - (m.fy === undefined ? tgt.y : m.fy), m.x - (m.fx === undefined ? tgt.x : m.fx)), def.spd * 2.1, dt);
+    m.st = 'run';
+    return;
+  }
   if (def.flee && d < 46) { seekMove(sim, m, def, Math.atan2(m.y - tgt.y, m.x - tgt.x), def.spd * 1.5, dt); m.st = 'run'; return; }
   m.stt -= dt;
   if (m.stt <= 0) { m.stt = 1 + rng.next() * 3; if (rng.next() < 0.55) m.st = 'idle'; else { m.st = 'wander'; wanderDir(sim, m); } }

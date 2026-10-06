@@ -25,12 +25,12 @@ export function chestPanel(g, data, ui) {
     const t = thing(), p = g.me;
     if (!t || !t.s || !t.s.inv) { ui.close(); return; }
     clear(bagGrid); clear(boxGrid); clear(body);
-    t.s.inv.forEach((st, i) => boxGrid.appendChild(slotEl(st, { onclick: () => { if (st) g.cmd({ c: 'inv', op: 'quick', from: { k: 't', id: t.id, i }, to: {} }); } })));
-    p.inv.forEach((st, i) => bagGrid.appendChild(slotEl(st, { key: i < 8 ? String(i + 1) : null, onclick: () => { if (st) g.cmd({ c: 'inv', op: 'quick', from: { k: 'p', i }, to: { id: t.id } }); } })));
+    t.s.inv.forEach((st, i) => boxGrid.appendChild(slotEl(st, { ref: { k: 't', id: t.id, i }, onclick: () => { if (st) g.cmd({ c: 'inv', op: 'quick', from: { k: 't', id: t.id, i }, to: {} }); } })));
+    p.inv.forEach((st, i) => bagGrid.appendChild(slotEl(st, { ref: { k: 'p', i }, hot: i < 8, key: i < 8 ? String(i + 1) : null, onclick: () => { if (st) g.cmd({ c: 'inv', op: 'quick', from: { k: 'p', i }, to: { id: t.id } }); } })));
     const takeAll = () => { t.s.inv.forEach((st, i) => { if (st) g.cmd({ c: 'inv', op: 'quick', from: { k: 't', id: t.id, i }, to: {} }); }); };
     body.append(h('div', { class: 'row' }, h('b', { class: 'grow' }, `${def ? def.name : 'Chest'}  (${t.s.inv.filter(Boolean).length}/${t.s.inv.length})`), h('button', { class: 'btn small good', onclick: takeAll }, 'Take all')), boxGrid,
       h('div', { class: 'sep' }), h('div', { class: 'row' }, h('b', { class: 'grow' }, 'Your bag'), h('button', { class: 'btn small', onclick: () => g.cmd({ c: 'sort' }) }, ic('ui_sort', 1), 'Sort')), bagGrid,
-      h('div', { class: 'small muted' }, 'Tap an item to move it across. Chests next to machines feed them automatically, and nearby chests count when you craft & build!'));
+      h('div', { class: 'small muted' }, 'Tap or drag an item to move it across. Chests next to machines feed them automatically, and nearby chests count when you craft & build!'));
   }
   render();
   return { title: def ? def.name : 'Chest', icon: 'ui_bag', body, sig: () => { const t = thing(); return `${g.me.rev}:${t && t.s && t.s.inv ? t.s.inv.map(stackSig).join(',') : ''}`; }, refresh: render };
@@ -48,7 +48,7 @@ export function processorPanel(g, data, ui) {
     const s = t.s || {};
     clear(body);
     const recipes = processRecipes(world(), kind);
-    const slot = (f, label, ghost) => h('div', { class: 'col', style: 'align-items:center;gap:2px' }, slotEl(s[f], { ghost, onclick: () => { if (s[f]) g.cmd({ c: 'inv', op: 'quick', from: { k: 'm', id: t.id, f }, to: {} }); } }), h('span', { class: 'small muted' }, label));
+    const slot = (f, label, ghost) => h('div', { class: 'col', style: 'align-items:center;gap:2px' }, slotEl(s[f], { ghost, ref: { k: 'm', id: t.id, f }, onclick: () => { if (s[f]) g.cmd({ c: 'inv', op: 'quick', from: { k: 'm', id: t.id, f }, to: {} }); } }), h('span', { class: 'small muted' }, label));
     barEl = h('i', { style: 'display:block;height:100%;width:0;background:var(--green)' });
     recEl = h('div', { class: 'small', style: 'min-height:18px' });
     const arrow = h('div', { class: 'col', style: 'align-items:center;flex:1;min-width:90px' }, h('div', { style: 'width:100%;height:14px;border:3px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden' }, barEl), recEl);
@@ -61,8 +61,8 @@ export function processorPanel(g, data, ui) {
     // bag
     const bag = h('div', { class: 'grid', style: 'grid-template-columns:repeat(8,auto)' });
     const accepts = (id) => recipes.some((r) => r.input === id) || (!def.conf.noFuel && fuelValue(id) > 0);
-    p.inv.forEach((st, i) => bag.appendChild(slotEl(st, { dim: st && !accepts(st.id), onclick: () => { if (st && accepts(st.id)) g.cmd({ c: 'inv', op: 'quick', from: { k: 'p', i }, to: { id: t.id } }); else if (st) g.toast('It does not take that.', 'info'); } })));
-    body.append(row, fuelRow, h('div', { class: 'sep' }), h('b', null, 'Recipes'), menu, h('div', { class: 'sep' }), h('b', null, 'Tap items from your bag to load them'), bag,
+    p.inv.forEach((st, i) => bag.appendChild(slotEl(st, { ref: { k: 'p', i }, dim: st && !accepts(st.id), onclick: () => { if (st && accepts(st.id)) g.cmd({ c: 'inv', op: 'quick', from: { k: 'p', i }, to: { id: t.id } }); else if (st) g.toast('It does not take that.', 'info'); } })));
+    body.append(row, fuelRow, h('div', { class: 'sep' }), h('b', null, 'Recipes'), menu, h('div', { class: 'sep' }), h('b', null, 'Tap or drag items from your bag to load them'), bag,
       h('div', { class: 'small muted' }, 'Tip: place a chest right next to this machine — it will load itself and unload finished goods into the chest.'));
     tick();
   }

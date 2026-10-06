@@ -55,17 +55,20 @@ export function helpPanel(g, data, ui) {
   const row = (k, t) => h('div', { class: 'row small', style: 'align-items:flex-start' }, h('span', { class: 'chip', style: 'min-width:92px;justify-content:center;font-weight:700' }, k), h('span', null, t));
   const body = h('div', { class: 'col scroll', style: 'max-height:66vh;min-width:min(88vw,520px);gap:6px' },
     h('b', { style: 'font-size:18px' }, 'Keyboard & mouse (Mac)'),
-    row('WASD', 'Move'), row('Mouse', 'Aim; hold left-click to mine, chop, fight'), row('Space', 'Dash'), row('E / F', 'Interact (open, sit, sleep, open doors)'), row('1-8 / Wheel', 'Choose hotbar item'),
-    row('I · C · B', 'Bag · Craft · Build'), row('T · K · M', 'Research · Skills · Map'), row('R / X', 'Flip piece / Remove tool in build mode'), row('G', 'Emotes'), row('P', 'Take a photo of what you see'), row('Esc', 'Menu'),
+    row('WASD', 'Move'), row('Mouse', 'Aim; hold left-click to mine, chop, fight'), row('Space', 'Dash'), row('E / F', 'Interact (open, sit, lie down, open doors). On a seat or bed it gets you up again'), row('1-8 / Wheel', 'Choose hotbar item'),
+    row('I · C · B', 'Bag · Craft · Build'), row('T · K · M', 'Research · Skills · Map'), row('R / Shift+R', 'Turn the piece you are placing (the wheel does too). Furniture turns four ways, other pieces flip'), row('X', 'Remove tool: pieces, berry bushes, opened chests, stumps'), row('V', 'Paint tool: color anything you built'), row('Drag', 'Move items between bag slots, onto the hotbar, onto Wearing, into chests'), row('G', 'Emotes'), row('P', 'Take a photo of what you see'), row('Esc', 'Menu'),
     h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Touch (iPad)'),
     row('Left thumb', 'Drag anywhere in the lower-left to walk'), row('Big button', 'Hold to mine / chop / fight (it auto-aims!)'), row('Hand button', 'Interact with what is nearby'), row('Tap things', 'Tap doors, chests, stations, animals, and land tags'),
-    row('Building', 'Pick a piece, then tap or drag over the ground. "Rect" fills whole rooms in one swipe.'),
+    row('Building', 'Pick a piece: a see-through preview shows where it goes (green fits, red says why not). Walls and floors: tap or drag, "Rect" fills whole rooms. Furniture: slide the preview, tap Rotate to turn it, then Place. Color: pick any color you like before you build, or use the Paint brush on pieces already standing (free). Pick copies the color of a piece.'),
+    row('Moving items', 'Drag an item in the bag onto another slot or onto the hotbar. (Tap an item, then tap where it goes, works too.)'),
+    row('Critters', 'Bunnies, chicks and other wild critters can be hunted: hit one with a sword or pickaxe while aimed at it. Pets you hatched can never be hurt.'),
     h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Tips'),
     h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall to buy new lands (follow the glowing price tags).'),
     h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more. Pick a branch, tap a box to read about it: yellow boxes are ready, green ones are done.'),
     h('div', { class: 'small' }, '• Screen suddenly too big or too small? Pause menu (or Settings) → Fix zoom.'),
     h('div', { class: 'small' }, '• Every level gives a skill point for the Skills tree: tap a box and press Learn. New boxes open up as you learn the ones before them.'),
-    h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows — sleeping in a bed skips the night!'),
+    h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows. Lie down in a bed any time to rest (it also becomes your respawn point); at night, sleeping skips the night. Chairs, sofas and benches seat one person per cushion.'),
+    h('div', { class: 'small' }, '• Every slot holds up to 9999. The Pack Mule skill adds bag slots and Warehouse Keeper makes every chest bigger, for both of you.'),
     h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));
   return { title: 'How to play', icon: 'ui_book', body, sig: () => '' };
 }

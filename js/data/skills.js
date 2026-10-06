@@ -50,6 +50,8 @@ S('night_owl', 'Night Owl', 'home', 3, null, 'See 10% further in the dark per ra
 S('well_rested', 'Well Rested', 'home', 1, 'cozy_corner', 'Sleeping in a cozy bed grants a XP boost for the day.', { rested: 1 }, 2);
 S('backpack', 'Bigger Backpack', 'home', 3, null, '+4 inventory slots per rank.', { slots: 4 });
 S('master_builder', 'Master Builder', 'home', 3, 'stonemason', 'Building costs 5% less per rank.', { buildDiscount: 0.05 }, 2);
+S('pack_mule', 'Pack Mule', 'home', 3, 'backpack', '+6 bag slots per rank.', { slots: 6 }, 2);
+S('warehouse', 'Warehouse Keeper', 'home', 3, 'pack_mule', 'Every chest, barrel and cupboard holds 4 more slots per rank, for you and your partner.', { chestSlots: 4 }, 2);
 S('fireside_dreams', 'Fireside Dreams', 'home', 2, 'interior_designer', 'Cozy rooms give 20% stronger bonuses per rank.', { cozy: 0.2 });
 
 // ---- Gardener
@@ -81,7 +83,7 @@ const ICONS = {
   sharp_edge: 'i_sword_iron', tough_skin: 'ui_heart', quick_recovery: 'i_potion_health_m', critical_cutie: 'ui_bolt', dash_master: 'ui_dash', sharpshooter: 'i_bow_iron', arcane_study: 'i_staff_arcane',
   vampiric: 'i_honey_cake', thick_hide: 'i_tunic_iron', second_wind: 'i_charm_heart', battle_cry: 'i_sword_gold', survivor: 'ui_heart_half',
   bargain_builder: 'ui_hammer', stonemason: 'i_stone', long_reach: 'ui_house', cozy_corner: 'ui_cozy', interior_designer: 't_cottage_sofa', night_owl: 'ui_moon', well_rested: 't_cottage_bed', backpack: 'ui_bag',
-  master_builder: 'i_brick', fireside_dreams: 't_fireplace',
+  master_builder: 'i_brick', fireside_dreams: 't_fireplace', pack_mule: 't_crate', warehouse: 't_large_chest',
   green_thumb: 'i_seed_wheat', bountiful_harvest: 'i_pumpkin', angler: 'i_rod_wood', fish_whisperer: 'i_fish_koi', animal_friend: 'i_milk', cook: 'i_bread', herbalist: 'i_potion_health_s',
   fertile_hands: 't_farm_plot', master_angler: 'i_fish_salmon',
   haggler: 'i_coin', coin_magnet: 'i_gem_sapphire', light_feet: 'i_boots_cloth', stamina: 'ui_bolt', land_surveyor: 'ui_map', treasure_sense: 'i_treasure_key', lucky_star: 'ui_sun',

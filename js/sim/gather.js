@@ -6,10 +6,11 @@ import { BUILD } from '../data/build.js';
 import { MOBS } from '../data/mobs.js';
 import { CROPS } from '../data/crops.js';
 import { calcStats, addXp, touch, techFx, EQUIP_SLOTS, HOTBAR } from './player.js';
-import { meleeAttack, fireBow, castStaff, hurtMob } from './combat.js';
+import { meleeAttack, fireBow, castStaff, hurtMob, canHit } from './combat.js';
 import { lootDig, lootChest, lootFish } from './loot.js';
 import { ensureState } from './machines.js';
 import { hatchEgg } from './pets.js';
+import { standUp } from './furniture.js';
 import { invCount, invRemove } from './inventory.js';
 
 // ------------------------------------------------------------------ drops
@@ -87,7 +88,7 @@ export function pickTarget(sim, p, ax, ay, reach, opts = {}) {
   if (!opts.nodesOnly) {
     for (const m of w.mobs.values()) {
       const def = MOBS[m.type];
-      if (!def.hostile || m.hp <= 0) continue;
+      if (!canHit(m, ax, ay)) continue; // hostile ones, or a critter the aim is right on (never a pet)
       consider('mob', m, m.x, m.y - def.h * 0.4, def.r + 1);
     }
   }
@@ -105,7 +106,7 @@ export function useItem(sim, p, slot, ax, ay) {
   if (!item) return false;
   const st = calcStats(w, p);
   if (p.cd > 0) return false;
-  p.sleeping = false; p.sit = null;
+  standUp(sim, p);
   const face = Math.atan2(ay - (p.y - 6), ax - p.x);
 
   if (item.tool === 'pick') {
@@ -115,7 +116,7 @@ export function useItem(sim, p, slot, ax, ay) {
     w.fx('swing', p.x, p.y - 6, p.id, Math.round(face * 100), item.id);
     if (!tgt) return true;
     if (tgt.kind === 'mob') {
-      hurtMob(sim, tgt.ref, item.power * st.toolDmg * 0.7, p.x, p.y, p, { knock: 50 });
+      hurtMob(sim, tgt.ref, item.power * st.toolDmg * 0.7, p.x, p.y, p, { knock: 50, critter: true });
       return true;
     }
     const t = tgt.ref, nd = NODES[t.type];

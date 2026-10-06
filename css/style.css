@@ -53,9 +53,20 @@ button, input, select { font-family: inherit; color: inherit; }
 .slot { position: relative; width: 48px; height: 48px; background: var(--paper3); border: 3px solid #8a6a4a; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex: none; box-shadow: inset 0 3px 0 rgba(0,0,0,.12); touch-action: manipulation; }
 .slot.sel { border-color: var(--pink-d); background: #ffe0ec; box-shadow: 0 0 0 3px var(--pink), inset 0 3px 0 rgba(0,0,0,.08); }
 .slot.dim { opacity: .45; }
+.slot .n3 { font-size: 12px !important; } .slot .n4 { font-size: 10.5px !important; letter-spacing: -.3px; }
 .slot .n { position: absolute; right: 2px; bottom: 0; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 -2px 0 var(--ink); line-height: 1; pointer-events: none; }
 .slot .k { position: absolute; left: 3px; top: 1px; font-size: 11px; font-weight: 700; color: var(--ink2); opacity: .8; }
 .slot.empty { background: rgba(0,0,0,.06); }
+.slot.hot { background: #ffeccf; border-color: #b8843c; }
+.slot.hot.empty { background: rgba(184,132,60,.14); }
+.slot[data-ref] { touch-action: none; } /* a finger on a slot drags the item, it never scrolls the window */
+.slot[data-lift] { opacity: .32; }
+.slot[data-drop=ok] { outline: 3px solid var(--green); outline-offset: 2px; background: #e6ffd9; box-shadow: 0 0 0 8px rgba(110,230,120,.38); }
+.slot[data-drop=no] { outline: 3px solid var(--red); outline-offset: 2px; box-shadow: 0 0 0 8px rgba(240,90,110,.28); }
+.drag-ghost { position: fixed; left: 0; top: 0; z-index: 90; pointer-events: none; cursor: grabbing; background: var(--paper2); border-color: var(--pink-d); box-shadow: 0 8px 0 rgba(0,0,0,.18), 0 0 0 3px rgba(255,255,255,.7); opacity: .92; will-change: transform; }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+.gridlab { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink2); margin-top: 2px; }
+.gridlab:not(:first-child) { margin-top: 8px; padding-top: 6px; border-top: 2px dashed rgba(0,0,0,.14); }
 .slot .bar { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 4px; background: rgba(0,0,0,.3); border-radius: 2px; overflow: hidden; }
 .slot .bar i { display: block; height: 100%; background: var(--green); }
 .grid { display: grid; gap: 6px; }
@@ -259,3 +270,30 @@ textarea.sdp { width: 100%; height: 90px; border: 3px solid var(--ink); border-r
 .zf-win { width: min(94vw, 460px); max-height: 94%; overflow: auto; display: flex; flex-direction: column; gap: 10px; touch-action: pan-y; }
 .zf-status { padding: 6px 10px; border-radius: 10px; background: var(--paper3); min-height: 34px; display: flex; align-items: center; } .zf-status.ok { background: #c8f0b0; font-weight: 700; }
 .zf-steps { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: var(--paper2); border: 2px solid var(--ink2); }
+
+/* ---------------------------------------------------------------- building: the color picker (a panel at the side of the screen) */
+.buildside { position: absolute; right: calc(8px + var(--sar)); top: 232px; max-height: calc(100% - 240px); overflow-y: auto; }
+.cp { width: 276px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.cp-top { display: flex; align-items: center; gap: 8px; }
+.cp-preview { width: 40px; height: 40px; flex: none; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.cp-preview.none, .cp-sw.none, .cp-chip.none { background: repeating-linear-gradient(45deg, #fff 0 4px, #e6d8f2 4px 8px) !important; }
+.cp-hex { flex: 1; min-width: 0; font-weight: 700; letter-spacing: 1px; text-transform: lowercase; }
+.cp-hex.bad { border-color: var(--red); }
+.cp-cols { display: flex; flex-direction: column; gap: 8px; }
+.cp-sliders { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cp-slider { display: flex; align-items: center; gap: 8px; }
+.cp-lab { width: 40px; flex: none; font-size: 14px; font-weight: 700; color: var(--ink2); }
+.cp-track { position: relative; flex: 1; height: 24px; border: 3px solid var(--ink); border-radius: 14px; touch-action: none; cursor: pointer; margin: 0 12px 0 0; }
+.cp-thumb { position: absolute; top: 50%; left: 0; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 3px solid var(--ink); border-radius: 50%; background: #fff; box-shadow: 0 2px 0 var(--ink); pointer-events: none; }
+.cp-track.on .cp-thumb { transform: scale(1.12); }
+.cp-swatches { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cp-recent { display: flex; flex-wrap: nowrap; gap: 4px; }
+.cp-recent .cp-sw { width: 26px; height: 26px; flex: none; }
+.cp-sw { width: 28px; height: 28px; padding: 0; border: 3px solid var(--ink); border-radius: 9px; cursor: pointer; box-shadow: 0 2px 0 var(--ink); touch-action: manipulation; }
+.cp-swatches .cp-sw { width: 100%; height: auto; aspect-ratio: 1; }
+.cp-sw.on { outline: 3px solid #fff; outline-offset: -1px; box-shadow: 0 0 0 3px var(--ink); transform: translateY(-1px); }
+.cp-reclab { font-size: 12px; font-weight: 700; color: var(--ink2); margin: 2px 0 -4px; }
+.cp-chip { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 6px; }
+.buildside.tight .cp { width: 252px; gap: 5px; padding: 6px 8px; } .buildside.tight .cp-sw { width: 24px; height: 24px; } .buildside.tight .cp-swatches .cp-sw { width: 100%; height: auto; } .buildside.tight .cp-slider { gap: 4px; } .buildside.tight .cp-track { height: 20px; } .buildside.tight .cp-thumb { width: 26px; height: 26px; margin: -13px 0 0 -13px; } .buildside.tight .cp-preview { width: 34px; height: 34px; }
+@media (pointer: coarse) { .cp { width: 316px; gap: 10px; } .cp-track { height: 28px; } .cp-thumb { width: 36px; height: 36px; margin: -18px 0 0 -18px; } .cp-sw { width: 34px; height: 34px; } .cp-recent .cp-sw { width: 30px; height: 30px; } .cp-swatches { gap: 6px; } }
+@media (pointer: coarse) { .buildside.tight .cp { width: 276px; gap: 6px; } .buildside.tight .cp-sw { width: 28px; height: 28px; } .buildside.tight .cp-recent .cp-sw { width: 24px; height: 24px; } .buildside.tight .cp-swatches .cp-sw { width: 100%; height: auto; } .buildside.tight .cp-thumb { width: 30px; height: 30px; margin: -15px 0 0 -15px; } .buildside.tight .cp-track { height: 22px; } }

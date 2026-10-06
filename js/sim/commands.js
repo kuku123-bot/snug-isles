@@ -6,11 +6,14 @@ import { NODES } from '../data/nodes.js';
 import { MOBS } from '../data/mobs.js';
 import { RECIPES } from '../data/recipes.js';
 import { TECHS, researchTierFor } from '../data/techs.js';
-import { wallCodeOf, floorCodeOf, decoCodeOf, wallDefOf } from './world.js';
+import { wallCodeOf, floorCodeOf, decoCodeOf, wallDefOf, floorDefOf } from './world.js';
+import { normColor } from '../data/paint.js';
 import { calcStats, addXp, touch, levelSkill, HOTBAR, EQUIP_SLOTS, syncSlots } from './player.js';
 import { invCount, invRemove, invAdd, stackMax, compact } from './inventory.js';
 import { useItem, harvestPlot, equipFromSlot, unequip, openWildChest } from './gather.js';
-import { ensureState, processRecipes } from './machines.js';
+import { ensureState, processRecipes, growStorage } from './machines.js';
+import { turnable, normRot, footprintFor } from '../data/facing.js';
+import { seatSlots, bedSpot, restingThing, standUp } from './furniture.js';
 import { spawnBoss } from './combat.js';
 
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
@@ -87,19 +90,20 @@ export function exec(sim, pid, cmd) {
     case 'sel': p.sel = clamp(cmd.i | 0, 0, HOTBAR - 1); return;
     case 'craft': return doCraft(sim, p, cmd);
     case 'build': return doBuild(sim, p, cmd);
-    case 'buildMany': { const list = tileList(cmd.tiles); for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip }, true); return; }
+    case 'buildMany': { const list = tileList(cmd.tiles); for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip, col: cmd.col }, true); return; }
+    case 'paint': return doPaint(sim, p, cmd);
     case 'unbuildMany': { const list = tileList(cmd.tiles); for (const t of list) doUnbuild(sim, p, { tx: t[0], ty: t[1], layer: cmd.layer }, true); return; }
     case 'unbuild': return doUnbuild(sim, p, cmd);
     case 'buyLand': return doBuyLand(sim, p, cmd);
     case 'research': return doResearch(sim, p, cmd);
-    case 'skill': { const err = levelSkill(w, p, cmd.sid); if (err) sim.toast(p.pid, err, 'warn'); else w.fx('skill', p.x, p.y - 12, 0); return; }
+    case 'skill': { const err = levelSkill(w, p, cmd.sid); if (err) sim.toast(p.pid, err, 'warn'); else { w.fx('skill', p.x, p.y - 12, 0); if (growStorage(w)) sim.toast(p.pid, 'Your storage got bigger!', 'good'); } return; }
     case 'interact': return doInteract(sim, p, cmd);
     case 'inv': return doInv(sim, p, cmd);
     case 'drop': return doDrop(sim, p, cmd);
     case 'sell': return doSell(sim, p, cmd);
     case 'door': return doDoor(sim, p, cmd);
     case 'warp': return doWarp(sim, p, cmd);
-    case 'wake': p.sleeping = false; p.sit = null; touch(p); return;
+    case 'wake': standUp(sim, p, false); return; // the player already stepped out on their own screen (same spot the host would pick)
     case 'dash': { const st = calcStats(w, p); if (p.energy >= 25 && p.dashCd <= 0) { p.energy -= 25; p.dashCd = st.dashCd; p.shield = Math.max(p.shield, 0.2); w.fx('dashpuff', p.x, p.y, p.id); touch(p); } return; }
     case 'emote': w.fx('emote', p.x, p.y - 22, p.id, cmd.e | 0); return;
     case 'pet': return doPet(sim, p, cmd);
@@ -119,7 +123,7 @@ function doCraft(sim, p, cmd) {
   if (!r) return;
   if (r.tech && !w.techs.has(r.tech)) return sim.toast(p.pid, 'You need to research this first.', 'warn');
   if (!stationNear(sim, p, r.station)) return sim.toast(p.pid, `Stand near a ${r.station === 'campfire' ? 'campfire' : r.station}.`, 'warn');
-  const n = clamp(cmd.n | 0 || 1, 1, 99);
+  const n = clamp(cmd.n | 0 || 1, 1, 999);
   const src = sourcesFor(sim, p);
   let made = 0;
   for (let i = 0; i < n; i++) {
@@ -144,7 +148,14 @@ function clearSoftNodes(sim, def, tx, ty) {
     if (t) { const nd = NODES[t.type]; if (nd && nd.kind === 'node' && (!nd.solid || t.dep)) w.removeThing(t.id); }
   }
 }
-export function placeCheck(sim, p, def, tx, ty) {
+/** the blueprint as turned: same piece, footprint w/h swapped for sideways turns (so every rule below just reads def.w / def.h) */
+export function turnedDef(def, rot) {
+  if (!rot || !turnable(def)) return def;
+  const [fw, fh] = footprintFor(def, rot);
+  return fw === (def.w || 1) && fh === (def.h || 1) ? def : { ...def, w: fw, h: fh };
+}
+export function placeCheck(sim, p, def0, tx, ty, rot = 0) {
+  const def = turnedDef(def0, rot);
   const w = sim.world;
   // allow building over soft nodes (grass, flowers, stumps)
   const softOnly = (x, y) => { const t = w.thingAt(x, y); if (!t) return true; const nd = NODES[t.type]; return !!(nd && nd.kind === 'node' && (!nd.solid || t.dep)); };
@@ -172,39 +183,41 @@ function doBuild(sim, p, cmd, quiet = false) {
   if (!def || def.hidden) return;
   if (def.tech && !w.techs.has(def.tech)) return sim.toast(p.pid, 'Research this first.', 'warn');
   const tx = cmd.tx | 0, ty = cmd.ty | 0;
+  const rot = turnable(def) ? normRot(cmd.rot) : 0, fp = turnedDef(def, rot); // fp = the footprint as turned
+  const col = normColor(cmd.col); // the paint color it is built in (0 = as drawn)
   const st = calcStats(w, p);
   if (!w.inb(tx, ty)) return;
-  if (Math.hypot(p.x - (tx + (def.w || 1) / 2) * TILE, p.y - (ty + (def.h || 1) / 2) * TILE) > (st.buildReach + 1) * TILE) return sim.toast(p.pid, 'Too far away.', 'warn');
-  const reason = placeCheck(sim, p, def, tx, ty);
+  if (Math.hypot(p.x - (tx + (fp.w || 1) / 2) * TILE, p.y - (ty + (fp.h || 1) / 2) * TILE) > (st.buildReach + 1) * TILE) return sim.toast(p.pid, 'Too far away.', 'warn');
+  const reason = placeCheck(sim, p, def, tx, ty, rot);
   if (reason) return sim.toast(p.pid, reason, 'warn');
+  // same piece already there? nothing to build (so drag-painting wastes nothing); the same piece in another color is just repainted, free
+  const i = w.idx(tx, ty);
+  if (def.kind === 'wall' && w.wall[i] === wallCodeOf(def.id)) { if (w.wallCol[i] !== col) w.setWall(tx, ty, w.wall[i], w.wallState[i], false, col); return; }
+  if (def.kind === 'floor' && w.floor[i] === floorCodeOf(def.id)) { if (w.floorCol[i] !== col) w.setFloor(tx, ty, w.floor[i], false, col); return; }
+  if (def.kind === 'walldeco' && w.deco[i] === decoCodeOf(def.id)) { if (w.decoCol[i] !== col) w.setDeco(tx, ty, w.deco[i], false, col); return; }
   const mult = buildMult(sim, p, def);
   const src = sourcesFor(sim, p);
   if (mult > 0 && !canAffordAll(src, def.cost, mult)) {
     const miss = missingAll(src, def.cost, mult).map(([k, n]) => `${n} ${ITEMS[k] ? ITEMS[k].name : k}`).join(', ');
     return sim.toast(p.pid, `Need ${miss}`, 'warn');
   }
-  // same piece already there? skip silently so drag-painting doesn't waste anything
-  const i = w.idx(tx, ty);
-  if (def.kind === 'wall') { const c = wallCodeOf(def.id); if (w.wall[i] === c) { if (def.piece === 'door' || def.piece === 'gate') return; return; } }
-  if (def.kind === 'floor' && w.floor[i] === floorCodeOf(def.id)) return;
-  if (def.kind === 'walldeco' && w.deco[i] === decoCodeOf(def.id)) return;
   if (mult > 0) spendAll(sim, src, def.cost, mult);
-  const cx = (tx + (def.w || 1) / 2) * TILE, cy = (ty + (def.h || 1)) * TILE;
+  const cx = (tx + (fp.w || 1) / 2) * TILE, cy = (ty + (fp.h || 1)) * TILE;
   if (def.kind === 'wall') {
     if (w.wall[i]) refund(sim, p, BUILD[wallDefOf(w.wall[i]).id]);
     clearSoftNodes(sim, def, tx, ty);
-    w.setWall(tx, ty, wallCodeOf(def.id), 0);
+    w.setWall(tx, ty, wallCodeOf(def.id), 0, false, col);
   } else if (def.kind === 'floor') {
     if (w.floor[i]) refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])]);
     clearSoftNodes(sim, def, tx, ty);
-    w.setFloor(tx, ty, floorCodeOf(def.id));
+    w.setFloor(tx, ty, floorCodeOf(def.id), false, col);
   } else if (def.kind === 'walldeco') {
-    w.setDeco(tx, ty, decoCodeOf(def.id));
+    w.setDeco(tx, ty, decoCodeOf(def.id), false, col);
   } else {
-    clearSoftNodes(sim, def, tx, ty);
-    const t = w.addThing(def.id, tx, ty, { flip: !!cmd.flip });
+    clearSoftNodes(sim, fp, tx, ty);
+    const t = w.addThing(def.id, tx, ty, { flip: !!cmd.flip && !rot, rot, col }); // a turned piece is never also mirrored
     if (def.behavior === 'storage' || def.behavior === 'processor' || def.behavior === 'farm' || def.behavior === 'producer' || def.behavior === 'drill' || def.behavior === 'turret') {
-      ensureState(t); w.patchThing(t.id, { s: t.s });
+      ensureState(t); growStorage(w, t); w.patchThing(t.id, { s: t.s });
     }
     if (def.behavior === 'farm' || def.behavior === 'producer') t.s.by = p.pid;
   }
@@ -229,6 +242,69 @@ function spillThing(sim, t) {
   if (s.c) sim.spawnDrop('seed_' + s.c, 1, cx, cy);
 }
 
+/** natural things the Remove tool may clear: any plant (berry bushes, flowers...), an opened treasure chest, and the leftovers (stumps...) of anything gathered */
+export function clearableNode(t) {
+  const nd = t && NODES[t.type];
+  if (!nd) return false;
+  if (nd.kind === 'treasure') return !!t.dep;
+  return nd.kind === 'node' && !!(nd.plant || t.dep);
+}
+function clearNode(sim, p, t) {
+  const nd = NODES[t.type];
+  if (nd.kind === 'treasure') sim.award(p, 'wood', 1 + sim.rng.int(2)); // an old chest is a few planks
+  else if (!t.dep) for (const [item, min, max, chance = 1] of nd.drops) { // a ripe plant gives its harvest on the way out
+    if (sim.rng.next() > chance) continue;
+    const n = min + sim.rng.int(max - min + 1);
+    if (n > 0) sim.award(p, item, n);
+  }
+  sim.world.removeThing(t.id);
+}
+
+// ------------------------------------------------------------------ paint
+/** the piece a brush stroke on this tile would color, or null: a piece of furniture or decor first; on a wall, the wall, then what hangs on it (once the wall already has the color); else the floor */
+export function paintTarget(w, tx, ty, col) {
+  if (!w.inb(tx, ty)) return null;
+  const i = w.idx(tx, ty);
+  const th = w.thingAt(tx, ty) || w.flatAt(tx, ty);
+  if (th && BUILD[th.type] && !BUILD[th.type].hidden) return { layer: 'thing', thing: th, has: th.col || 0 };
+  if (w.wall[i]) {
+    if (w.deco[i] && (w.wallCol[i] || 0) === col && (w.decoCol[i] || 0) !== col) return { layer: 'deco', has: w.decoCol[i] || 0 };
+    return { layer: 'wall', has: w.wallCol[i] || 0 };
+  }
+  if (w.floor[i]) return { layer: 'floor', has: w.floorCol[i] || 0 };
+  return null;
+}
+/** the color of the piece on a tile (for the color dropper): furniture first, then the wall, then the floor; null when there is nothing there */
+export function colorAt(w, tx, ty) {
+  if (!w.inb(tx, ty)) return null;
+  const i = w.idx(tx, ty);
+  const th = w.thingAt(tx, ty) || w.flatAt(tx, ty);
+  if (th && BUILD[th.type] && !BUILD[th.type].hidden) return { col: th.col || 0, name: BUILD[th.type].name };
+  if (w.wall[i]) return { col: w.wallCol[i] || 0, name: wallDefOf(w.wall[i]).name };
+  if (w.floor[i]) return { col: w.floorCol[i] || 0, name: floorDefOf(w.floor[i]).name };
+  return null;
+}
+/** color pieces that are already built (free); col 0 puts a piece back to how it was drawn */
+function doPaint(sim, p, cmd) {
+  const w = sim.world, col = normColor(cmd.col), st = calcStats(w, p);
+  const tiles = Array.isArray(cmd.tiles) ? tileList(cmd.tiles) : [[cmd.tx, cmd.ty]];
+  let n = 0, far = false;
+  for (const t of tiles) {
+    const tx = t[0] | 0, ty = t[1] | 0;
+    if (!w.inb(tx, ty) || !w.isTileOwned(tx, ty)) continue;
+    if (Math.hypot(p.x - (tx + 0.5) * TILE, p.y - (ty + 0.5) * TILE) > (st.buildReach + 1) * TILE) { far = true; continue; }
+    const tg = paintTarget(w, tx, ty, col);
+    if (!tg || tg.has === col) continue;
+    const i = w.idx(tx, ty);
+    if (tg.layer === 'thing') w.patchThing(tg.thing.id, { col });
+    else if (tg.layer === 'wall') w.setWall(tx, ty, w.wall[i], w.wallState[i], false, col);
+    else if (tg.layer === 'deco') w.setDeco(tx, ty, w.deco[i], false, col);
+    else w.setFloor(tx, ty, w.floor[i], false, col);
+    if (n++ < 40) w.fx('paint', (tx + 0.5) * TILE, (ty + 0.5) * TILE, col);
+  }
+  if (far && !n) sim.toast(p.pid, 'Too far away.', 'warn');
+}
+
 function doUnbuild(sim, p, cmd, quiet = false) {
   const w = sim.world;
   const tx = cmd.tx | 0, ty = cmd.ty | 0;
@@ -239,7 +315,8 @@ function doUnbuild(sim, p, cmd, quiet = false) {
   let layer = cmd.layer;
   const thing = w.thingAt(tx, ty) || w.flatAt(tx, ty);
   const placed = thing && BUILD[thing.type] && !BUILD[thing.type].hidden ? thing : null;
-  if (!layer) layer = w.deco[i] ? 'deco' : placed ? 'thing' : w.wall[i] ? 'wall' : w.floor[i] ? 'floor' : null;
+  const wild = !placed && clearableNode(thing) ? thing : null;
+  if (!layer) layer = w.deco[i] ? 'deco' : placed ? 'thing' : wild ? 'wild' : w.wall[i] ? 'wall' : w.floor[i] ? 'floor' : null;
   if (!layer) return;
   const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
   if (layer === 'deco' && w.deco[i]) {
@@ -251,9 +328,11 @@ function doUnbuild(sim, p, cmd, quiet = false) {
     if (d.conf && d.conf.grave) { const any = placed.s && placed.s.inv && placed.s.inv.some(Boolean); if (any) return sim.toast(p.pid, 'Empty the gravestone first.', 'info'); }
     spillThing(sim, placed);
     refund(sim, p, d);
-    // anyone sitting/sleeping on it gets up
-    for (const q of w.players.values()) if (q.sit && q.sit.id === placed.id) q.sit = null;
+    // anyone sitting or sleeping on it gets up first (a sleeper is stepped out beside the bed)
+    for (const q of w.players.values()) if (restingThing(w, q) === placed) standUp(sim, q);
     w.removeThing(placed.id);
+  } else if (layer === 'wild' && wild) {
+    clearNode(sim, p, wild);
   } else if (layer === 'wall' && w.wall[i]) {
     const wd = wallDefOf(w.wall[i]);
     if (w.deco[i]) { const id = require_deco(w.deco[i]); if (id) refund(sim, p, BUILD[id]); }
@@ -336,7 +415,11 @@ function doInteract(sim, p, cmd) {
   }
   const d = BUILD[t.type];
   if (!d) return;
-  p.sleeping = false;
+  if (p.sleeping || p.sit) {
+    const was = restingThing(w, p);
+    standUp(sim, p);
+    if (was && was.id === t.id) return; // the hand button on what you are lying or sitting on gets you up
+  }
   switch (d.behavior) {
     case 'storage': return uiOpen(sim, p, 'chest', t);
     case 'station': return uiOpen(sim, p, 'station', t, { station: d.conf.station });
@@ -344,7 +427,7 @@ function doInteract(sim, p, cmd) {
     case 'processor': return uiOpen(sim, p, 'processor', t);
     case 'market': return uiOpen(sim, p, 'market', t);
     case 'bed': return doBed(sim, p, t, d);
-    case 'seat': p.sit = { id: t.id }; p.x = cx; p.y = (t.y + t.h) * TILE - 2; p.vx = p.vy = 0; w.tell(p.pid, { t: 'teleport', x: p.x, y: p.y }); touch(p); return;
+    case 'seat': return doSeat(sim, p, t, d);
     case 'farm': {
       const s = ensureState(t);
       if (s.c) return harvestPlot(sim, p, t);
@@ -367,14 +450,29 @@ function doInteract(sim, p, cmd) {
   }
 }
 
-function doBed(sim, p, t, d) {
-  const w = sim.world;
-  p.spawn = { id: t.id };
-  const [cx] = center(t);
-  p.x = cx; p.y = (t.y + t.h) * TILE - 3; p.vx = p.vy = 0;
+/** sit on the nearest free cushion of a chair, sofa or bench, facing the way it faces */
+function doSeat(sim, p, t, d) {
+  const w = sim.world, taken = new Set();
+  for (const q of w.players.values()) if (q !== p && q.online && q.sit && q.sit.id === t.id) taken.add(q.sit.i);
+  const free = seatSlots(t, d).filter((s) => !taken.has(s.i)).sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
+  if (!free.length) return sim.toast(p.pid, 'Someone is already sitting there.', 'info');
+  const s = free[0];
+  p.sit = { id: t.id, i: s.i }; p.sleeping = false; p.bed = 0;
+  p.x = s.x; p.y = s.y; p.vx = p.vy = 0;
   w.tell(p.pid, { t: 'teleport', x: p.x, y: p.y });
-  if (sim.nightness() > 0.3) { p.sleeping = true; w.fx('zzz', p.x, p.y - 12, p.id); sim.toast(p.pid, 'Sweet dreams...', 'info'); }
-  else sim.toast(p.pid, 'Respawn point set. (You can sleep at night.)', 'info');
+  touch(p);
+}
+
+/** lie down in a bed (head on the pillow). Any time of day; at night it also sleeps the night away once everyone who must is in bed. */
+function doBed(sim, p, t, d) {
+  const w = sim.world, s = bedSpot(t, d);
+  p.spawn = { id: t.id };
+  p.sleeping = true; p.sit = null; p.bed = t.id;
+  p.x = s.x; p.y = s.y; p.vx = p.vy = 0;
+  w.tell(p.pid, { t: 'teleport', x: p.x, y: p.y });
+  w.fx('zzz', p.x, p.y - 12, p.id);
+  sim.computeCozy(p); // a bed is solid: the room is the one you would step out into
+  sim.toast(p.pid, sim.nightness() > 0.3 ? 'Sweet dreams... (move to get up)' : 'Resting. This bed is where you wake up if you faint. (move to get up)', 'info');
   touch(p);
 }
 function doProducer(sim, p, t, d) {

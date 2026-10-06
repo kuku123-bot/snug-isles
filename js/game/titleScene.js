@@ -14,7 +14,7 @@ export class TitleScene {
     this.app = app;
     this.view = app.view; this.audio = app.audio; this.settings = app.settings;
     this.t = 0; this.camX = 0; this.camY = 0; this.cam = { x: 0, y: 0 };
-    this.hover = null; this.build = null; this.landTags = []; this.showNames = false; this.localPid = 'x'; this.fadeWalls = false; this.partnerArrow = null; this.night = 0;
+    this.hover = null; this.builder = null; this.landTags = []; this.showNames = false; this.localPid = 'x'; this.fadeWalls = false; this.partnerArrow = null; this.night = 0;
     this.me = null; this.pstates = new Map();
     this.fx = new FX(this);
     this.hud = { logPickup() {} };

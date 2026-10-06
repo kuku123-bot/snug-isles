@@ -60,8 +60,8 @@ export function showTip(html, x, y) {
 export function hideTip() { tipEl = tipEl || document.getElementById('tip'); tipEl.className = 'hidden'; }
 /** attach hover/long-press tooltip to an element */
 export function tip(el, htmlFn) {
-  el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') showTip(typeof htmlFn === 'function' ? htmlFn() : htmlFn, e.clientX, e.clientY); });
-  el.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && tipEl && !tipEl.classList.contains('hidden')) showTip(typeof htmlFn === 'function' ? htmlFn() : htmlFn, e.clientX, e.clientY); });
+  el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse' && !document.body.classList.contains('dragging')) showTip(typeof htmlFn === 'function' ? htmlFn() : htmlFn, e.clientX, e.clientY); });
+  el.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && tipEl && !tipEl.classList.contains('hidden') && !document.body.classList.contains('dragging')) showTip(typeof htmlFn === 'function' ? htmlFn() : htmlFn, e.clientX, e.clientY); });
   el.addEventListener('pointerleave', hideTip);
   el.addEventListener('pointerdown', hideTip);
   return el;

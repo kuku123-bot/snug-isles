@@ -2,6 +2,7 @@
 import { TILE, clamp, TAU } from '../util.js';
 import { ITEMS } from '../data/items.js';
 import { hex, css, R, G, B } from '../gfx/pixmap.js';
+import { colorHex, colorRGB } from '../data/paint.js';
 
 const PAL = {
   chip: ['#d8dce8', '#b3b8cc', '#8a90a8', '#ffffff'], leaf: ['#7fe068', '#58b84a', '#3f9a45', '#a8f08a'], snow: ['#ffffff', '#dff0ff', '#bcdcff'],
@@ -91,6 +92,12 @@ export class FX {
       case 'emote': { this.emotes.set(a, { e: b, t: 0 }); au.play('emote'); break; }
       case 'door': au.play(a ? 'dooropen' : 'doorclose', { vol: 0.7 }); break;
       case 'build': { this.burst(x, y - 6, 8, PAL.puff, { speed: 26, up: 8, grav: 20, life: 0.5, size: 2 }); au.play(a ? 'placewall' : 'place'); break; }
+      case 'paint': { // a few drops of the new color (a is the color; 0 = back to the original look)
+        const base = a ? colorHex(a) : '#ffffff', lite = a ? '#' + colorRGB(a).map((v) => Math.round(v + (255 - v) * 0.45).toString(16).padStart(2, '0')).join('') : '#f0ecff';
+        this.burst(x, y - 2, 6, [base, base, lite], { speed: 22, up: 16, grav: 50, life: 0.55, size: 2 });
+        if (!this._paintSfx || g.t - this._paintSfx > 0.09) { this._paintSfx = g.t; au.play('place', { vol: 0.3 }); }
+        break;
+      }
       case 'unbuild': { this.burst(x, y, 7, PAL.dust, { speed: 30, up: 12, life: 0.5 }); au.play('remove'); break; }
       case 'craft': { this.burst(x, y, 8, PAL.spark, { speed: 30, up: 28, life: 0.6 }); au.play('craft'); break; }
       case 'research': { this.ring(x, y, 20, '#a77bff', 0.7); this.burst(x, y, 24, PAL.void, { speed: 60, up: 30, life: 1.0 }); au.play('research'); break; }

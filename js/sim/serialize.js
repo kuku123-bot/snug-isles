@@ -7,8 +7,11 @@ import { NODES } from '../data/nodes.js';
 import { GROUND_IDS } from '../data/biomes.js';
 import { makeInv } from './inventory.js';
 import { calcStats } from './player.js';
+import { normColor } from '../data/paint.js';
 
 export const SAVE_VERSION = 1;
+/** Bumped by an update that changes how worlds are handled. The first time a game with a higher epoch opens a world saved with a lower one, it keeps a copy of the world as it was (see keepCopyBeforeUpdate in app.js). */
+export const SAVE_EPOCH = 2;
 
 const sparse = (arr, state) => {
   const out = [];
@@ -27,10 +30,18 @@ export function serializePlayer(p) {
 export function serializeWorld(sim) {
   const w = sim.world;
   const things = [];
-  for (const t of w.things.values()) things.push([t.id, t.type, t.x, t.y, t.flip, Math.round(t.hp * 10) / 10, t.dep, t.s, Math.round(t.t || 0)]);
+  for (const t of w.things.values()) things.push([t.id, t.type, t.x, t.y, t.flip, Math.round(t.hp * 10) / 10, t.dep, t.s, Math.round(t.t || 0), t.rot || 0, t.col || 0]);
   const drops = [];
   for (const d of w.drops.values()) drops.push([d.id, d.item, d.n, Math.round(d.x), Math.round(d.y), Math.round(d.ttl)]);
+  // paint colors are only written when something is painted (a world nobody painted looks exactly like it always did, and older versions ignore the extra keys)
+  const paint = {};
+  for (const [key, arr, code] of [['floorCol', w.floorCol, w.floor], ['wallCol', w.wallCol, w.wall], ['decoCol', w.decoCol, w.deco]]) {
+    const list = [];
+    for (let i = 0; i < arr.length; i++) if (arr[i] && code[i]) list.push([i, arr[i]]);
+    if (list.length) paint[key] = list;
+  }
   return {
+    ...paint,
     v: SAVE_VERSION, seed: w.seed, gw: w.gw, settings: w.settings, time: w.time, day: w.day, coins: w.coins, techs: [...w.techs], shared: w.shared, nextId: w.nextId,
     spawn: sim.spawn, biomeMap: w.biomeMap, owned: bytesToB64(w.owned), ground: bytesToB64(w.ground),
     wallIds: WALL_IDS, floorIds: FLOOR_IDS, decoIds: WALLDECO_IDS, groundIds: GROUND_IDS,
@@ -69,17 +80,20 @@ export function restoreWorld(data, { withSim = true } = {}) {
   for (const [i, c] of data.floor || []) world.floor[i] = remapCode(data.floorIds || FLOOR_IDS, FLOOR_IDS, c);
   for (const [i, c, st] of data.wall || []) { world.wall[i] = remapCode(data.wallIds || WALL_IDS, WALL_IDS, c); world.wallState[i] = st || 0; }
   for (const [i, c] of data.deco || []) world.deco[i] = remapCode(data.decoIds || WALLDECO_IDS, WALLDECO_IDS, c);
+  for (const [key, arr, code] of [['floorCol', world.floorCol, world.floor], ['wallCol', world.wallCol, world.wall], ['decoCol', world.decoCol, world.deco]]) {
+    for (const [i, c] of data[key] || []) if (i >= 0 && i < arr.length && code[i]) arr[i] = normColor(c);
+  }
   for (let i = 0; i < world.ground.length; i++) world.recalcSolid(i);
   world.landRev++; world.rev++;
   for (const t of data.things || []) {
-    const [id, type, x, y, flip, hp, dep, s, tt] = t;
+    const [id, type, x, y, flip, hp, dep, s, tt, rot, col] = t;
     if (!NODES[type] && !BUILD[type]) continue; // unknown (removed) content
-    const th = world.addThing(type, x, y, { id, flip, hp, dep, s, silent: true });
+    const th = world.addThing(type, x, y, { id, flip, hp, dep, s, rot, col, silent: true });
     th.t = tt || 0;
   }
   for (const d of data.drops || []) { const [id, item, n, x, y, ttl] = d; world.drops.set(id, { id, item, n, x, y, ox: x, oy: y, age: 5, ttl: ttl || 300 }); }
   for (const pd of data.players || []) {
-    const p = { ...pd, vx: 0, vy: 0, dir: 0, face: 1, dead: 0, sleeping: false, sit: null, online: false, cd: 0, dashCd: 0, fish: null, cozy: 0, shield: 0, stats: null, rev: 1, buffs: pd.buffs || {}, skills: pd.skills || {}, equip: pd.equip || { head: null, body: null, feet: null, charm: null } };
+    const p = { ...pd, vx: 0, vy: 0, dir: 0, face: 1, dead: 0, sleeping: false, sit: null, bed: 0, online: false, cd: 0, dashCd: 0, fish: null, cozy: 0, shield: 0, stats: null, rev: 1, buffs: pd.buffs || {}, skills: pd.skills || {}, equip: pd.equip || { head: null, body: null, feet: null, charm: null } };
     world.players.set(p.pid, p);
   }
   world.tileDirty.length = 0;
@@ -93,5 +107,5 @@ export function restoreWorld(data, { withSim = true } = {}) {
 /** short summary stored beside the save for the world list */
 export function saveMeta(sim, extra = {}) {
   const w = sim.world;
-  return { lands: w.ownedCount(), day: w.day + 1, coins: w.coins, techs: w.techs.size, players: [...w.players.values()].map((p) => ({ name: p.name, level: p.level, look: p.look })), updated: Date.now(), ...extra };
+  return { lands: w.ownedCount(), day: w.day + 1, coins: w.coins, techs: w.techs.size, players: [...w.players.values()].map((p) => ({ name: p.name, level: p.level, look: p.look })), updated: Date.now(), epoch: SAVE_EPOCH, ...extra };
 }
