@@ -4,6 +4,7 @@
 import { chromium, webkit } from 'playwright';
 import { startServer } from './serve.mjs';
 import { build } from './build.mjs';
+import { SAVE_EPOCH } from '../js/sim/serialize.js';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
@@ -94,7 +95,9 @@ console.log('  ', JSON.stringify(made));
 const before = await rawDB(A.page);
 ok(before.worlds.length === 1 && before.meta.length === 1, 'the old version saved one world');
 const oldSave = JSON.parse(before.worlds[0]), oldMeta = before.meta[0], worldId = before.keys[0];
-ok(oldSave.things.length >= 30 && !('floorCol' in oldSave) && !oldMeta.epoch, `it has ${oldSave.things.length} things, is not painted and has no epoch (as every world saved so far)`);
+// a copy is kept only when the old version is an older generation than this one (a same-generation update must not make needless copies)
+const needsCopy = (oldMeta.epoch || 1) < SAVE_EPOCH;
+ok(oldSave.things.length >= 30 && !('floorCol' in oldSave), `it has ${oldSave.things.length} things and is not painted (the old version's generation: ${oldMeta.epoch || 1}, this one: ${SAVE_EPOCH}, so ${needsCopy ? 'a copy is expected' : 'no copy is expected'})`);
 const state1 = await A.ctx.storageState({ indexedDB: true });
 await A.ctx.close();
 
@@ -124,12 +127,14 @@ ok(st.coins >= oldSave.coins, `coins (${oldSave.coins} saved, ${st.coins} now: g
 ok(st.free, 'the player is standing on free ground (not stuck inside the bed they saved in)');
 const after = await rawDB(B.page);
 const copyKey = 'before-' + worldId;
-ok(after.keys.includes(copyKey) && after.keys.includes(worldId) && after.keys.length === 2, `a copy was kept next to the island (${after.keys.join(', ')})`);
-let same = false; try { assert.deepEqual(JSON.parse(after.worlds[after.keys.indexOf(copyKey)]), oldSave); same = true; } catch (e) { /* reported below */ }
-ok(same, 'and the copy is byte-for-byte the island as the old version saved it');
+if (needsCopy) {
+  ok(after.keys.includes(copyKey) && after.keys.includes(worldId) && after.keys.length === 2, `a copy was kept next to the island (${after.keys.join(', ')})`);
+  let same = false; try { assert.deepEqual(JSON.parse(after.worlds[after.keys.indexOf(copyKey)]), oldSave); same = true; } catch (e) { /* reported below */ }
+  ok(same, 'and the copy is byte-for-byte the island as the old version saved it');
+} else ok(after.keys.length === 1 && after.keys[0] === worldId, `no needless copy: the old version was already this generation (${after.keys.join(', ')})`);
 const metaNow = after.meta.map((m, i) => ({ key: i, ...m }));
 const lst = await B.page.evaluate(() => __snug.listWorlds());
-ok(lst.length === 2 && lst.some((m) => m.id === copyKey && /before the update/.test(m.name)) && lst.some((m) => m.id === worldId && m.epoch >= 2), 'the world list shows the island and "(before the update)", and the island is now stamped');
+ok(needsCopy ? lst.length === 2 && lst.some((m) => m.id === copyKey && /before the update/.test(m.name)) && lst.some((m) => m.id === worldId && m.epoch >= SAVE_EPOCH) : lst.length === 1 && lst[0].epoch >= SAVE_EPOCH, needsCopy ? 'the world list shows the island and "(before the update)", and the island is now stamped' : 'the world list shows just the island, stamped with this generation');
 void metaNow;
 // use the furniture of the old island
 const use = await B.page.evaluate(async () => {
@@ -165,7 +170,7 @@ ok(painted > 0, 'the old sofa can be painted');
 await B.page.reload({ waitUntil: 'load' }); await B.page.waitForTimeout(1500);
 await B.page.evaluate((id) => __snug.startSaved(id, 'solo'), worldId); await B.page.waitForTimeout(1800);
 const keys3 = (await rawDB(B.page)).keys;
-ok(keys3.length === 2, `opening it again does not make more copies (${keys3.length} records)`);
+ok(keys3.length === (needsCopy ? 2 : 1), `opening it again does not make more copies (${keys3.length} records)`);
 const state2 = await B.ctx.storageState({ indexedDB: true });
 await B.ctx.close();
 
@@ -176,7 +181,7 @@ const C = await open(state2);
 await C.page.goto(origin, { waitUntil: 'load' });
 await C.page.waitForTimeout(1500);
 const l3 = await C.page.evaluate(() => __snug.listWorlds());
-ok(l3.length === 2, 'the old version lists both islands');
+ok(l3.length === (needsCopy ? 2 : 1), needsCopy ? 'the old version lists both islands' : 'the old version lists the island');
 await C.page.evaluate((id) => __snug.startSaved(id, 'solo'), worldId);
 await C.page.waitForTimeout(2000);
 const back = await C.page.evaluate(() => { const g = __snug.game; return g && g.world ? { things: g.world.things.size, coins: g.world.coins, ok: !!g.me } : null; });

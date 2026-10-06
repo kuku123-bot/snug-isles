@@ -90,7 +90,7 @@ export function exec(sim, pid, cmd) {
     case 'sel': p.sel = clamp(cmd.i | 0, 0, HOTBAR - 1); return;
     case 'craft': return doCraft(sim, p, cmd);
     case 'build': return doBuild(sim, p, cmd);
-    case 'buildMany': { const list = tileList(cmd.tiles); for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip, col: cmd.col }, true); return; }
+    case 'buildMany': { const list = tileList(cmd.tiles); for (const t of list) doBuild(sim, p, { bid: cmd.bid, tx: t[0], ty: t[1], flip: cmd.flip, rot: cmd.rot, col: cmd.col }, true); return; }
     case 'paint': return doPaint(sim, p, cmd);
     case 'unbuildMany': { const list = tileList(cmd.tiles); for (const t of list) doUnbuild(sim, p, { tx: t[0], ty: t[1], layer: cmd.layer }, true); return; }
     case 'unbuild': return doUnbuild(sim, p, cmd);
@@ -183,18 +183,19 @@ function doBuild(sim, p, cmd, quiet = false) {
   if (!def || def.hidden) return;
   if (def.tech && !w.techs.has(def.tech)) return sim.toast(p.pid, 'Research this first.', 'warn');
   const tx = cmd.tx | 0, ty = cmd.ty | 0;
-  const rot = turnable(def) ? normRot(cmd.rot) : 0, fp = turnedDef(def, rot); // fp = the footprint as turned
+  const tilePiece = def.kind === 'wall' || def.kind === 'floor' || def.kind === 'walldeco'; // pieces of the tile layers turn too (a window, a door, a floor pattern)
+  const rot = turnable(def) || tilePiece ? normRot(cmd.rot) : 0, fp = turnedDef(def, rot); // fp = the footprint as turned
   const col = normColor(cmd.col); // the paint color it is built in (0 = as drawn)
   const st = calcStats(w, p);
   if (!w.inb(tx, ty)) return;
   if (Math.hypot(p.x - (tx + (fp.w || 1) / 2) * TILE, p.y - (ty + (fp.h || 1) / 2) * TILE) > (st.buildReach + 1) * TILE) return sim.toast(p.pid, 'Too far away.', 'warn');
   const reason = placeCheck(sim, p, def, tx, ty, rot);
   if (reason) return sim.toast(p.pid, reason, 'warn');
-  // same piece already there? nothing to build (so drag-painting wastes nothing); the same piece in another color is just repainted, free
+  // same piece already there? nothing to build (so drag-painting wastes nothing); the same piece in another color or turn is just repainted / turned, free
   const i = w.idx(tx, ty);
-  if (def.kind === 'wall' && w.wall[i] === wallCodeOf(def.id)) { if (w.wallCol[i] !== col) w.setWall(tx, ty, w.wall[i], w.wallState[i], false, col); return; }
-  if (def.kind === 'floor' && w.floor[i] === floorCodeOf(def.id)) { if (w.floorCol[i] !== col) w.setFloor(tx, ty, w.floor[i], false, col); return; }
-  if (def.kind === 'walldeco' && w.deco[i] === decoCodeOf(def.id)) { if (w.decoCol[i] !== col) w.setDeco(tx, ty, w.deco[i], false, col); return; }
+  if (def.kind === 'wall' && w.wall[i] === wallCodeOf(def.id)) { if (w.wallCol[i] !== col || w.wallRot[i] !== rot) w.setWall(tx, ty, w.wall[i], w.wallState[i], false, col, rot); return; }
+  if (def.kind === 'floor' && w.floor[i] === floorCodeOf(def.id)) { if (w.floorCol[i] !== col || w.floorRot[i] !== rot) w.setFloor(tx, ty, w.floor[i], false, col, rot); return; }
+  if (def.kind === 'walldeco' && w.deco[i] === decoCodeOf(def.id)) { if (w.decoCol[i] !== col || w.decoRot[i] !== rot) w.setDeco(tx, ty, w.deco[i], false, col, rot); return; }
   const mult = buildMult(sim, p, def);
   const src = sourcesFor(sim, p);
   if (mult > 0 && !canAffordAll(src, def.cost, mult)) {
@@ -206,13 +207,13 @@ function doBuild(sim, p, cmd, quiet = false) {
   if (def.kind === 'wall') {
     if (w.wall[i]) refund(sim, p, BUILD[wallDefOf(w.wall[i]).id]);
     clearSoftNodes(sim, def, tx, ty);
-    w.setWall(tx, ty, wallCodeOf(def.id), 0, false, col);
+    w.setWall(tx, ty, wallCodeOf(def.id), 0, false, col, rot);
   } else if (def.kind === 'floor') {
     if (w.floor[i]) refund(sim, p, BUILD[FLOORS_BY_CODE(w.floor[i])]);
     clearSoftNodes(sim, def, tx, ty);
-    w.setFloor(tx, ty, floorCodeOf(def.id), false, col);
+    w.setFloor(tx, ty, floorCodeOf(def.id), false, col, rot);
   } else if (def.kind === 'walldeco') {
-    w.setDeco(tx, ty, decoCodeOf(def.id), false, col);
+    w.setDeco(tx, ty, decoCodeOf(def.id), false, col, rot);
   } else {
     clearSoftNodes(sim, fp, tx, ty);
     const t = w.addThing(def.id, tx, ty, { flip: !!cmd.flip && !rot, rot, col }); // a turned piece is never also mirrored

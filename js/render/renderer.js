@@ -13,6 +13,7 @@ import { wallDefOf, floorDefOf, decoDefOf, thingDef } from '../sim/world.js';
 import { nightness, phaseOf, ambientColor } from '../sim/daynight.js';
 import { turnable, turnSprite, footprintFor } from '../data/facing.js';
 import { tintPixmap } from '../gfx/tint.js';
+import { turnOpening } from '../gfx/art/autoturn.js';
 import { colorHex } from '../data/paint.js';
 import { paintTarget } from '../sim/commands.js';
 import { furnitureUnder, nearestSlot, pillowAt } from '../sim/furniture.js';
@@ -97,20 +98,45 @@ export class Renderer {
       return composeLand(this.book.get(`g_${kind}_${v}`), kind, mask, ng.some(Boolean) ? nb : null);
     });
   }
-  _wallSprite(i, x, y, colOver) { // colOver: show it in another color (the paint brush preview)
+  /** the picture of a wall piece (a wall, window, door, fence or gate) built with this look of its neighbours, turned: only the opening turns, the wall around it stays joined */
+  _wallPiece(code, d, mask, open, rot, key0) {
+    const fenceLike = d.piece === 'fence' || d.piece === 'gate', key = key0 + (rot ? '|r' + rot : '');
+    return [key, this.sprites.dyn(key, () => {
+      const piece = fenceLike ? fenceSprite(d.mat, d.piece === 'gate', mask, open) : wallSprite(d.mat, d.piece, mask, open);
+      if (!rot) return piece;
+      return turnOpening(fenceLike ? fenceSprite(d.mat, false, mask, 0) : wallSprite(d.mat, 'wall', mask, 0), piece, rot);
+    })];
+  }
+  /** a floor or a wall decoration turned (floors turn like a picture, decorations mirror) and/or painted: made once, then reused */
+  _tileVariant(nm, kind, rot, col) {
+    const sp = this.sprites, base = sp.get(nm);
+    if (!base) return null;
+    let key = nm, rec = base;
+    if (rot) {
+      key = nm + '|r' + rot;
+      rec = sp.dyn(key, () => {
+        const pm = sp.pixmapOf(base);
+        if (kind !== 'floor') return rot & 1 ? pm.flipX() : pm.clone();
+        let out = pm; for (let k = 0; k < rot; k++) out = out.rot90();
+        return out;
+      });
+    }
+    return col ? this._painted(key, rec, col) : rec;
+  }
+  _wallSprite(i, x, y, colOver, rotOver) { // colOver / rotOver: show it in another color or turn (the brush and build previews)
     const w = this.world, W = w.W;
     const code = w.wall[i], d = wallDefOf(code);
     const fenceLike = (p) => p === 'fence' || p === 'gate';
     const same = (xx, yy) => { if (xx < 0 || yy < 0 || xx >= W || yy >= w.H) return false; const c = w.wall[yy * W + xx]; if (!c) return false; return fenceLike(wallDefOf(c).piece) === fenceLike(d.piece); };
     const open = w.wallState[i] ? 1 : 0;
-    const col = colOver === undefined ? w.wallCol[i] : colOver;
+    const col = colOver === undefined ? w.wallCol[i] : colOver, rot = rotOver === undefined ? w.wallRot[i] : rotOver;
     if (fenceLike(d.piece)) {
-      const mask = (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0), key = `F|${code}|${mask}|${open}`;
-      const rec = this.sprites.dyn(key, () => fenceSprite(d.mat, d.piece === 'gate', mask, open));
+      const mask = (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0);
+      const [key, rec] = this._wallPiece(code, d, mask, open, rot, `F|${code}|${mask}|${open}`);
       return col ? this._painted(key, rec, col) : rec;
     }
-    const mask = (same(x, y - 1) ? 1 : 0) | (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0), key = `W|${code}|${mask}|${open}`;
-    const rec = this.sprites.dyn(key, () => wallSprite(d.mat, d.piece, mask, open));
+    const mask = (same(x, y - 1) ? 1 : 0) | (same(x + 1, y) ? 2 : 0) | (same(x - 1, y) ? 4 : 0);
+    const [key, rec] = this._wallPiece(code, d, mask, open, rot, `W|${code}|${mask}|${open}`);
     return col ? this._painted(key, rec, col) : rec;
   }
   /** a sprite painted with a color: made once per (sprite, color), then reused. `key` names the sprite `rec` is (flipped ones add '|flip'). */
@@ -182,8 +208,8 @@ export class Renderer {
         }
         const f = w.floor[i];
         if (f) {
-          const nm = 'f_' + floorDefOf(f).id.replace(/^floor_/, ''), fc = w.floorCol[i];
-          if (fc) { const rec = sp.get(nm); if (rec) sp.drawS(ctx, this._painted(nm, rec, fc), px, py); } else sp.draw(ctx, nm, px, py);
+          const nm = 'f_' + floorDefOf(f).id.replace(/^floor_/, ''), fc = w.floorCol[i], fr = w.floorRot[i];
+          if (fc || fr) { const rec = this._tileVariant(nm, 'floor', fr, fc); if (rec) sp.drawS(ctx, rec, px, py); } else sp.draw(ctx, nm, px, py);
         }
       }
     }
@@ -337,8 +363,8 @@ export class Renderer {
     sp.drawS(ctx, rec, px, py);
     const dc = w.deco[i];
     if (dc) {
-      const nm = 'd_' + decoDefOf(dc).id, dcol = w.decoCol[i];
-      if (dcol) { const r = sp.get(nm); if (r) sp.drawS(ctx, this._painted(nm, r, dcol), px, py + 4); } else sp.draw(ctx, nm, px, py + 4);
+      const nm = 'd_' + decoDefOf(dc).id, dcol = w.decoCol[i], drot = w.decoRot[i];
+      if (dcol || drot) { const r = this._tileVariant(nm, 'deco', drot, dcol); if (r) sp.drawS(ctx, r, px, py + 4); } else sp.draw(ctx, nm, px, py + 4);
     }
     if (alpha < 1) ctx.globalAlpha = 1;
   }
@@ -624,8 +650,8 @@ export class Renderer {
           bx = th.x * TILE + ox; by = th.y * TILE + oy; bw = th.w * TILE; bh = th.h * TILE;
           if (spr) sp.drawS(ctx, spr, bx + (bw - spr.w) / 2, (th.y + th.h) * TILE - spr.h + oy);
         } else if (tg.layer === 'wall') sp.drawS(ctx, this._wallSprite(i, tx, ty, b.col), px, py - 4);
-        else if (tg.layer === 'deco') { const nm = 'd_' + decoDefOf(w.deco[i]).id, r = sp.get(nm); if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py + 4); }
-        else { const nm = 'f_' + floorDefOf(w.floor[i]).id.replace(/^floor_/, ''), r = sp.get(nm); if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py); }
+        else if (tg.layer === 'deco') { const r = this._tileVariant('d_' + decoDefOf(w.deco[i]).id, 'deco', w.decoRot[i], b.col); if (r) sp.drawS(ctx, r, px, py + 4); }
+        else { const r = this._tileVariant('f_' + floorDefOf(w.floor[i]).id.replace(/^floor_/, ''), 'floor', w.floorRot[i], b.col); if (r) sp.drawS(ctx, r, px, py); }
         ctx.globalAlpha = 1;
         ctx.strokeStyle = `rgba(255,255,255,${0.9 * pulse})`; ctx.lineWidth = 1; ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
       }
@@ -659,11 +685,11 @@ export class Renderer {
         const fenceLike = d.piece === 'fence' || d.piece === 'gate';
         const wallHere = (x, y) => w.inb(x, y) && w.wall[w.idx(x, y)] > 0;
         const mask = fenceLike ? (wallHere(tx + 1, ty) ? 2 : 0) | (wallHere(tx - 1, ty) ? 4 : 0) : (wallHere(tx, ty - 1) ? 1 : 0) | (wallHere(tx + 1, ty) ? 2 : 0) | (wallHere(tx - 1, ty) ? 4 : 0);
-        const wkey = `WG|${d.id}|${mask}`, wrec = sp.dyn(wkey, () => fenceLike ? fenceSprite(d.mat, d.piece === 'gate', mask, 0) : wallSprite(d.mat, d.piece, mask, 0));
+        const [wkey, wrec] = this._wallPiece(0, d, mask, 0, b.rot, `WG|${d.id}|${mask}`);
         sp.drawS(ctx, b.col ? this._painted(wkey, wrec, b.col) : wrec, px, py - 4);
       } else if (d.kind === 'floor' || d.kind === 'walldeco') {
-        const nm = d.kind === 'floor' ? 'f_' + d.id.replace(/^floor_/, '') : 'd_' + d.id, r = sp.get(nm);
-        if (r) sp.drawS(ctx, b.col ? this._painted(nm, r, b.col) : r, px, py);
+        const r = this._tileVariant(d.kind === 'floor' ? 'f_' + d.id.replace(/^floor_/, '') : 'd_' + d.id, d.kind === 'floor' ? 'floor' : 'deco', b.rot, b.col);
+        if (r) sp.drawS(ctx, r, px, py);
       }
       ctx.globalAlpha = 1;
       this._ghostBox(ctx, px, py, TILE, TILE, ok, pulse * 0.8);

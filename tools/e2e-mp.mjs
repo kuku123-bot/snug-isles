@@ -37,7 +37,7 @@ await guest.evaluate(() => { __snug.profile.name = 'Gigi'; __snug.profile.look =
 const joinMsg = [];
 await guest.evaluate((c) => { window.__joinStatus = []; __snug.joinGame(c, (m) => window.__joinStatus.push(m)); }, code);
 // a stranger knocks: the host has to let them in (room codes are short)
-const knock = host.getByRole('button', { name: 'Let them in' });
+const knock = host.getByRole('button', { name: 'Let them in' }).first(); // (a guest whose first connection was slow may knock twice: either card will do)
 await knock.waitFor({ timeout: 20000 }).catch(() => {});
 ok(await knock.isVisible().catch(() => false), 'host sees a "wants to join" card');
 if (process.env.SHOTS) { await host.waitForTimeout(500); await host.screenshot({ path: '.scratch/mp-knock.png' }); }
@@ -154,11 +154,14 @@ console.log('turned furniture, sitting and sleeping together');
   const out = await guest.evaluate(() => { const g = __snug.game, me = g.me; return { sleeping: me.sleeping, x: me.x, y: me.y, free: g.world.boxFree(me.x, me.y - 3, 4, 3) }; });
   const hostSees = await host.evaluate(() => { const g = __snug.game, gi = [...g.world.players.values()].find((p) => p.name === 'Gigi'); return { sleeping: gi.sleeping, x: gi.x, y: gi.y, free: g.world.boxFree(gi.x, gi.y - 3, 4, 3) }; });
   ok(!out.sleeping && out.free && !hostSees.sleeping && hostSees.free, `a key press gets the guest out of bed onto free ground on both screens (${out.x.toFixed(0)},${out.y.toFixed(0)} / ${hostSees.x.toFixed(0)},${hostSees.y.toFixed(0)})`);
-  const gx0 = out.x;
+  // step clear of the bed's row first (a pixel short of it and the bed's corner would still catch the next step), then walk away from it
+  await guest.keyboard.down('KeyS'); await guest.waitForTimeout(350); await guest.keyboard.up('KeyS'); await guest.waitForTimeout(150);
+  const gx0 = await guest.evaluate(() => __snug.game.me.x);
   await guest.keyboard.down('KeyD');
   let walked = 0;
   for (let i = 0; i < 15 && walked <= 12; i++) { await guest.waitForTimeout(100); walked = (await guest.evaluate(() => __snug.game.me.x)) - gx0; } // (up to 1.5 s: a busy test machine must not decide this)
   await guest.keyboard.up('KeyD');
+  if (walked <= 12) console.log('  · stuck beside the bed:', JSON.stringify(await guest.evaluate(() => { const g = __snug.game, w = g.world, me = g.me, tx = Math.floor(me.x / 16), ty = Math.floor((me.y - 3) / 16); const near = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -2; dx <= 3; dx++) { const t = w.thingAt(tx + dx, ty + dy); near.push([dx, dy, t ? t.type + '/' + t.rot : null, w.solid[w.idx(tx + dx, ty + dy)] & 1]); } return { x: me.x, y: me.y, free: w.boxFree(me.x, me.y - 3, 4, 3), sleeping: me.sleeping, sit: me.sit, dead: me.dead, keys: [...g.input.keys], ix: me.ix, near }; })));
   ok(walked > 12, 'and they can walk away from the bed');
   // night: the guest sleeps, the night skips, dawn steps them out
   await host.evaluate(() => { const w = __snug.game.world; w.time = w.settings.dayLength * 0.8; });
@@ -225,6 +228,43 @@ console.log('painting together: colors built by one player show on the other scr
   // the picture itself on the guest's screen: the blue floor tile really is blue
   const px = await guest.evaluate(([x, y]) => { const g = __snug.game, c = g.renderer.canvas.getContext('2d'); g.fx.flash = 0; g.fx.parts.length = 0; g.fx.pops.length = 0; g.render(); const d = c.getImageData(Math.round((x + 0.5) * 16 - g.camX), Math.round((y + 0.5) * 16 - g.camY), 1, 1).data; return [d[0], d[1], d[2]]; }, spot);
   ok(px[2] > px[0] + 25, `the painted floor is drawn blue on the guest's screen (${px})`);
+}
+
+console.log('turned stations and windows: the other screen shows them turned and walks around them');
+{
+  const spot = await host.evaluate(() => {
+    const g = __snug.game, w = g.world, me = g.me;
+    w.settings.buildCost = 0; w.techs.add('kitchen'); w.techs.add('carpentry');
+    for (let r = 3; r < 60; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
+      for (let y = y0 - 1; y < y0 + 5 && good; y++) for (let x = x0 - 1; x < x0 + 8 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0 || w.wall[w.idx(x, y)] || w.floor[w.idx(x, y)]) good = false; }
+      if (!good) continue;
+      for (let y = y0 - 1; y < y0 + 5; y++) for (let x = x0 - 1; x < x0 + 8; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); }
+      me.x = (x0 + 3) * 16; me.y = (y0 + 4) * 16;
+      return [x0, y0];
+    }
+    return null;
+  });
+  await guest.waitForTimeout(500);
+  await host.evaluate(([x, y]) => { const g = __snug.game; g.cmd({ c: 'build', bid: 'kitchen', tx: x + 1, ty: y + 1, rot: 1 }); g.cmd({ c: 'build', bid: 'chest', tx: x + 5, ty: y + 1, rot: 2 }); g.cmd({ c: 'build', bid: 'wall_plank', tx: x + 3, ty: y }); g.cmd({ c: 'build', bid: 'window_plank', tx: x + 4, ty: y, rot: 3 }); g.cmd({ c: 'build', bid: 'floor_plank', tx: x + 6, ty: y + 3, rot: 1 }); }, spot);
+  await guest.waitForTimeout(900);
+  const seen = await guest.evaluate(([x, y]) => {
+    const w = __snug.game.world, k = [...w.things.values()].find((t) => t.type === 'kitchen' && t.x === x + 1 && t.y === y + 1), c = [...w.things.values()].find((t) => t.type === 'chest' && t.x === x + 5);
+    return { kitchen: k ? { rot: k.rot, w: k.w, h: k.h } : null, chest: c ? c.rot : -1, window: w.wallRot[w.idx(x + 4, y)], floor: w.floorRot[w.idx(x + 6, y + 3)], below: !!w.thingAt(x + 1, y + 2), beside: !!w.thingAt(x + 2, y + 1), solidBelow: (w.solid[w.idx(x + 1, y + 2)] & 1) === 1, solidBeside: (w.solid[w.idx(x + 2, y + 1)] & 1) === 1 };
+  }, spot);
+  ok(seen.kitchen && seen.kitchen.rot === 1 && seen.kitchen.w === 1 && seen.kitchen.h === 2, `the guest sees the kitchen on its side (${JSON.stringify(seen.kitchen)})`);
+  ok(seen.below && seen.solidBelow && !seen.beside && !seen.solidBeside, 'and cannot walk through its second tile, but can walk beside it');
+  ok(seen.chest === 2 && seen.window === 3 && seen.floor === 1, `the chest, the window and the floor tile are turned for the guest too (${seen.chest}/${seen.window}/${seen.floor})`);
+  // the guest builds one turned: the host gets it exactly as sent
+  await guest.evaluate(([x, y]) => { const me = __snug.game.me; me.x = (x + 3) * 16; me.y = (y + 4) * 16; }, spot);
+  await guest.waitForTimeout(450);
+  let wb = null;
+  for (let attempt = 0; attempt < 5 && !wb; attempt++) { // (the host's pet may be standing on the spot, and the game does not build on top of someone: try again a moment later)
+    await guest.evaluate(([x, y]) => __snug.game.cmd({ c: 'build', bid: 'workbench', tx: x + 5, ty: y + 3, rot: 3 }), spot);
+    await host.waitForTimeout(900);
+    wb = await host.evaluate(([x, y]) => { const t = [...__snug.game.world.things.values()].find((q) => q.type === 'workbench' && q.x === x + 5 && q.y === y + 3); return t ? { rot: t.rot, w: t.w, h: t.h } : null; }, spot);
+  }
+  ok(wb && wb.rot === 3 && wb.w === 1 && wb.h === 2, `a workbench the guest turned is turned on the host (${JSON.stringify(wb)})`);
 }
 
 console.log('reconnect after a dropped connection');

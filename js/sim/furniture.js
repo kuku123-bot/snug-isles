@@ -4,7 +4,7 @@
 import { TILE } from '../util.js';
 import { BUILD } from '../data/build.js';
 import { NODES } from '../data/nodes.js';
-import { DIR_VEC, seatFacing, headEnd, turnable, normRot } from '../data/facing.js';
+import { DIR_VEC, seatFacing, headEnd, hasViews, normRot } from '../data/facing.js';
 import { touch } from './player.js';
 
 /** feet of a player standing in a tile: 12px down it (the 6px-high collision box then sits wholly inside the tile) */
@@ -42,7 +42,7 @@ export function bedSpot(t, def = BUILD[t.type]) {
 export function pillowAt(t, def = BUILD[t.type]) {
   const b = bedSpot(t, def), cx = b.x, cy = b.y - 4; // cx, cy: middle of the head tile
   if (def.id === 'tent') return { head: 2, x: cx, y: t.y * TILE + 20 }; // peeking out of the entrance
-  if (!turnable(def)) return { head: b.head, x: cx, y: cy };
+  if (!hasViews(def)) return { head: b.head, x: cx, y: cy };
   if (b.head === 2) return { head: 2, x: cx, y: t.y * TILE + 11.5 };
   if (b.head === 0) return { head: 0, x: cx, y: t.y * TILE + 20.5 };
   return { head: b.head, x: t.x * TILE + (b.head === 3 ? 9 : 23), y: t.y * TILE + 3.5 };
@@ -117,7 +117,7 @@ export function unstickSpot(w, x, y) { return standsFree(w, x, y) ? null : neare
 /** the first free spot to step out onto beside a piece (the side it faces first), counting from the tile `from` the person was lying or sitting in */
 export function exitFrom(w, t, from) {
   const def = BUILD[t.type];
-  const front = isBed(def) ? (turnable(def) ? normRot(t.rot || 0) : 0) : seatFacing(def, t.rot || 0);
+  const front = isBed(def) ? (hasViews(def) ? normRot(t.rot || 0) : 0) : seatFacing(def, t.rot || 0);
   const ring = ringTiles(t, front, from);
   for (const strict of [true, false]) for (const [tx, ty] of ring) if (spotFree(w, tx, ty, strict)) return { x: footX(tx), y: footY(ty) };
   return nearestStand(w, (t.x + t.w / 2) * TILE, (t.y + t.h) * TILE, 8);

@@ -104,7 +104,7 @@ for (const [id, t] of w.things) {
 }
 ok(!bad, 'every thing: same kind, place, size and state; none turned or painted');
 for (const key of ['ground', 'owned', 'floor', 'wall', 'deco']) ok(Buffer.compare(Buffer.from(w2[key]), Buffer.from(w[key])) === 0, key + ' layer identical');
-ok(![...w2.floorCol, ...w2.wallCol, ...w2.decoCol].some(Boolean), 'nothing is painted');
+ok(![...w2.floorCol, ...w2.wallCol, ...w2.decoCol, ...w2.floorRot, ...w2.wallRot, ...w2.decoRot].some(Boolean), 'nothing is painted or turned');
 ok(JSON.stringify([...w2.drops.values()].map((d) => [d.id, d.item, d.n])) === JSON.stringify([...w.drops.values()].map((d) => [d.id, d.item, d.n])), 'dropped items');
 for (const pid of ['alice-pid', 'gigi-pid']) {
   const p0 = w.players.get(pid), p1 = w2.players.get(pid);
@@ -118,7 +118,7 @@ const strip = (d) => { const c = JSON.parse(JSON.stringify(d)); c.things = c.thi
 const A = strip(data), B = strip(re);
 for (const key of Object.keys(A)) { if (key === 'players' || key === 'things') continue; try { assert.deepEqual(B[key], A[key]); } catch (e) { ok(false, 'saved field changed: ' + key); } }
 ok(JSON.stringify(B.things) === JSON.stringify(A.things) && JSON.stringify(B.players) === JSON.stringify(A.players), 'saving it again changes nothing (apart from the new trailing columns)');
-ok(Object.keys(re).every((k) => k in data || ['floorCol', 'wallCol', 'decoCol'].includes(k)), 'no new top-level fields appear in a world nobody painted');
+ok(Object.keys(re).every((k) => k in data || ['floorCol', 'wallCol', 'decoCol', 'floorRot', 'wallRot', 'decoRot'].includes(k)), 'no new top-level fields appear in a world nobody painted or turned');
 ok(re.v === data.v, `the save version stays ${re.v}, so the OLD version can still open a world this one saved`);
 const back = old.ser.restoreWorld(JSON.parse(JSON.stringify(re)));
 ok(back.world.things.size === w.things.size, `the old version opens what this one saved (${back.world.things.size} things)`);

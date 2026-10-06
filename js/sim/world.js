@@ -47,6 +47,9 @@ export class World {
     this.floorCol = new Uint16Array(n); // paint color of the piece on each tile (0 = not painted); see data/paint.js
     this.wallCol = new Uint16Array(n);
     this.decoCol = new Uint16Array(n);
+    this.floorRot = new Uint8Array(n); // which way the piece on each tile is turned (0..3, 0 = as drawn): a window, a door, a floor pattern...
+    this.wallRot = new Uint8Array(n);
+    this.decoRot = new Uint8Array(n);
     this.occ = new Int32Array(n); // thing id covering the tile (solid-ish things and nodes)
     this.occFlat = new Int32Array(n); // flat decor (rugs) id
     this.solid = new Uint8Array(n).fill(1); // bit0 blocks walkers, bit1 blocks flyers (everything starts as open sea = blocked)
@@ -139,45 +142,48 @@ export class World {
     this.landRev++; this.rev++;
   }
 
-  // The piece on a tile layer and its paint color travel together. `col` left out keeps the color when the piece stays the same, else the new piece is unpainted;
-  // putting the same piece with another color is how a piece gets repainted.
-  setFloor(x, y, code, silent = false, col) {
-    const i = this.idx(x, y);
-    const c = code ? (col === undefined ? (this.floor[i] === code ? this.floorCol[i] : 0) : normColor(col)) : 0;
-    if (this.floor[i] === code && this.floorCol[i] === c) return;
-    this.floor[i] = code; this.floorCol[i] = c;
+  // The piece on a tile layer, its paint color and its turn travel together. `col` / `rot` left out keep what the tile has when the piece stays the same,
+  // else the new piece starts unpainted and unturned; putting the same piece with another color or turn is how a piece gets repainted or turned.
+  setFloor(x, y, code, silent = false, col, rot) {
+    const i = this.idx(x, y), same = this.floor[i] === code;
+    const c = code ? (col === undefined ? (same ? this.floorCol[i] : 0) : normColor(col)) : 0;
+    const r = code ? (rot === undefined ? (same ? this.floorRot[i] : 0) : normRot(rot)) : 0;
+    if (same && this.floorCol[i] === c && this.floorRot[i] === r) return;
+    this.floor[i] = code; this.floorCol[i] = c; this.floorRot[i] = r;
     this.recalcSolid(i);
     this.tileDirty.push(i);
     this.rev++;
-    if (!silent) this.emit(['f', i, code, c]);
+    if (!silent) this.emit(['f', i, code, c, r]);
   }
-  setWall(x, y, code, state = 0, silent = false, col) {
-    const i = this.idx(x, y);
-    const c = code ? (col === undefined ? (this.wall[i] === code ? this.wallCol[i] : 0) : normColor(col)) : 0;
+  setWall(x, y, code, state = 0, silent = false, col, rot) {
+    const i = this.idx(x, y), same = this.wall[i] === code;
+    const c = code ? (col === undefined ? (same ? this.wallCol[i] : 0) : normColor(col)) : 0;
+    const r = code ? (rot === undefined ? (same ? this.wallRot[i] : 0) : normRot(rot)) : 0;
     this.wall[i] = code;
     this.wallState[i] = code ? state : 0;
-    this.wallCol[i] = c;
-    if (!code) { this.deco[i] = 0; this.decoCol[i] = 0; }
+    this.wallCol[i] = c; this.wallRot[i] = r;
+    if (!code) { this.deco[i] = 0; this.decoCol[i] = 0; this.decoRot[i] = 0; }
     this.recalcSolid(i);
     this.tileDirty.push(i);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (this.inb(x + dx, y + dy)) this.tileDirty.push(this.idx(x + dx, y + dy));
     this.rev++;
-    if (!silent) this.emit(['w', i, code, this.wallState[i], c]);
+    if (!silent) this.emit(['w', i, code, this.wallState[i], c, r]);
   }
   setWallState(x, y, state, silent = false) {
     const i = this.idx(x, y);
     this.wallState[i] = state;
     this.recalcSolid(i);
     this.tileDirty.push(i);
-    if (!silent) this.emit(['w', i, this.wall[i], state, this.wallCol[i]]);
+    if (!silent) this.emit(['w', i, this.wall[i], state, this.wallCol[i], this.wallRot[i]]);
   }
-  setDeco(x, y, code, silent = false, col) {
-    const i = this.idx(x, y);
-    const c = code ? (col === undefined ? (this.deco[i] === code ? this.decoCol[i] : 0) : normColor(col)) : 0;
-    this.deco[i] = code; this.decoCol[i] = c;
+  setDeco(x, y, code, silent = false, col, rot) {
+    const i = this.idx(x, y), same = this.deco[i] === code;
+    const c = code ? (col === undefined ? (same ? this.decoCol[i] : 0) : normColor(col)) : 0;
+    const r = code ? (rot === undefined ? (same ? this.decoRot[i] : 0) : normRot(rot)) : 0;
+    this.deco[i] = code; this.decoCol[i] = c; this.decoRot[i] = r;
     this.tileDirty.push(i);
     this.rev++;
-    if (!silent) this.emit(['d', i, code, c]);
+    if (!silent) this.emit(['d', i, code, c, r]);
   }
 
   // ---------------------------------------------------------------- things

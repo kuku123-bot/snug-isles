@@ -138,9 +138,9 @@ console.log('furniture: the preview rests in front of you, and the Rotate and Pl
     window.__clear = (cw, ch) => {
       for (let r = 3; r < 60; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
         const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
-        for (let y = y0 - 1; y < y0 + ch + 1 && good; y++) for (let x = x0 - 1; x < x0 + cw + 1 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0 || w.wall[w.idx(x, y)] || w.floor[w.idx(x, y)]) good = false; } // trees and rocks do not count: they are cleared below
+        for (let y = y0 - 1; y < y0 + ch + 1 && good; y++) for (let x = x0 - 1; x < x0 + cw + 1 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0) good = false; } // trees, rocks, floors and walls of earlier steps do not count: they are cleared below
         if (!good) continue;
-        for (let y = y0 - 1; y < y0 + ch + 1; y++) for (let x = x0 - 1; x < x0 + cw + 1; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); }
+        for (let y = y0 - 1; y < y0 + ch + 1; y++) for (let x = x0 - 1; x < x0 + cw + 1; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); const i = w.idx(x, y); if (w.wall[i]) w.setWall(x, y, 0, 0, true); if (w.floor[i]) w.setFloor(x, y, 0, true); }
         return [x0, y0];
       }
       return null;
@@ -219,6 +219,32 @@ console.log('painting with a finger: the picker, sliders, swatches, building in 
   await shot('paint-brushed');
   await tapBtn('Done');
   ok(await page.locator('.buildside .cp').count() === 0, 'Done closes the picker');
+}
+
+console.log('turning with a finger: a station and a window get the Rotate button too');
+{
+  const [px, py] = await ev(() => window.__clear(10, 6));
+  await ev(([x, y]) => { const g = __snug.game, me = g.me; g.world.techs.add('kitchen'); g.world.settings.buildCost = 0; me.x = (x + 4) * 16; me.y = (y + 4) * 16; g.pstate(me.pid).dir = 0; g.builder.start('kitchen'); }, [px, py]);
+  await page.waitForTimeout(400);
+  const tapBtn = async (name) => { const r = await page.locator('.buildbar button', { hasText: name }).first().boundingBox(); await touch.tap(r.x + r.width / 2, r.y + r.height / 2); await page.waitForTimeout(220); };
+  const st = () => ev(() => { const b = __snug.game.builder; return { rot: b.rot, fp: b.footprint(), ok: b.ok }; });
+  let b0 = await st();
+  ok(b0.rot === 0 && b0.fp[0] === 2, 'the kitchen preview rests in front of the player, 2x1');
+  const names = await ev(() => [...document.querySelectorAll('.buildbar button')].map((x) => x.textContent.trim()));
+  ok(names.includes('Rotate') && names.includes('Place'), `the bar has Rotate and Place for a station (${names.join(' / ')})`);
+  await tapBtn('Rotate');
+  b0 = await st();
+  ok(b0.rot === 1 && b0.fp[0] === 1 && b0.fp[1] === 2, `tapping Rotate turns the kitchen on its side (${JSON.stringify(b0)})`);
+  await tapBtn('Place');
+  const k = await ev(() => { const t = [...__snug.game.world.things.values()].find((q) => q.type === 'kitchen'); return t ? { rot: t.rot, w: t.w, h: t.h } : null; });
+  ok(k && k.rot === 1 && k.w === 1 && k.h === 2, `Place puts it down turned (${JSON.stringify(k)})`);
+  await ev(() => __snug.game.builder.start('window_plank'));
+  await page.waitForTimeout(300);
+  const names2 = await ev(() => [...document.querySelectorAll('.buildbar button')].map((x) => x.textContent.trim()));
+  ok(names2.includes('Rotate'), `a window has Rotate on a touch screen (${names2.join(' / ')})`);
+  await tapBtn('Rotate'); await tapBtn('Rotate'); await tapBtn('Rotate');
+  ok((await st()).rot === 3, 'three taps: turned three quarters');
+  await ev(() => __snug.game.builder.stop());
 }
 
 console.log('sitting and sleeping with the Use button and the joystick');

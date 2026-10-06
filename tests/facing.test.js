@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeSim, step } from './helpers.js';
 import { TILE } from '../js/util.js';
 import { BUILD } from '../js/data/build.js';
-import { turnable, turnsOf, footprintFor, turnSprite, normRot, allTurnIds, DESIGN_TURNS } from '../js/data/facing.js';
+import { turnable, turnsOf, footprintFor, turnSprite, normRot, allTurnIds, DESIGN_TURNS, hasViews, autoKind } from '../js/data/facing.js';
 import { placeCheck } from '../js/sim/commands.js';
 import { serializeWorld, restoreWorld } from '../js/sim/serialize.js';
 import { applyEvent } from '../js/net/protocol.js';
@@ -28,12 +28,17 @@ function clearPatch(sim, p, w, h) {
 }
 const setup = () => { const sim = makeSim('dreamy', { enemyDensity: 0 }); const a = sim.addPlayer('a', 'Alice', {}); sim.world.settings.buildCost = 0; for (const t of ['carpentry', 'cottage_style']) sim.world.techs.add(t); return { sim, w: sim.world, a }; };
 
-test('the turnable pieces are the furniture designs that look different from the side, plus benches and picnic tables', () => {
+test('every piece you can build turns: furniture designs and benches have hand-drawn views, everything else gets views made from its front', () => {
   const ids = allTurnIds();
-  assert.ok(ids.length >= 70, 'a lot of pieces turn: ' + ids.length);
+  const things = Object.values(BUILD).filter((d) => (d.kind === 'thing' || d.kind === 'flat') && !d.hidden);
+  assert.equal(ids.length, things.length, 'all ' + things.length + ' pieces turn');
+  assert.ok(ids.length >= 200, 'a lot of pieces turn: ' + ids.length);
+  assert.ok(allTurnIds().filter((id) => hasViews(BUILD[id])).length >= 70, 'and the hand-drawn ones are still the furniture');
   for (const d of ['bed', 'chair', 'sofa', 'table', 'bookshelf', 'wardrobe', 'dresser', 'nightstand']) assert.ok(DESIGN_TURNS[d], d);
   assert.ok(turnable(BUILD.rustic_sofa) && turnable(BUILD.bench) && turnable(BUILD.picnic));
-  assert.ok(!turnable(BUILD.rustic_lamp) && !turnable(BUILD.chest) && !turnable(BUILD.armchair) && !turnable(BUILD.wall_plank));
+  assert.ok(turnable(BUILD.rustic_lamp) && turnable(BUILD.chest) && turnable(BUILD.armchair) && turnable(BUILD.kitchen) && turnable(BUILD.workbench) && turnable(BUILD.furnace) && turnable(BUILD.rustic_rug), 'stations, storage, lamps, rugs: all of them');
+  assert.ok(!hasViews(BUILD.kitchen) && !hasViews(BUILD.rustic_lamp) && hasViews(BUILD.rustic_sofa), 'only furniture has hand-drawn views');
+  assert.deepEqual([autoKind(BUILD.kitchen), autoKind(BUILD.rustic_lamp), autoKind(BUILD.rustic_rug), autoKind(BUILD.wall_plank)], ['box', 'sym', 'flat', null]);
   assert.equal(normRot(-1), 3); assert.equal(normRot(5), 1); assert.equal(normRot(undefined), 0);
 });
 
@@ -45,7 +50,11 @@ test('a turned piece swaps its footprint when seen from the side, and every turn
   assert.deepEqual(footprintFor(BUILD.rustic_bed, 1), [2, 1]);
   assert.deepEqual(footprintFor(BUILD.rustic_chair, 1), [1, 1]);
   assert.deepEqual(footprintFor(BUILD.rustic_table, 2), [2, 1], 'a long table seen from the other end is the same table');
-  assert.deepEqual(footprintFor(BUILD.rustic_lamp, 1), [1, 1], 'a piece that cannot turn never changes');
+  assert.deepEqual(footprintFor(BUILD.rustic_lamp, 1), [1, 1], 'a round piece keeps its footprint');
+  assert.deepEqual([0, 1, 2, 3].map((r) => footprintFor(BUILD.kitchen, r)), [[2, 1], [1, 2], [2, 1], [1, 2]], 'the kitchen turns its footprint with it');
+  assert.deepEqual([0, 1, 2, 3].map((r) => footprintFor(BUILD.large_chest, r)), [[2, 1], [1, 2], [2, 1], [1, 2]]);
+  assert.deepEqual([0, 1, 2, 3].map((r) => footprintFor(BUILD.cow_shed, r)), [[2, 2], [2, 2], [2, 2], [2, 2]], 'a square piece stays square');
+  assert.deepEqual([1, 3].map((r) => footprintFor(BUILD.lighthouse, r)), [[2, 3], [2, 3]], 'a tall round piece is not laid on its side');
   const book = new SpriteBook();
   registerFurniture(book); registerStructures(book); registerTurns(book);
   for (const id of allTurnIds()) {
@@ -75,9 +84,10 @@ test('building a turned piece uses its turned footprint, remembers the turn, and
   assert.ok(placeCheck(sim, a, BUILD.rustic_sofa, x + 1, y + 2, 1), 'a second sideways sofa overlapping its far tile is refused');
   assert.equal(placeCheck(sim, a, BUILD.rustic_sofa, x, y + 1, 1), null, 'one beside it is fine');
   assert.equal(placeCheck(sim, a, BUILD.rustic_sofa, x + 3, y + 1, 1), null, 'but next to it is fine');
-  // the turn only means something to pieces that can turn
+  // a lamp turns too (it only mirrors, its footprint stays)
   sim.exec('a', { c: 'build', bid: 'rustic_lamp', tx: x + 4, ty: y + 1, rot: 3 });
-  assert.equal(w.thingAt(x + 4, y + 1).rot || 0, 0);
+  assert.equal(w.thingAt(x + 4, y + 1).rot, 3);
+  assert.deepEqual([w.thingAt(x + 4, y + 1).w, w.thingAt(x + 4, y + 1).h], [1, 1]);
   // every turn of the same sofa can be placed in free ground
   for (let rot = 0; rot < 4; rot++) {
     sim.exec('a', { c: 'build', bid: 'rustic_sofa', tx: x, ty: y + 3, rot });

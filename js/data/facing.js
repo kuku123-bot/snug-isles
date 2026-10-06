@@ -1,7 +1,9 @@
-// Turning furniture. Which pieces can face four ways, what each turn looks like, and how the footprint changes.
+// Turning pieces. EVERY piece you build can face four ways (a quarter turn each), what each turn looks like, and how the footprint changes.
 // rot: 0 faces down (the normal picture), 1 faces right, 2 faces up, 3 faces left. Sprites of turns 1-3 are named `t_<id>_r<rot>`.
 // A view says how a turn differs: swap = the footprint turns sideways (2x1 becomes 1x2); art = which picture the art code draws;
 // mirror = it is the mirror image of that picture; same = look like turn n (a long table seen from the other end).
+// Furniture designs, benches and picnic tables have hand-drawn side and back views (AUTHORED below). Every other piece gets its turned pictures
+// made from its front picture (gfx/art/autoturn.js): see autoKind.
 import { BUILD } from './build.js';
 
 export const DIRS = ['down', 'right', 'up', 'left'];
@@ -28,11 +30,44 @@ export const DECOR_TURNS = {
   picnic: [null, { art: 'turn90' }, { art: 'turn180' }, { art: 'turn270' }],
 };
 
-export function turnsOf(def) {
+/** the hand-drawn views of a piece (furniture designs, benches, picnic tables), or null */
+export function authoredTurns(def) {
   if (!def) return null;
   if (def.set && def.design && DESIGN_TURNS[def.design]) return DESIGN_TURNS[def.design];
   return DECOR_TURNS[def.id] || null;
 }
+/** does the piece have hand-drawn views (so a person sitting or lying on it can face the way it faces)? */
+export const hasViews = (def) => !!authoredTurns(def);
+
+/**
+ * How the turned pictures of every other piece are made.
+ *   box  - something with a front (a station, a chest, a machine, a counter): sideways and from behind you see its plain side, a long one turns its footprint
+ *   sym  - round or symmetric props (plants, lamps, statues, wells...): a quarter turn mirrors the picture and the footprint never changes
+ *   flat - laid down like a picture (rugs): the picture itself turns
+ */
+const BOX = new Set(['workbench', 'research_table', 'library', 'furnace', 'blast_furnace', 'magma_furnace', 'sewing_station', 'kitchen', 'alchemy_table', 'forge', 'arcane_altar', 'prism_workshop',
+  'star_forge', 'market_stall', 'anvil', 'chest', 'large_chest', 'vault', 'chicken_coop', 'cow_shed', 'drill_iron', 'drill_steel', 'drill_solar', 'drill_void', 'slime_altar', 'bone_altar',
+  'magma_altar', 'void_altar', 'counter', 'sink', 'fridge', 'bathtub', 'fireplace', 'piano', 'aquarium', 'crate']);
+export function autoKind(def) {
+  if (!def || def.hidden || (def.kind !== 'thing' && def.kind !== 'flat')) return null;
+  if (def.kind === 'flat') return 'flat';
+  return BOX.has(def.id) ? 'box' : 'sym';
+}
+const AUTO_VIEWS = {
+  box: (swap) => [null, { auto: 'side', swap }, { auto: 'back' }, { auto: 'side', mirror: true, swap }],
+  sym: () => [null, { auto: 'mirror' }, { same: 0 }, { auto: 'mirror' }],
+  flat: (swap) => [null, { auto: 'turn', k: 1, swap }, { auto: 'turn', k: 2 }, { auto: 'turn', k: 3, swap }],
+};
+const autoCache = new Map();
+function autoTurns(def) {
+  const kind = autoKind(def);
+  if (!kind) return null;
+  const swap = kind !== 'sym' && (def.w || 1) !== (def.h || 1), key = kind + (swap ? '+' : '');
+  if (!autoCache.has(key)) autoCache.set(key, AUTO_VIEWS[kind](swap));
+  return autoCache.get(key);
+}
+
+export function turnsOf(def) { return authoredTurns(def) || autoTurns(def); }
 export const turnable = (def) => !!turnsOf(def);
 export const normRot = (rot) => ((rot | 0) % 4 + 4) % 4;
 
@@ -50,10 +85,10 @@ export function turnSprite(def, rot) {
   return r === 0 ? 't_' + def.id : `t_${def.id}_r${r}`;
 }
 /** the way a seated person faces on a piece turned to rot (0..3 into DIRS); pieces that cannot turn always face down */
-export const seatFacing = (def, rot) => (turnable(def) ? normRot(rot) : 0);
+export const seatFacing = (def, rot) => (hasViews(def) ? normRot(rot) : 0);
 /** which end of a bed the head is at, as a DIRS index (0 down 1 right 2 up 3 left): the foot points the way `rot` says, so the head is at the opposite end */
 export function headEnd(def, rot) {
-  if (turnable(def)) return [2, 3, 0, 1][normRot(rot)];
+  if (hasViews(def)) return [2, 3, 0, 1][normRot(rot)];
   return (def.w || 1) > (def.h || 1) ? 3 : 2; // hammocks lie sideways with the head on the left, everything else head-up
 }
-export function allTurnIds() { return Object.values(BUILD).filter((d) => d.kind !== 'wall' && d.kind !== 'floor' && d.kind !== 'walldeco' && turnable(d)).map((d) => d.id); }
+export function allTurnIds() { return Object.values(BUILD).filter((d) => d.kind !== 'wall' && d.kind !== 'floor' && d.kind !== 'walldeco' && !d.hidden && turnable(d)).map((d) => d.id); }

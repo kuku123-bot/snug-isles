@@ -24,7 +24,7 @@ for (const name of engines) {
     await page.waitForFunction(() => window.__snug && window.__snug.game, null, { timeout: 20000 });
     await page.waitForTimeout(800);
     // (the ready boxes pulse, which Playwright would call "not stable": scroll to them by hand and press with force)
-    const press = async (sel) => { const loc = page.locator(sel).first(); await loc.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' })); await page.waitForTimeout(80); if (touch) await loc.tap({ force: true }); else await loc.click({ force: true }); await page.waitForTimeout(200); };
+    const press = async (sel) => { for (let attempt = 0; ; attempt++) { try { const loc = page.locator(sel).first(); await loc.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'center' })); await page.waitForTimeout(80); if (touch) await loc.tap({ force: true, timeout: 4000 }); else await loc.click({ force: true, timeout: 4000 }); break; } catch (e) { if (attempt >= 3) throw e; await page.waitForTimeout(250); } } await page.waitForTimeout(200); }; // (the panel re-draws itself now and then: if the box was replaced while it was being pressed, press the new one)
     const st = () => page.evaluate(() => { const g = __snug.game; return { techs: g.world.techs.size, sp: g.me.sp, skills: { ...g.me.skills } }; });
 
     // ------------------------------------------------------------ research

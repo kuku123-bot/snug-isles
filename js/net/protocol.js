@@ -4,7 +4,7 @@ import { TILE, clamp } from '../util.js';
 import { b64ToBytes } from '../sim/sim.js';
 import { MOBS } from '../data/mobs.js';
 
-export const PROTOCOL = 5;
+export const PROTOCOL = 6;
 /** identifies the exact build so two devices on different versions can be told so (see tools/build.mjs) */
 export const BUILD_ID = typeof __BUILD__ === 'undefined' ? 'dev' : __BUILD__;
 export const MAX_PLAYERS = 4;
@@ -106,9 +106,9 @@ export function applyPrivate(p, m) {
 export function applyEvent(world, ev, ctx = {}) {
   const W = world.W;
   switch (ev[0]) {
-    case 'f': world.setFloor(ev[1] % W, (ev[1] / W) | 0, ev[2], true, ev[3]); break; // ev[3]: paint color
-    case 'w': world.setWall(ev[1] % W, (ev[1] / W) | 0, ev[2], ev[3], true, ev[4]); break;
-    case 'd': world.setDeco(ev[1] % W, (ev[1] / W) | 0, ev[2], true, ev[3]); break;
+    case 'f': world.setFloor(ev[1] % W, (ev[1] / W) | 0, ev[2], true, ev[3], ev[4]); break; // ev[3]: paint color, ev[4]: turn
+    case 'w': world.setWall(ev[1] % W, (ev[1] / W) | 0, ev[2], ev[3], true, ev[4], ev[5]); break;
+    case 'd': world.setDeco(ev[1] % W, (ev[1] / W) | 0, ev[2], true, ev[3], ev[4]); break;
     case 'g': world.setGroundTile(ev[1] % W, (ev[1] / W) | 0, ev[2]); break;
     case 'land': world.setLandGround(ev[1], ev[2], b64ToBytes(ev[4]), ev[3]); break;
     case 'ta': {

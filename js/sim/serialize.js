@@ -8,6 +8,7 @@ import { GROUND_IDS } from '../data/biomes.js';
 import { makeInv } from './inventory.js';
 import { calcStats } from './player.js';
 import { normColor } from '../data/paint.js';
+import { normRot } from '../data/facing.js';
 
 export const SAVE_VERSION = 1;
 /** Bumped by an update that changes how worlds are handled. The first time a game with a higher epoch opens a world saved with a lower one, it keeps a copy of the world as it was (see keepCopyBeforeUpdate in app.js). */
@@ -33,9 +34,9 @@ export function serializeWorld(sim) {
   for (const t of w.things.values()) things.push([t.id, t.type, t.x, t.y, t.flip, Math.round(t.hp * 10) / 10, t.dep, t.s, Math.round(t.t || 0), t.rot || 0, t.col || 0]);
   const drops = [];
   for (const d of w.drops.values()) drops.push([d.id, d.item, d.n, Math.round(d.x), Math.round(d.y), Math.round(d.ttl)]);
-  // paint colors are only written when something is painted (a world nobody painted looks exactly like it always did, and older versions ignore the extra keys)
+  // paint colors and turns of tile pieces are only written when there are any (a world nobody painted or turned looks exactly like it always did, and older versions ignore the extra keys)
   const paint = {};
-  for (const [key, arr, code] of [['floorCol', w.floorCol, w.floor], ['wallCol', w.wallCol, w.wall], ['decoCol', w.decoCol, w.deco]]) {
+  for (const [key, arr, code] of [['floorCol', w.floorCol, w.floor], ['wallCol', w.wallCol, w.wall], ['decoCol', w.decoCol, w.deco], ['floorRot', w.floorRot, w.floor], ['wallRot', w.wallRot, w.wall], ['decoRot', w.decoRot, w.deco]]) {
     const list = [];
     for (let i = 0; i < arr.length; i++) if (arr[i] && code[i]) list.push([i, arr[i]]);
     if (list.length) paint[key] = list;
@@ -82,6 +83,9 @@ export function restoreWorld(data, { withSim = true } = {}) {
   for (const [i, c] of data.deco || []) world.deco[i] = remapCode(data.decoIds || WALLDECO_IDS, WALLDECO_IDS, c);
   for (const [key, arr, code] of [['floorCol', world.floorCol, world.floor], ['wallCol', world.wallCol, world.wall], ['decoCol', world.decoCol, world.deco]]) {
     for (const [i, c] of data[key] || []) if (i >= 0 && i < arr.length && code[i]) arr[i] = normColor(c);
+  }
+  for (const [key, arr, code] of [['floorRot', world.floorRot, world.floor], ['wallRot', world.wallRot, world.wall], ['decoRot', world.decoRot, world.deco]]) {
+    for (const [i, r] of data[key] || []) if (i >= 0 && i < arr.length && code[i]) arr[i] = normRot(r);
   }
   for (let i = 0; i < world.ground.length; i++) world.recalcSolid(i);
   world.landRev++; world.rev++;

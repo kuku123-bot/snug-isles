@@ -86,9 +86,9 @@ console.log('building: the preview, turning, placing');
     window.__clear = (cw, ch) => {
       for (let r = 3; r < 40; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
         const x0 = Math.floor(me.x / 16) + dx, y0 = Math.floor(me.y / 16) + dy; let good = true;
-        for (let y = y0 - 1; y < y0 + ch + 1 && good; y++) for (let x = x0 - 1; x < x0 + cw + 1 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0 || w.wall[w.idx(x, y)] || w.floor[w.idx(x, y)]) good = false; } // trees and rocks do not count: they are cleared below
+        for (let y = y0 - 1; y < y0 + ch + 1 && good; y++) for (let x = x0 - 1; x < x0 + cw + 1 && good; x++) { if (!w.inb(x, y) || !w.isTileOwned(x, y) || w.ground[w.idx(x, y)] === 0) good = false; } // trees, rocks, floors and walls of earlier steps do not count: they are cleared below
         if (!good) continue;
-        for (let y = y0 - 1; y < y0 + ch + 1; y++) for (let x = x0 - 1; x < x0 + cw + 1; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); }
+        for (let y = y0 - 1; y < y0 + ch + 1; y++) for (let x = x0 - 1; x < x0 + cw + 1; x++) { const t = w.thingAt(x, y); if (t) w.removeThing(t.id); const f = w.flatAt(x, y); if (f) w.removeThing(f.id); const i = w.idx(x, y); if (w.wall[i]) w.setWall(x, y, 0, 0, true); if (w.floor[i]) w.setFloor(x, y, 0, true); }
         return [x0, y0];
       }
       return null;
@@ -284,6 +284,87 @@ console.log('painting: the Color picker, building in a color, the brush, the dro
   ok(rec.length >= 3 && new Set(rec).size === rec.length, 'recent colors are kept, without repeats (' + rec.length + ')');
   await page.getByRole('button', { name: 'Done' }).click(); await page.waitForTimeout(200);
   ok(await page.locator('.buildside .cp').count() === 0 && !(await ev(() => __snug.game.builder.active)), 'Done closes building mode and the picker');
+}
+
+console.log('turning everything: a station, a window, a floor (R, Shift+R, wheel, the Rotate button)');
+{
+  const [px, py] = await ev(() => window.__clear(10, 6));
+  await ev(([x, y]) => { const g = __snug.game, me = g.me; g.world.techs.add('kitchen'); g.world.settings.buildCost = 0; me.x = (x + 4) * 16; me.y = (y + 5) * 16; g.builder.stop(); }, [px, py]);
+  await page.waitForTimeout(250);
+  const tileXY = (tx, ty) => ev(([x, y]) => { const g = __snug.game; const [cx, cy] = g.view.toClient((x + 0.5) * 16 - g.camX, (y + 0.5) * 16 - g.camY); return { x: cx, y: cy }; }, [tx, ty]);
+  const bd = () => ev(() => { const b = __snug.game.builder; return { rot: b.rot, fp: b.footprint(), ok: b.ok, reason: b.reason }; });
+  // the kitchen: long, so it turns its footprint
+  await ev(() => __snug.game.builder.start('kitchen'));
+  let at = await tileXY(px + 3, py + 2);
+  await page.mouse.move(at.x, at.y); await page.waitForTimeout(250);
+  let s = await bd();
+  ok(s.rot === 0 && s.fp[0] === 2 && s.fp[1] === 1 && s.ok, `the kitchen preview is 2x1 and fits (${JSON.stringify(s)})`);
+  ok(await page.getByRole('button', { name: 'Rotate' }).count() === 1, 'the bar offers Rotate for a station (it used to say Flip, or nothing)');
+  await page.keyboard.press('KeyR'); await page.waitForTimeout(150);
+  s = await bd();
+  ok(s.rot === 1 && s.fp[0] === 1 && s.fp[1] === 2, `R turns it a quarter and the kitchen is 1x2 (${JSON.stringify(s)})`);
+  await page.keyboard.press('KeyR'); await page.waitForTimeout(100); await page.keyboard.press('KeyR'); await page.waitForTimeout(100);
+  ok((await bd()).rot === 3, 'two more turns: rot 3');
+  await page.keyboard.press('Shift+KeyR'); await page.waitForTimeout(100);
+  ok((await bd()).rot === 2, 'Shift+R turns it back');
+  await page.mouse.wheel(0, 120); await page.waitForTimeout(150);
+  ok((await bd()).rot === 3, 'the wheel turns it');
+  await page.getByRole('button', { name: 'Rotate' }).click(); await page.waitForTimeout(150);
+  ok((await bd()).rot === 0, 'the Rotate button turns it too');
+  // the picture really changes between the turns
+  const px4 = await ev(([x, y]) => {
+    const g = __snug.game, c = g.renderer.canvas.getContext('2d'), b = g.builder, out = [];
+    for (let rot = 0; rot < 4; rot++) {
+      b.rot = rot; b.update(1 / 60, { wx: (x + 0.5) * 16, wy: (y + 0.5) * 16, valid: true, down: false, pressed: false, released: false, touch: false });
+      g.fx.flash = 0; g.fx.parts.length = 0; g.fx.pops.length = 0; g.render();
+      const d = c.getImageData(Math.round((x - 1) * 16 - g.camX), Math.round((y - 2) * 16 - g.camY), 64, 64).data;
+      let h = 0; for (let i = 0; i < d.length; i += 4) h = (h * 31 + d[i] * 3 + d[i + 1] * 5 + d[i + 2]) >>> 0;
+      out.push(h);
+    }
+    b.rot = 0;
+    return out;
+  }, [px + 3, py + 2]);
+  ok(new Set(px4).size >= 3, `the preview looks different in the turns (${new Set(px4).size} different pictures of 4)`);
+  // place it turned: it covers two tiles in a column, and nothing beside it
+  await ev(() => { __snug.game.builder.rot = 1; });
+  at = await tileXY(px + 3, py + 2);
+  await page.mouse.move(at.x, at.y); await page.waitForTimeout(200);
+  await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(300);
+  const k = await ev(() => { const t = [...__snug.game.world.things.values()].find((q) => q.type === 'kitchen'); return t ? { rot: t.rot, w: t.w, h: t.h, x: t.x, y: t.y } : null; });
+  ok(k && k.rot === 1 && k.w === 1 && k.h === 2, `the kitchen stands sideways, 1 wide and 2 deep (${JSON.stringify(k)})`);
+  ok(await ev(([x, y, k]) => { const w = __snug.game.world; return !!w.thingAt(k.x, k.y + 1) && !w.thingAt(k.x + 1, k.y); }, [px, py, k]), 'it takes the tile below, not the one beside');
+  // a window: it is part of a wall, and it turns too
+  await ev(([x, y]) => { const g = __snug.game; g.cmd({ c: 'build', bid: 'wall_plank', tx: x + 6, ty: y + 1 }); g.cmd({ c: 'build', bid: 'wall_plank', tx: x + 8, ty: y + 1 }); g.builder.start('window_plank'); }, [px, py]);
+  await page.waitForTimeout(250);
+  ok(await page.getByRole('button', { name: 'Rotate' }).count() === 1, 'a window has a Rotate button');
+  await page.keyboard.press('KeyR'); await page.waitForTimeout(150);
+  ok((await bd()).rot === 1, 'R turns a window');
+  at = await tileXY(px + 7, py + 1);
+  await page.mouse.move(at.x, at.y); await page.waitForTimeout(200);
+  await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(300);
+  const wr = await ev(([x, y]) => { const w = __snug.game.world, i = w.idx(x + 7, y + 1); return { piece: w.wall[i], rot: w.wallRot[i] }; }, [px, py]);
+  ok(wr.piece > 0 && wr.rot === 1, `the window was built turned (${JSON.stringify(wr)})`);
+  const winPix = await ev(([x, y]) => {
+    const g = __snug.game, c = g.renderer.canvas.getContext('2d'), w = g.world, i = w.idx(x + 7, y + 1), out = [];
+    g.builder.active = false;
+    for (const rot of [0, 1, 2, 3]) {
+      w.wallRot[i] = rot; w.tileDirty.push(i); g.fx.flash = 0; g.fx.parts.length = 0; g.render();
+      const d = c.getImageData(Math.round((x + 7) * 16 - g.camX), Math.round((y + 1) * 16 - g.camY) - 4, 16, 20).data;
+      let h = 0; for (let j = 0; j < d.length; j += 4) h = (h * 31 + d[j] * 3 + d[j + 1] * 5 + d[j + 2]) >>> 0;
+      out.push(h);
+    }
+    w.wallRot[i] = 1; w.tileDirty.push(i); g.builder.active = true;
+    return out;
+  }, [px, py]);
+  ok(new Set(winPix).size === 4, `the window looks different in each of its four turns (${new Set(winPix).size} of 4)`);
+  // a floor pattern turns like a picture
+  await ev(() => __snug.game.builder.start('floor_plank'));
+  await page.keyboard.press('KeyR'); await page.waitForTimeout(150);
+  at = await tileXY(px + 2, py + 4);
+  await page.mouse.move(at.x, at.y); await page.waitForTimeout(200);
+  await page.mouse.down(); await page.mouse.up(); await page.waitForTimeout(300);
+  ok((await ev(([x, y]) => { const w = __snug.game.world; return w.floorRot[w.idx(x + 2, y + 4)]; }, [px, py])) === 1, 'a floor tile was laid turned');
+  await ev(() => __snug.game.builder.stop());
 }
 
 console.log('dragging items with the mouse');

@@ -32,7 +32,7 @@ ok(/^[ZR]/.test(answer) && answer.length < 4000, `answer code made (${answer.len
 if (+process.env.PASTE_DELAY_MS) { console.log(`  (a human takes ${+process.env.PASTE_DELAY_MS / 1000}s to carry the answer back…)`); await host.waitForTimeout(+process.env.PASTE_DELAY_MS); }
 await host.fill('textarea.sdp:not([readonly])', answer);
 await host.getByRole('button', { name: 'Connect', exact: true }).click();
-const knock = host.getByRole('button', { name: 'Let them in' });
+const knock = host.getByRole('button', { name: 'Let them in' }).first(); // (a guest whose first connection was slow may knock twice: either card will do)
 await knock.waitFor({ timeout: 30000 }).catch(() => {});
 await knock.click().catch(() => {});
 await guest.waitForFunction(() => __snug.game && __snug.game.mode === 'client', null, { timeout: 60000 }).catch(() => {});

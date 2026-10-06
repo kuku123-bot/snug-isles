@@ -28,7 +28,7 @@ ok(await guest.evaluate(() => !!document.querySelector('input[placeholder="Your 
 ok((await guest.evaluate(() => __snug.game && __snug.game.mode)) !== 'client', 'a fresh profile is not auto-joined as "Friend"');
 await guest.locator('input[placeholder="Your name"]').fill('Gigi');
 await guest.getByRole('button', { name: 'Join!', exact: true }).click();
-const knock = host.getByRole('button', { name: 'Let them in' });
+const knock = host.getByRole('button', { name: 'Let them in' }).first(); // (a guest whose first connection was slow may knock twice: either card will do)
 await knock.waitFor({ timeout: 30000 }).catch(() => {});
 ok(await host.evaluate(() => /Gigi wants to join/.test(document.body.innerText)), 'the host sees "Gigi wants to join your world"');
 await knock.click({ timeout: 5000 }).catch(() => {});

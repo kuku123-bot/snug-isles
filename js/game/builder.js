@@ -83,8 +83,8 @@ export class Builder {
   /** turn the piece a quarter (dir = 1 clockwise, -1 back); pieces that cannot turn are mirrored instead */
   rotate(dir = 1) {
     const d = this.def;
-    if (!d || !(d.kind === 'thing' || d.kind === 'flat')) return;
-    if (turnable(d)) this.rot = normRot(this.rot + dir); else this.flip = !this.flip;
+    if (!d || this.remove || this.paint || this.pick) return;
+    this.rot = normRot(this.rot + dir); // everything turns: furniture, stations, windows, doors, floors, decorations...
     this.syncBar(); this.g.audio.play('click');
   }
   /** footprint [w, h] of the current piece as turned */
@@ -222,7 +222,7 @@ export class Builder {
     }
     if (!this.def) return;
     if (tiles.length === 1) g.cmd({ c: 'build', bid: this.def.id, tx: tiles[0][0], ty: tiles[0][1], flip: this.flip, rot: this.rot, col: this.col });
-    else g.cmd({ c: 'buildMany', bid: this.def.id, tiles, flip: this.flip, col: this.col });
+    else g.cmd({ c: 'buildMany', bid: this.def.id, tiles, flip: this.flip, rot: this.rot, col: this.col });
   }
 
   syncBar() {
@@ -245,11 +245,8 @@ export class Builder {
     }
     const btns = h('div', { class: 'panel row', style: 'padding:4px 6px;flex-wrap:wrap;justify-content:center' });
     const b = (icon, label, fn, on) => h('button', { class: 'btn small' + (on ? ' good' : ''), onclick: () => { g.audio.play('click'); fn(); } }, ic(icon, 1), label);
-    if (d && (d.kind === 'thing' || d.kind === 'flat')) {
-      const can = turnable(d);
-      btns.append(b('ui_arrow', can ? 'Rotate' : 'Flip', () => this.rotate(1), false));
-      if (navigator.maxTouchPoints > 0 && !this.remove) btns.append(b('ui_check', 'Place', () => this.placeHere(), true));
-    }
+    if (d && !this.remove && !this.paint && !this.pick) btns.append(b('ui_arrow', 'Rotate', () => this.rotate(1), false));
+    if (d && (d.kind === 'thing' || d.kind === 'flat') && navigator.maxTouchPoints > 0 && !this.remove && !this.paint && !this.pick) btns.append(b('ui_check', 'Place', () => this.placeHere(), true));
     if ((d && (d.kind === 'wall' || d.kind === 'floor')) || this.remove || this.paint) btns.append(b('ui_sort', 'Rect', () => this.toggleRect(), this.rect));
     if (!this.remove) {
       // the color pieces are built in (and painted with): a swatch of it on the button, the picker opens above the bar

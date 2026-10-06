@@ -487,7 +487,7 @@ export class Game {
     if (inp.pressed('zoomOut')) this.zoom(-1);
     if (me) {
       if (inp.digitPressed >= 0) this.selectSlot(inp.digitPressed);
-      if (inp.wheel) { if (this.builder.active && this.builder.def && !this.builder.remove && !this.builder.paint && (this.builder.def.kind === 'thing' || this.builder.def.kind === 'flat')) this.builder.rotate(inp.wheel > 0 ? 1 : -1); else this.selectSlot((me.sel + (inp.wheel > 0 ? 1 : -1) + HOTBAR) % HOTBAR); }
+      if (inp.wheel) { if (this.builder.active && this.builder.def && !this.builder.remove && !this.builder.paint) this.builder.rotate(inp.wheel > 0 ? 1 : -1); else this.selectSlot((me.sel + (inp.wheel > 0 ? 1 : -1) + HOTBAR) % HOTBAR); }
       if (inp.pressed('nextSlot')) this.selectSlot((me.sel + 1) % HOTBAR);
       if (inp.pressed('prevSlot')) this.selectSlot((me.sel + HOTBAR - 1) % HOTBAR);
     }

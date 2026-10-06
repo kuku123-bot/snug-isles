@@ -2,7 +2,8 @@
 // front views in furniture.js. Names: t_<id>_r1 (faces right), _r2 (faces up / seen from behind), _r3 (faces left = mirror of _r1).
 import { Pixmap, hex, darker, lighter, mixC, withAlpha } from '../pixmap.js';
 import { STYLES, BUILD } from '../../data/build.js';
-import { DESIGN_TURNS, DECOR_TURNS, turnsOf } from '../../data/facing.js';
+import { DESIGN_TURNS, DECOR_TURNS, turnsOf, authoredTurns, autoKind } from '../../data/facing.js';
+import { boxSide, boxBack } from './autoturn.js';
 import { STYLE_PAL, patternFill, legs } from './furniture.js';
 import { groundShadow } from './nodes.js';
 
@@ -159,12 +160,39 @@ A.bench_back = () => {
 
 const turnPixmap = (pm, k) => { let out = pm; for (let i = 0; i < k; i++) out = out.rot90(); return out; };
 
+/** the extra pictures a piece has beside its front (animation frames, working, variants): t_<id>_a0, _on, _v1... */
+const COMPANION = /^t_(.+?)_(a\d+|on\d?|v\d)$/;
+
+/** turned pictures for a piece that has no hand-drawn ones, made from its front picture (see data/facing.js autoKind and ./autoturn.js) */
+function registerAutoTurns(book, d, tv, companions) {
+  const front = book.get('t_' + d.id), w = d.w || 1, h = d.h || 1, kind = autoKind(d);
+  for (let r = 1; r <= 3; r++) {
+    const v = tv[r];
+    let pm;
+    if (v.same !== undefined) pm = v.same === 0 ? front : book.get(`t_${d.id}_r${v.same}`);
+    else if (v.auto === 'mirror') pm = front.flipX();
+    else if (v.auto === 'side') { pm = boxSide(front, w, h, !!v.swap); if (v.mirror) pm = pm.flipX(); }
+    else if (v.auto === 'back') pm = boxBack(front);
+    else if (v.auto === 'turn') pm = turnPixmap(front, v.k);
+    else throw new Error('no way to make turn ' + JSON.stringify(v));
+    book.add(`t_${d.id}_r${r}`, pm.clone());
+    // symmetric props keep their animation, working look and variants when turned (mirrored for the mirrored turns)
+    if (kind === 'sym') for (const [suffix, src] of companions) book.add(`t_${d.id}_r${r}_${suffix}`, (v.auto === 'mirror' ? src.flipX() : src.clone()));
+  }
+}
+
 /** add every turned view to the sprite book (after the front views exist) */
 export function registerTurns(book) {
   const styleIds = new Set(STYLES.map((s) => s.id));
+  const extras = new Map(); // piece id -> [[suffix, picture]]
+  for (const name of book.names()) {
+    const m = COMPANION.exec(name);
+    if (m && !/_r\d$/.test(m[1])) { if (!extras.has(m[1])) extras.set(m[1], []); extras.get(m[1]).push([m[2], book.get(name)]); }
+  }
   for (const d of Object.values(BUILD)) {
     const tv = turnsOf(d);
     if (!tv || d.hidden) continue;
+    if (!authoredTurns(d)) { registerAutoTurns(book, d, tv, extras.get(d.id) || []); continue; }
     if (d.kind === 'flat') { // rugs and blankets: simply turn the picture
       const base = book.get('t_' + d.id);
       for (let r = 1; r <= 3; r++) book.add(`t_${d.id}_r${r}`, turnPixmap(base, r));
