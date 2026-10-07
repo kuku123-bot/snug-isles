@@ -4,7 +4,7 @@ import { TILE, clamp } from '../util.js';
 import { b64ToBytes } from '../sim/sim.js';
 import { MOBS } from '../data/mobs.js';
 
-export const PROTOCOL = 6;
+export const PROTOCOL = 7;
 /** identifies the exact build so two devices on different versions can be told so (see tools/build.mjs) */
 export const BUILD_ID = typeof __BUILD__ === 'undefined' ? 'dev' : __BUILD__;
 export const MAX_PLAYERS = 4;
@@ -68,7 +68,7 @@ export async function unpackJSON(p) {
 }
 
 // ------------------------------------------------------------------ state codes for mobs
-const ST_NAMES = ['idle', 'hop', 'chase', 'wander', 'run', 'windup', 'slam', 'charge', 'summon', 'ring', 'shoot'];
+const ST_NAMES = ['idle', 'hop', 'chase', 'wander', 'run', 'windup', 'slam', 'charge', 'summon', 'ring', 'shoot', 'volley', 'spin', 'quake'];
 const ST_CODE = Object.fromEntries(ST_NAMES.map((n, i) => [n, i]));
 const r1 = (v) => Math.round(v * 10) / 10;
 
@@ -84,7 +84,7 @@ export function buildStateMsg(sim, link) {
   const mobs = [];
   for (const m of w.mobs.values()) {
     if (me && Math.hypot(m.x - me.x, m.y - me.y) > MOB_RANGE && !m.boss) continue;
-    mobs.push([m.id, m.type, r1(m.x), r1(m.y), Math.round(m.hp), m.maxhp, m.face > 0 ? 1 : -1, ST_CODE[m.st] || 0, Math.round(m.z || 0), m.hit > 0 ? 1 : 0]);
+    mobs.push([m.id, m.type, r1(m.x), r1(m.y), Math.round(m.hp), m.maxhp, m.face > 0 ? 1 : -1, ST_CODE[m.st] || 0, Math.round(m.z || 0), m.hit > 0 ? 1 : 0, m.frozen > 0 ? 2 : m.burn > 0 ? 1 : 0]);
   }
   return { t: 'st', tm: Math.round(w.time * 20) / 20, p: players, m: mobs };
 }
@@ -185,13 +185,14 @@ export function applyState(world, m, now, localPid) {
   for (const p of world.players.values()) if (p.pid !== localPid && !seen.has(p.pid) && p.online) { /* keep until pl event */ }
   const mseen = new Set();
   for (const e of m.m) {
-    const [id, type, x, y, hp, maxhp, face, st, z, hit] = e;
+    const [id, type, x, y, hp, maxhp, face, st, z, hit, fz] = e;
     let mob = world.mobs.get(id);
     if (!mob) {
       mob = { id, type, x, y, hp, maxhp, face, st: ST_NAMES[st] || 'idle', z, hit: 0, vx: 0, vy: 0, kx: 0, ky: 0, boss: !!(MOBS[type] && MOBS[type].boss), buf: [], rx: x, ry: y };
       world.mobs.set(id, mob);
     }
     mob.hp = hp; mob.maxhp = maxhp; mob.face = face; mob.st = ST_NAMES[st] || 'idle'; mob.z = z; if (hit) mob.hit = 0.16;
+    mob.fz = fz || 0; // 2 frozen, 1 burning
     pushSample(mob, now, x, y);
     mseen.add(id);
   }

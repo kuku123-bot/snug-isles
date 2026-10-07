@@ -162,6 +162,7 @@ export function killMob(sim, m, p) {
     } else sim.spawnDrop(item, n, m.x, m.y - 2);
   }
   if (def.hostile) { if (def.boss) { bumpBoss(sim, m.type); } else sim.bump('kills'); }
+  if (m.type === 'golden_slime') sim.bump('golden');
   if (p) {
     addXp(w, p, def.xp);
     if (st.lifesteal) { p.hp = Math.min(st.maxHp, p.hp + st.lifesteal); touch(p); }
@@ -310,7 +311,11 @@ export function spawnTick(sim) {
     } else pool = b.mobs.filter(([id]) => !MOBS[id].hostile);
     pool = pool.filter((e) => e[1] > 0);
     if (!pool.length) continue;
-    const type = rng.weighted(pool);
+    let type = rng.weighted(pool);
+    if (wantHostile && MOBS[type].ai === 'hop' && !MOBS[type].boss && rng.chance(0.04)) { // a rare shiny one: worth chasing
+      let there = false; for (const o of w.mobs.values()) if (o.type === 'golden_slime') there = true;
+      if (!there) { type = 'golden_slime'; for (const q of players) sim.toast(q.pid, 'A Golden Slime! Catch it before it hops away!', 'good'); }
+    }
     spawnMob(sim, type, (tx + 0.5) * TILE, (ty + 0.8) * TILE);
     return;
   }
@@ -329,6 +334,7 @@ export function updateMobs(sim, dt) {
       if (!far && !m.boss) { w.mobs.delete(m.id); w.emit(['mr', m.id, 0]); }
       continue;
     }
+    if (def.life && w.time - m.born > def.life) { w.mobs.delete(m.id); w.emit(['mr', m.id, 0]); w.fx('poof', m.x, m.y - 4, 1); continue; } // a golden slime hops off for good
     // global timers
     m.hit = Math.max(0, m.hit - dt);
     m.atk = Math.max(0, m.atk - dt);
@@ -338,6 +344,11 @@ export function updateMobs(sim, dt) {
       m.kx *= decay; m.ky *= decay;
       if (Math.abs(m.kx) < 2 && Math.abs(m.ky) < 2) { m.kx = 0; m.ky = 0; }
     }
+    if (m.burn > 0) { // a fire bomb keeps burning: a little damage twice a second
+      m.burn -= dt; m.burnT = (m.burnT || 0) + dt;
+      if (m.burnT >= 0.5) { m.burnT = 0; hurtMob(sim, m, 2, m.x, m.y - 4, m.burnBy ? w.players.get(m.burnBy) : null, { knock: 0 }); if (m.hp <= 0) continue; }
+    }
+    if (m.frozen > 0) { m.frozen -= dt; continue; } // a frost bomb holds it still (it cannot move or attack)
     const tgt = near.p, d = near.d;
     const aggroR = (def.aggro || 80) * s.aggro * (def.hostile ? 1 : 0);
     const chasing = def.hostile && d < aggroR || m.agg;
@@ -350,7 +361,7 @@ export function updateMobs(sim, dt) {
       case 'boss': aiBoss(sim, m, def, tgt, d, dt); break;
     }
     // contact damage
-    if (def.hostile && m.atk <= 0 && d < def.r + 6 && !(def.ai === 'hop' && m.z > 5)) {
+    if (def.hostile && def.dmg > 0 && m.atk <= 0 && d < def.r + 6 && !(def.ai === 'hop' && m.z > 5)) {
       if (hurtPlayer(sim, tgt, def.dmg, m.x, m.y, 'mob')) m.atk = def.atkcd;
     }
   }
@@ -386,7 +397,11 @@ function aiHop(sim, m, def, tgt, d, chasing, dt) {
     m.stt -= dt;
     if (m.stt <= 0) {
       let ang;
-      if (chasing) ang = Math.atan2(tgt.y - m.y, tgt.x - m.x) + (rng.next() - 0.5) * 0.7;
+      if (def.shy) { // runs from whoever is near, otherwise idles about
+        if (d < 130) ang = Math.atan2(m.y - tgt.y, m.x - tgt.x) + (rng.next() - 0.5) * 0.9;
+        else if (rng.next() < 0.5) ang = rng.next() * TAU;
+        else { m.stt = 0.5 + rng.next(); return; }
+      } else if (chasing) ang = Math.atan2(tgt.y - m.y, tgt.x - m.x) + (rng.next() - 0.5) * 0.7;
       else if (rng.next() < 0.7) ang = rng.next() * TAU;
       else { m.stt = 0.6 + rng.next() * 1.2; return; }
       m.dir = ang; m.st = 'hop'; m.stt = def.boss ? 0.55 : 0.36; m.zv = 62; m.face = Math.cos(ang) >= 0 ? 1 : -1;
@@ -397,7 +412,7 @@ function aiHop(sim, m, def, tgt, d, chasing, dt) {
     const r = stepMove(w, m, def, Math.cos(m.dir) * sp * dt, Math.sin(m.dir) * sp * dt);
     m.zv -= 340 * dt;
     m.z = Math.max(0, m.z + m.zv * dt);
-    if (m.stt <= 0 || (m.z === 0 && m.zv < 0)) { m.st = 'idle'; m.z = 0; m.zv = 0; m.stt = chasing ? 0.3 + rng.next() * 0.35 : 0.8 + rng.next() * 1.3; if (r.hitX || r.hitY) m.dir += Math.PI; }
+    if (m.stt <= 0 || (m.z === 0 && m.zv < 0)) { m.st = 'idle'; m.z = 0; m.zv = 0; m.stt = def.shy && d < 130 ? 0.12 + rng.next() * 0.16 : chasing ? 0.3 + rng.next() * 0.35 : 0.8 + rng.next() * 1.3; if (r.hitX || r.hitY) m.dir += Math.PI; }
   }
 }
 
@@ -471,21 +486,30 @@ function aiPassive(sim, m, def, tgt, d, dt) {
 }
 
 // ------------------------------------------------------------------ bosses
-function bossShockwave(sim, m, def, radius, dmg) {
+function bossShockwave(sim, m, def, radius, dmg, inner = 0) {
   const w = sim.world;
   w.fx('shock', m.x, m.y, radius);
   for (const p of w.players.values()) {
     if (!p.online || p.dead > 0) continue;
-    if (Math.hypot(p.x - m.x, p.y - m.y) < radius) hurtPlayer(sim, p, dmg, m.x, m.y, 'mob');
+    const d = Math.hypot(p.x - m.x, p.y - m.y);
+    if (d < radius && d >= inner) hurtPlayer(sim, p, dmg, m.x, m.y, 'mob');
   }
 }
 function bossRing(sim, m, def, n, spd, dmg) {
   const off = sim.rng.next() * TAU;
   for (let i = 0; i < n; i++) {
     const a = off + (i / n) * TAU;
-    shoot(sim, { x: m.x, y: m.y - def.h * 0.4, tx: m.x + Math.cos(a) * 100, ty: m.y - def.h * 0.4 + Math.sin(a) * 100, spd, dmg, range: 170, from: 'm', color: '#ff9fd0', r: 3, kind: 'orb' });
+    shoot(sim, { x: m.x, y: m.y - def.h * 0.4, tx: m.x + Math.cos(a) * 100, ty: m.y - def.h * 0.4 + Math.sin(a) * 100, spd, dmg, range: 170, from: 'm', color: def.orb || '#ff9fd0', r: 3, kind: 'orb' });
   }
 }
+/** one orb flying out at angle a */
+function bossOrb(sim, m, def, a, spd, dmg, range = 190) {
+  const y = m.y - def.h * 0.4;
+  shoot(sim, { x: m.x, y, tx: m.x + Math.cos(a) * 100, ty: y + Math.sin(a) * 100, spd, dmg, range, from: 'm', color: def.orb || '#ff9fd0', r: 3, kind: 'orb' });
+}
+// how long each pattern's warning (plus its action) lasts; 'spin' fires a swirl of orbs for the last two seconds, 'quake' sends three rings outward 0.9 s after the warning starts
+const QUAKE_WAVES = [[0, 30, 0], [0.35, 52, 30], [0.7, 76, 52]]; // [seconds after the warning, outer radius, inner radius]
+const PATTERN_TIME = { hop: 0.9, summon: 0.8, slam: 0.9, charge: 0.8, ring: 0.9, volley: 0.9, spin: 2.8, quake: 1.7 };
 function aiBoss(sim, m, def, tgt, d, dt) {
   const w = sim.world, rng = sim.rng;
   const base = def.dmg;
@@ -495,7 +519,7 @@ function aiBoss(sim, m, def, tgt, d, dt) {
     m.patT -= dt;
     if (m.patT <= 0) {
       const pat = def.patterns[m.pat % def.patterns.length]; m.pat++;
-      m.st = pat; m.stt = pat === 'hop' ? 0.9 : pat === 'summon' ? 0.8 : pat === 'slam' ? 0.9 : pat === 'charge' ? 0.8 : 0.9; m.stt0 = m.stt;
+      m.st = pat; m.stt = PATTERN_TIME[pat] || 0.9; m.stt0 = m.stt; m.qk = 0; m.sa = rng.next() * TAU;
       m.dir = Math.atan2(tgt.y - m.y, tgt.x - m.x);
       w.fx('bosswarn', m.x, m.y - def.h * 0.6, pat);
     }
@@ -528,6 +552,26 @@ function aiBoss(sim, m, def, tgt, d, dt) {
   } else if (m.st === 'ring') {
     m.stt -= dt;
     if (m.stt <= 0) { bossRing(sim, m, def, 14, 72, base * 0.55); m.st = 'chase'; m.patT = 2 + rng.next(); }
+  } else if (m.st === 'volley') { // a fan of five orbs at whoever it is looking at
+    m.stt -= dt;
+    if (m.stt <= 0) {
+      const aim = Math.atan2(tgt.y - 6 - (m.y - def.h * 0.4), tgt.x - m.x);
+      for (let i = -2; i <= 2; i++) bossOrb(sim, m, def, aim + i * 0.26, 84, base * 0.55);
+      w.fx('poof', m.x, m.y - def.h * 0.5, 1);
+      m.st = 'chase'; m.patT = 1.8 + rng.next();
+    }
+  } else if (m.st === 'spin') { // stands still and sprays two opposite arms of orbs round and round
+    m.stt -= dt;
+    if (m.stt < 2.0) {
+      m.qk -= dt;
+      if (m.qk <= 0) { m.qk = 0.14; m.sa += 0.62; bossOrb(sim, m, def, m.sa, 62, base * 0.4, 175); bossOrb(sim, m, def, m.sa + Math.PI, 62, base * 0.4, 175); }
+    }
+    if (m.stt <= 0) { m.qk = 0; m.st = 'chase'; m.patT = 2.2 + rng.next(); }
+  } else if (m.st === 'quake') { // three rings of shaking ground, each one further out: step into the gap
+    m.stt -= dt;
+    const el = m.stt0 - m.stt - 0.9, waves = QUAKE_WAVES;
+    while (m.qk < waves.length && el >= waves[m.qk][0]) { const [, r, from] = waves[m.qk]; bossShockwave(sim, m, def, r, base * (1.25 - 0.1 * m.qk), from); m.qk++; }
+    if (m.stt <= 0) { m.qk = 0; m.st = 'chase'; m.patT = 2 + rng.next(); }
   }
   m.face = tgt.x >= m.x ? 1 : -1;
   // lose interest if everyone is far away / dead

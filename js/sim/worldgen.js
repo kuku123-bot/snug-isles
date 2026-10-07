@@ -2,6 +2,7 @@
 import { RNG, valueNoise, fbm, hash32, TILE } from '../util.js';
 import { BIOMES, GROUND_CODE } from '../data/biomes.js';
 import { LAND } from './world.js';
+import { paceEase } from '../data/difficulty.js';
 import { NODES } from '../data/nodes.js';
 
 const CLEAR = 0; // placeholder for readability
@@ -37,7 +38,7 @@ export function landPrice(world, gx, gy, discount = 0) {
   const n = world.ownedCount(); // lands already owned (>=1)
   const b = world.biomeOfLand(gx, gy);
   const base = 12 * (1 + 0.55 * n + 0.04 * n * n + 0.0009 * n * n * n) * b.price;
-  const mult = (world.settings.landPrice === undefined ? 1 : world.settings.landPrice) * (1 - Math.min(0.6, discount));
+  const mult = (world.settings.landPrice === undefined ? 1 : world.settings.landPrice) * (1 - Math.min(0.6, discount)) / paceEase(world.settings);
   return Math.round(base * mult);
 }
 
@@ -152,6 +153,18 @@ export function genLand(world, gx, gy, isStart = false) {
       if (isStart && Math.hypot(x + 0.5 - LAND / 2, y + 0.5 - LAND / 2) < 3) continue;
       used[y * LAND + x] = 2;
       specials.push({ type: k < nChest ? 'chest_wild' : 'dig_spot', x, y });
+      break;
+    }
+  }
+  // cracked boulders: only a bomb opens them (drawn after everything else so that the layout of older lands never changes)
+  const nCrack = isStart ? 1 : (rng.chance(0.55) ? 1 : 0) + (rng.chance(0.15) ? 1 : 0);
+  for (let k = 0; k < nCrack; k++) {
+    for (let tries = 0; tries < 60; tries++) {
+      const x = 2 + rng.int(LAND - 4), y = 2 + rng.int(LAND - 4);
+      if (!isFree(x, y)) continue;
+      if (isStart && Math.hypot(x + 0.5 - LAND / 2, y + 0.5 - LAND / 2) < 4) continue;
+      used[y * LAND + x] = 2;
+      specials.push({ type: 'cracked_boulder', x, y });
       break;
     }
   }

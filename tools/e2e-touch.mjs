@@ -186,8 +186,9 @@ console.log('painting with a finger: the picker, sliders, swatches, building in 
   ok(th.width >= 28, `slider thumbs too (${Math.round(th.width)}px)`);
   const pb = await page.locator('.buildside .cp').boundingBox();
   ok(pb.x + pb.width <= W + 1 && pb.y >= 0 && pb.y + pb.height <= H + 1, `the picker fits on the screen (${Math.round(pb.width)}x${Math.round(pb.height)} in ${W}x${H})`);
-  const bb = await page.locator('.buildbar').boundingBox();
-  ok(pb.y + pb.height <= bb.y + 2, 'and it does not cover the build buttons');
+  const bb = await page.locator('.buildbar').boundingBox(), sd = await page.locator('.buildside').boundingBox(); // (the side box scrolls when the picker is taller than the room it has, so what matters is the box, not the whole picker)
+  const meet = sd.x < bb.x + bb.width && sd.x + sd.width > bb.x && sd.y < bb.y + bb.height && sd.y + sd.height > bb.y; // (the bar is centred and the picker sits at the right: they only matter if they really meet)
+  ok(!meet, `and it does not cover the build buttons (picker box ${Math.round(sd.x)}..${Math.round(sd.x + sd.width)} x ${Math.round(sd.y)}..${Math.round(sd.y + sd.height)}, bar ${Math.round(bb.x)}..${Math.round(bb.x + bb.width)} x ${Math.round(bb.y)}..${Math.round(bb.y + bb.height)})`);
   await tapSel('.cp-sw[title="Red"]');
   const red = await colorOf('#e0525c');
   ok((await col()) === red, 'a finger tap on a swatch chooses it');

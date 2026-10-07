@@ -37,7 +37,7 @@ export function settingsPanel(g, data, ui) {
       h('div', { class: 'sep' }),
       toggle('Smart tools', 'smartTools', 'Automatically picks the best pickaxe / sword / bow for what you hit.'),
       toggle('See-through walls', 'fadeWalls', 'Walls near you fade so you never get hidden behind them.'),
-      toggle('Goal tracker', 'showGoals', 'Shows the next Island Goal in the corner.', () => g.hud && g.hud.refreshGoal && g.hud.refreshGoal()), toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
+      toggle('Goal tracker', 'showGoals', 'Shows the next Island Goal in the corner.', () => g.hud && g.hud.refreshGoal && g.hud.refreshGoal()), toggle('Guide arrow', 'showGuide', 'A bobbing arrow that points at what the next goal needs.'), toggle('Screen shake', 'screenShake'), toggle('Name tags', 'showNames', null, () => { g.showNames = s.showNames; }),
       choice('Touch controls', 'touchControls', [['auto', 'Auto'], ['on', 'Always'], ['off', 'Never']], () => g.touch.layout()),
       toggle('Left-handed layout', 'leftHanded', 'Swap the joystick and buttons.', () => g.touch.layout()),
       choice('Picture', 'look', [['smooth', 'Smooth'], ['soft', 'Soft'], ['pixel', 'Pixel']], () => app.applyLook()),
@@ -68,6 +68,10 @@ export function helpPanel(g, data, ui) {
     h('div', { class: 'small' }, '• Screen suddenly too big or too small? Pause menu (or Settings) → Fix zoom.'),
     h('div', { class: 'small' }, '• Every level gives a skill point for the Skills tree: tap a box and press Learn. New boxes open up as you learn the ones before them.'),
     h('div', { class: 'small' }, '• Enclose a room with walls & a door, add furniture, and your Cozy bonus grows. Lie down in a bed any time to rest (it also becomes your respawn point); at night, sleeping skips the night. Chairs, sofas and benches seat one person per cushion.'),
+    h('div', { class: 'small' }, '• Lost? The NEXT card (top left) shows the one thing to do now, and the pink arrow points at it. Menu → Guide arrow turns the arrow off.'),
+    h('div', { class: 'small' }, '• Research Explosives for bombs: tap with a bomb in your hand to throw it. Bombs break rocks, hurt monsters and open cracked boulders (treasure inside!). They never hurt you or your buildings. Frost bombs freeze monsters, fire bombs burn them, and fireworks are just for fun.'),
+    h('div', { class: 'small' }, '• Bosses: build an altar (Spore, Sun, Frost, Bone, Magma, Crystal, Void, or the Slime Altar), put the offering in your bag and press E. Watch for the red ! - it means an attack is coming. A shiny Golden Slime now and then runs from you: catch it for treasure!'),
+    h('div', { class: 'small' }, '• Game too slow or too fast? Pause menu → World rules → Game pace.'),
     h('div', { class: 'small' }, '• Every slot holds up to 9999. The Pack Mule skill adds bag slots and Warehouse Keeper makes every chest bigger, for both of you.'),
     h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));
   return { title: 'How to play', icon: 'ui_book', body, sig: () => '' };

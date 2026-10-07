@@ -41,6 +41,7 @@ T('apiary', 'Beekeeping', 2, 'farm', ['gardening'], { plank: 10, petal_yellow: 8
 T('alchemy', 'Alchemy', 2, 'magic', ['glassmaking', 'gardening'], { glass: 4, petal_pink: 4, mushroom: 3 }, 'Alchemy table and healing potions.');
 T('archery', 'Archery', 2, 'adv', ['carpentry'], { plank: 10, feather: 5, rope: 4 }, 'Bows, arrows and the twig staff.');
 T('trade', 'Trade', 2, 'adv', ['storage'], { plank: 20, cloth: 6, copper_ingot: 4 }, 'Market stall: sell goods for coins.');
+T('explosives', 'Explosives', 2, 'adv', ['smelting'], { coal: 6, stone: 15, fiber: 6 }, 'Craft bombs: they break rocks, hurt monsters and open cracked boulders full of treasure.');
 T('swift_feet', 'Light Feet', 2, 'adv', ['archery'], { fiber: 10, feather: 6 }, 'Everyone runs 6% faster.', { speed: 0.06 });
 T('field_medicine', 'Field Medicine', 2, 'adv', ['archery'], { cloth: 6, petal_pink: 6, fiber: 10 }, 'Health regenerates 20% faster.', { regen: 0.2 });
 T('pastel_palette', 'Pastel Palette', 2, 'home', ['cottage_style'], { clay: 10, petal_pink: 6, petal_blue: 6, petal_yellow: 6 }, 'Lilac, peach and seafoam paint, soft pastel tiles and carpets.');
@@ -62,6 +63,7 @@ T('sturdy_bags', 'Sturdy Bags', 3, 'craft', ['weaving', 'ironworking'], { cloth:
 T('irrigation', 'Irrigation', 3, 'farm', ['mechanics', 'gardening'], { iron_ingot: 4, rope: 6, glass: 2 }, 'Sprinklers boost nearby crops.');
 T('husbandry', 'Animal Husbandry', 3, 'farm', ['gardening', 'trade'], { plank: 25, wheat: 15, fiber: 10 }, 'Chicken coops, cow sheds and sheep pens.');
 T('milling', 'Milling', 3, 'farm', ['mechanics', 'gardening'], { plank: 20, gear: 2, wheat: 10 }, 'Windmills turn wheat into flour.');
+T('pyrotechnics', 'Pyrotechnics', 3, 'adv', ['explosives'], { coal: 10, paper: 8, petal_pink: 4, copper_ingot: 2 }, 'Mega, frost and fire bombs, and fireworks to light up the sky.');
 T('fortification', 'Fortification', 3, 'adv', ['ironworking', 'archery'], { stone: 40, iron_ingot: 8, arrow: 20 }, 'Arrow turrets and iron fences.');
 T('treasure_hunting', 'Treasure Hunting', 3, 'adv', ['ironworking'], { rope: 4, iron_ingot: 4, paper: 6 }, 'Iron shovels. Buried treasure shows on your map.');
 T('trade_routes', 'Trade Routes', 3, 'adv', ['trade'], { plank: 20, copper_ingot: 8, rope: 6 }, 'Everything you sell fetches 5% more.', { sell: 0.05 });

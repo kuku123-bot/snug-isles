@@ -8,6 +8,7 @@ import { RECIPES } from '../../data/recipes.js';
 import { spriteName } from '../../game/builder.js';
 import { sourcesFor, countAll } from '../../sim/commands.js';
 import { treeView, branchTabs, pic } from '../tree.js';
+import { techCostMult } from '../../data/difficulty.js';
 import { techNodes, skillNodes, TECH_BRANCH_ICON, SKILL_BRANCH_ICON } from '../treedata.js';
 
 const TIER_NAMES = ['', 'Stone Age', 'Copper Age', 'Iron Age', 'Golden Age', 'Arcane Age', 'Volcanic Age', 'Crystal Age', 'Starlit Age'];
@@ -25,7 +26,7 @@ export function techPanel(g, data, ui) {
   const detail = h('div', { class: 'tdetail' });
   const body = h('div', { class: 'col tree-panel', style: 'gap:8px' }, tabs, tree.el, detail);
 
-  const cost = (t) => { const mult = world().settings.techCost, src = sourcesFor({ world: world() }, g.me); return mult === 0 || Object.keys(t.cost).every((k) => countAll(src, k) >= Math.ceil(t.cost[k] * mult)); };
+  const cost = (t) => { const mult = techCostMult(world().settings), src = sourcesFor({ world: world() }, g.me); return mult === 0 || Object.keys(t.cost).every((k) => countAll(src, k) >= Math.ceil(t.cost[k] * mult)); };
   function canResearchHere(t) {
     const w = world(), p = g.me;
     if (w.settings.techCost === 0) return true;
@@ -48,7 +49,7 @@ export function techPanel(g, data, ui) {
     clear(detail);
     const t = TECHS[selId];
     if (!t) { detail.append(h('div', { class: 'td-empty' }, ic('ui_flask', 2), h('div', null, 'Tap a box to read about it. ', h('b', null, 'Yellow'), ' boxes are ready to research, green ones are done.'))); return; }
-    const w = world(), p = g.me, st = state(t.id), src = sourcesFor({ world: w }, p), mult = w.settings.techCost, un = UNLOCKS[t.id];
+    const w = world(), p = g.me, st = state(t.id), src = sourcesFor({ world: w }, p), mult = techCostMult(w.settings), un = UNLOCKS[t.id];
     const costs = h('div', { class: 'cost', style: 'justify-content:flex-start' }, ...(mult === 0 ? [h('span', { class: 'chip ok' }, 'Free research!')] : Object.keys(t.cost).map((k) => { const need = Math.ceil(t.cost[k] * mult), have = countAll(src, k); return h('span', { class: 'chip ' + (have >= need ? 'ok' : 'bad') }, itemIc(k, 1), `${have}/${need}`); })));
     // what it unlocks, as little pictures (hover or long-press shows the name)
     const pics = [];

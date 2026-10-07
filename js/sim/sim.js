@@ -12,6 +12,7 @@ import { sanitizeSettings, START_KITS, DEFAULTS } from '../data/difficulty.js';
 import { makePlayer, calcStats, touch, addXp, giveItem, syncSlots, HOTBAR } from './player.js';
 import { invAdd } from './inventory.js';
 import { updateMobs, spawnTick, updateProjectiles, hurtPlayer } from './combat.js';
+import { updateBombs } from './bombs.js';
 import { updateMachines, MACHINE_BEHAVIORS } from './machines.js';
 import { depleteNode } from './gather.js';
 import { exec as execCommand } from './commands.js';
@@ -25,6 +26,7 @@ export class Sim {
     this.world = world;
     this.rng = new RNG((world.seed ^ 0x9e3779b9) >>> 0);
     this.depleted = new Set(); // ids of depleted nodes awaiting regrowth
+    this.bombs = []; // bombs that have been thrown and are waiting for their fuse (not saved)
     this.machineIds = new Set(); // ids of things that tick (processors, farms, drills...)
     this.acc = { slow: 0, cozy: 0, spawn: 0, weather: 0, doors: 0, goals: 0 };
     this.openDoors = new Map(); // tile idx -> seconds since someone was near
@@ -408,6 +410,7 @@ export class Sim {
     if (!this.skipping) {
       updateMobs(this, dt);
       updateProjectiles(this, dt);
+      updateBombs(this, dt);
       this.acc.spawn += dt;
       if (this.acc.spawn > 1.2) { this.acc.spawn = 0; spawnTick(this); }
     }

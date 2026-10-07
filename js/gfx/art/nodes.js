@@ -268,6 +268,14 @@ function geode(rng) {
   for (let i = 0; i < 6; i++) { const x = 6 + (i % 3) * 2, y = 9 + Math.floor(i / 3) * 2; pm.set(x, y, rng.pick(cols)); pm.set(x, y - 1, hex('#ffffffaa')); }
   return finishRock(pm);
 }
+function crackedBoulder(rng) {
+  const { pm } = rockBase(rng, '#7a7894');
+  const glow = hex('#ffd36a'), hot = hex('#fff3a8'), warm = hex('#ff9a4a');
+  for (const [x0, y0, x1, y1] of [[8, 4, 6, 8], [6, 8, 9, 10], [9, 10, 8, 13], [6, 8, 4, 10], [9, 10, 12, 9]]) { pm.line(x0, y0, x1, y1, warm); pm.line(x0 + 1, y0, x1 + 1, y1, glow); }
+  for (const [x, y] of [[7, 7], [8, 10], [11, 9]]) pm.set(x, y, hot);
+  pm.set(3, 6, hot); pm.set(13, 7, glow); pm.set(5, 12, glow);
+  return finishRock(pm);
+}
 function rubble(base) {
   const pm = new Pixmap(16, 16);
   const pal = ramp(hex(base));
@@ -450,6 +458,7 @@ export function registerNodes(book) {
   add('t_crystal_rock', rockCrystal(r(21), [hex('#ff9fd0'), hex('#9ff0e0'), hex('#d4b8ff')])); add('t_crystal_rock_dep', rubble('#9a8fc8'));
   add('t_star_rock', rockStar(r(22))); add('t_star_rock_dep', rubble('#3a3a78'));
   add('t_geode', geode(r(23))); add('t_geode_dep', rubble('#8a8aa8'));
+  add('t_cracked_boulder', crackedBoulder(r(24)));
   // plants
   add('t_tall_grass', tallGrass(0)); add('t_tall_grass_v1', tallGrass(1)); add('t_tall_grass_v2', tallGrass(2)); add('t_tall_grass_dep', tallGrassStub());
   add('t_flower_pink', flowerPatch('#ff8fb3')); add('t_flower_pink_dep', flowerStub());

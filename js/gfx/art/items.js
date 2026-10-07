@@ -223,6 +223,28 @@ const glyphs = {
 
 // ============================================================ registry
 const PICK = { tool: 'pick' };
+// ============================================================ bombs and fireworks
+function bombIcon(color, o = {}) {
+  const pm = new Pixmap(16, 16), c = R(color), r = o.r || 5;
+  ballShade(pm, 8, 10, r, r, c, { dither: 0 });
+  pm.set(6, 8, WHITE); pm.set(7, 7, c[0]); pm.set(6, 9, c[0]);
+  pm.rect(6, 4, 4, 2, hex('#6a6478')); pm.hline(6, 4, 4, hex('#9a94ac')); // the cap
+  pm.line(9, 3, 11, 1, hex('#d8b878')); pm.line(10, 3, 12, 1, hex('#a88848'));
+  pm.set(12, 0, hex('#ffe066')); pm.set(13, 1, hex('#ff7a3d')); pm.set(11, 0, hex('#ffffff'));
+  if (o.band) { pm.hline(3, 10, 10, hex(o.band)); pm.hline(4, 11, 8, hex(o.band)); }
+  if (o.mark) o.mark(pm);
+  return outline(pm);
+}
+function fireworkIcon() {
+  const pm = new Pixmap(16, 16);
+  pm.rect(7, 7, 4, 7, hex('#e0504a')); pm.vline(7, 7, 7, hex('#ff8a7a')); pm.vline(10, 7, 7, hex('#a8302a')); pm.hline(7, 9, 4, WHITE); pm.hline(7, 12, 4, WHITE);
+  pm.poly([[7, 7], [10, 7], [8.5, 2]], hex('#ffd84a')); pm.set(8, 6, hex('#fff3a8'));
+  pm.poly([[5, 14], [7, 10], [7, 14]], hex('#5cc7ff')); pm.poly([[11, 14], [10, 10], [10, 14]], hex('#5cc7ff'));
+  pm.vline(8, 14, 2, hex('#a88848'));
+  for (const [x, y, c] of [[12, 3, '#ff8fb3'], [3, 4, '#7ed957'], [13, 7, '#ffd84a'], [4, 8, '#c49aff'], [8, 0, '#ffffff']]) pm.set(x, y, hex(c));
+  return outline(pm);
+}
+
 export function drawItem(it) {
   const id = it.id;
   if (it.tool === 'pick') return pickaxe(it.mat);
@@ -256,6 +278,8 @@ export function drawItem(it) {
     fruit_salad: () => bowl('#ff9fb0', false, (pm) => { pm.set(5, 6, hex('#f2545b')); pm.set(8, 5, hex('#ffe066')); pm.set(11, 6, hex('#7ed07a')); pm.set(7, 7, hex('#b07aff')); }),
     omelet, cactus_juice: juice, hot_cocoa: cocoa, apple_pie: () => pie('#d8964a', '#f2c860'),
     pet_egg: petEggItem, treasure_key: key, boss_token: trophy,
+    bomb: () => bombIcon('#3a3650'), mega_bomb: () => bombIcon('#2f2a40', { r: 5.8, band: '#ff5f4a' }), frost_bomb: () => bombIcon('#8fd0f0', { mark: (pm) => { pm.hline(6, 10, 5, WHITE); pm.vline(8, 8, 5, WHITE); pm.set(7, 9, WHITE); pm.set(9, 11, WHITE); } }),
+    fire_bomb: () => bombIcon('#e8603a', { mark: (pm) => { pm.poly([[8, 7], [10, 11], [8, 13], [6, 11]], hex('#ffd27a')); pm.set(8, 10, hex('#fff3a8')); } }), firework: fireworkIcon,
   };
   if (t[id]) return t[id]();
   if (id.startsWith('potion_')) return bottle({ health_s: '#ff6f8a', health_m: '#ff4f6d', health_l: '#e0304a', speed: '#6ac8ff', mining: '#ffb347', night: '#6a7cff', strength: '#ff7a3d', fireproof: '#ff9a3c', luck: '#7ed07a' }[id.slice(7)] || '#a77bff');

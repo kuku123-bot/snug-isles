@@ -1,6 +1,6 @@
 // Island Goals on the host: counts what the players do, looks at the world every couple of seconds, and hands out the rewards.
 import { BUILD } from '../data/build.js';
-import { GOALS } from '../data/goals.js';
+import { GOALS, rewardOf } from '../data/goals.js';
 import { wallDefOf } from './world.js';
 import { addXp } from './player.js';
 
@@ -75,13 +75,14 @@ export function goalsTick(sim) {
     if (!ok) continue;
     done.push(g.id); have.add(g.id);
     if (first) continue; // an older world: quietly tick off what is already true instead of showering rewards
-    if (g.reward.coins) { w.coins += g.reward.coins; c.coins = w.coins; }
-    for (const p of online) { if (g.reward.xp) addXp(w, p, g.reward.xp, true); }
+    const rw = rewardOf(w.settings, g);
+    if (rw.coins) { w.coins += rw.coins; c.coins = w.coins; }
+    for (const p of online) { if (rw.xp) addXp(w, p, rw.xp, true); }
     w.emit(['goal', g.id]);
     announced++;
     // the first two get their own celebration, the third one a combined "more goals" note, the rest are quiet
     for (const p of online) w.tell(p.pid, { t: 'goal', id: g.id, late: announced <= 2 ? 0 : announced === 3 ? 1 : 2 });
-    if (g.reward.coins) w.emit(['coins', w.coins]);
+    if (rw.coins) w.emit(['coins', w.coins]);
   }
   if (first && done.length) w.emit(['goals', [...done]]);
 }

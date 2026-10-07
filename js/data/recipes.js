@@ -26,6 +26,11 @@ rec('pickaxe_stone', 1, { wood: 6, stone: 8, fiber: 2 }, 'workbench', 'stonecraf
 rec('sword_stone', 1, { wood: 4, stone: 6, fiber: 2 }, 'workbench', 'stonecraft', 4);
 rec('shovel_stone', 1, { wood: 4, stone: 6 }, 'workbench', 'stonecraft', 3);
 rec('seed_cotton', 2, { cotton: 1 }, 'workbench', 'weaving', 0.5, 'seed_cotton_make');
+rec('bomb', 2, { coal: 1, stone: 2, fiber: 1 }, 'workbench', 'explosives', 3);
+rec('mega_bomb', 1, { bomb: 3, iron_ingot: 1, coal: 3 }, 'workbench', 'pyrotechnics', 6);
+rec('frost_bomb', 1, { bomb: 1, ice_shard: 3 }, 'workbench', 'pyrotechnics', 4);
+rec('fire_bomb', 1, { bomb: 1, charcoal: 4, slime_goo: 2 }, 'workbench', 'pyrotechnics', 4);
+rec('firework', 3, { paper: 2, coal: 1, petal_pink: 1 }, 'workbench', 'pyrotechnics', 2);
 
 // ---- sewing
 rec('cloth', 1, { cotton: 2 }, 'sewing', 'weaving', 1);

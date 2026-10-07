@@ -15,7 +15,7 @@ import { placeCheck, buildMult } from '../js/sim/commands.js';
 import { spawnMob } from '../js/sim/combat.js';
 
 function env(overrides = {}) {
-  const sim = makeSim('classic', { enemyDensity: 0, techCost: 1, buildCost: 1, ...overrides });
+  const sim = makeSim('classic', { enemyDensity: 0, techCost: 1, buildCost: 1, pace: 1, ...overrides });
   const w = sim.world, p = sim.addPlayer('a', 'Alice');
   let start = null;
   for (let gx = 0; gx < w.gw; gx++) for (let gy = 0; gy < w.gh; gy++) if (w.isLandOwned(gx, gy)) start = [gx, gy];

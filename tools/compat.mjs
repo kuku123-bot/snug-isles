@@ -116,7 +116,15 @@ ok(w2.players.get('alice-pid').pet === a.pet, 'pet');
 const re = JSON.parse(JSON.stringify(nu.ser.serializeWorld(sim2)));
 const strip = (d) => { const c = JSON.parse(JSON.stringify(d)); c.things = c.things.map((r) => r.slice(0, 9)); for (const p of c.players) { delete p.x; delete p.y; } return c; };
 const A = strip(data), B = strip(re);
-for (const key of Object.keys(A)) { if (key === 'players' || key === 'things') continue; try { assert.deepEqual(B[key], A[key]); } catch (e) { ok(false, 'saved field changed: ' + key); } }
+for (const key of Object.keys(A)) {
+  if (key === 'players' || key === 'things') continue;
+  if (key === 'settings') { // a new world rule may be added (with its default); every rule the old version knew keeps its value
+    const changed = Object.keys(A.settings).filter((k) => JSON.stringify(A.settings[k]) !== JSON.stringify(B.settings[k])), added = Object.keys(B.settings).filter((k) => !(k in A.settings));
+    ok(!changed.length, 'every world rule keeps its value' + (changed.length ? ' (changed: ' + changed.join(', ') + ')' : '') + (added.length ? ` (new rules get their default: ${added.map((k) => k + '=' + B.settings[k]).join(', ')})` : ''));
+    continue;
+  }
+  try { assert.deepEqual(B[key], A[key]); } catch (e) { ok(false, 'saved field changed: ' + key); }
+}
 ok(JSON.stringify(B.things) === JSON.stringify(A.things) && JSON.stringify(B.players) === JSON.stringify(A.players), 'saving it again changes nothing (apart from the new trailing columns)');
 ok(Object.keys(re).every((k) => k in data || ['floorCol', 'wallCol', 'decoCol', 'floorRot', 'wallRot', 'decoRot'].includes(k)), 'no new top-level fields appear in a world nobody painted or turned');
 ok(re.v === data.v, `the save version stays ${re.v}, so the OLD version can still open a world this one saved`);

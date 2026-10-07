@@ -441,6 +441,109 @@ function bossEye() {
   return frames;
 }
 
+// ------------------------------------------------------------------ more bosses
+function bossMushroom() {
+  const frames = [];
+  for (let f = 0; f < 4; f++) {
+    const pm = new Pixmap(48, 46);
+    const cap = ramp(hex('#d6457f')), st = ramp(hex('#f4ecd8')), glow = hex('#d7a0ff');
+    const step = f === 1 ? 1 : f === 3 ? -1 : 0, bob = f % 2 ? -1 : 0;
+    pm.rect(15, 38 - (step > 0 ? 1 : 0), 6, 7, st[3]); pm.rect(27, 38 - (step < 0 ? 1 : 0), 6, 7, st[3]); pm.rect(14, 43, 8, 2, st[3]); pm.rect(26, 43, 8, 2, st[3]);
+    pm.rect(13, 20 + bob, 22, 19, st[2]); pm.rect(13, 20 + bob, 3, 19, st[1]); pm.rect(32, 20 + bob, 3, 19, st[3]);
+    pm.rect(5, 24 + bob, 8, 5, st[2]); pm.rect(35, 24 + bob, 8, 5, st[3]); // arms
+    pm.circle(5, 28 + bob, 3, st[1]); pm.circle(43, 28 + bob, 3, st[2]);
+    ballShade(pm, 24, 14 + bob, 21, 12, cap, { dither: 0.12 });
+    pm.hline(5, 22 + bob, 38, cap[3]); pm.hline(8, 23 + bob, 32, cap[4]); // gills
+    for (const [x, y, r] of [[12, 9, 3], [24, 5, 3.4], [35, 10, 3], [19, 14, 2.4], [31, 17, 2.2], [8, 16, 2]]) pm.circle(x, y + bob, r, WHITE);
+    for (const x of [8, 40]) { pm.rect(x - 1, 2 + bob, 3, 4, st[1]); pm.circle(x, 1 + bob, 2.4, cap[1]); } // little sprouts on the cap
+    pm.rect(17, 27 + bob, 5, 5, EYE); pm.rect(26, 27 + bob, 5, 5, EYE); pm.set(18, 28 + bob, WHITE); pm.set(27, 28 + bob, WHITE);
+    pm.set(17, 25 + bob, EYE); pm.set(18, 25 + bob, EYE); pm.set(29, 25 + bob, EYE); pm.set(30, 25 + bob, EYE);
+    pm.hline(20, 35 + bob, 8, hex('#7a2a4a')); pm.set(20, 34 + bob, hex('#7a2a4a')); pm.set(27, 34 + bob, hex('#7a2a4a'));
+    for (let i = 0; i < 6; i++) pm.set(4 + ((i * 19 + f * 7) % 40), 2 + ((i * 13 + f * 5) % 26), glow); // drifting spores
+    pm.outline(null, { amt: 0.7 });
+    groundShadow(pm, 24, 45, 16, 2, 70);
+    frames.push(pm);
+  }
+  return frames;
+}
+function bossPharaoh() {
+  const frames = [];
+  for (let f = 0; f < 4; f++) {
+    const pm = new Pixmap(40, 46);
+    const w = ramp(hex('#e8dcb8')), g = ramp(hex('#ffd84a')), blue = ramp(hex('#3a7ad8'));
+    const step = f === 1 ? 1 : f === 3 ? -1 : 0, bob = f % 2 ? -1 : 0;
+    pm.rect(12, 32 - (step > 0 ? 1 : 0), 6, 12, w[3]); pm.rect(22, 32 - (step < 0 ? 1 : 0), 6, 12, w[3]);
+    for (let y = 34; y < 43; y += 3) { pm.hline(12, y, 6, w[4]); pm.hline(22, y, 6, w[4]); }
+    pm.rect(11, 43, 8, 2, w[3]); pm.rect(21, 43, 8, 2, w[3]);
+    pm.rect(10, 16 + bob, 20, 17, w[2]); for (let y = 18; y < 32; y += 3) pm.hline(10, y + bob, 20, w[4]); pm.vline(10, 16 + bob, 17, w[1]); pm.vline(29, 16 + bob, 17, w[3]);
+    pm.rect(4, 16 + bob, 6, 14, w[2]); pm.rect(30, 16 + bob, 6, 14, w[3]); // arms
+    pm.circle(7, 31 + bob, 3, w[1]); pm.circle(33, 31 + bob, 3, w[2]);
+    pm.poly([[9, 14 + bob], [31, 14 + bob], [28, 19 + bob], [12, 19 + bob]], g[2]); pm.hline(12, 17 + bob, 16, blue[2]); // broad collar
+    for (const x of [14, 19, 24]) pm.set(x, 15 + bob, blue[1]);
+    pm.rect(6, 14 + bob, 3, 14, g[2]); pm.rect(31, 14 + bob, 3, 14, g[3]); // staff-hand rods
+    ballShade(pm, 20, 8 + bob, 8, 7, w, { dither: 0 });
+    pm.poly([[9, 4 + bob], [20, -1 + bob], [31, 4 + bob], [33, 17 + bob], [28, 17 + bob], [28, 6 + bob], [12, 6 + bob], [12, 17 + bob], [7, 17 + bob]], g[2]); // striped headdress
+    for (const x of [9, 12, 28, 31]) for (let y = 7; y < 16; y += 3) pm.hline(x, y + bob, 2, blue[2]);
+    pm.hline(11, 4 + bob, 18, blue[2]);
+    pm.rect(15, 7 + bob, 3, 3, EYE); pm.rect(23, 7 + bob, 3, 3, EYE); pm.set(16, 8 + bob, hex('#ff5a3a')); pm.set(24, 8 + bob, hex('#ff5a3a'));
+    pm.hline(17, 13 + bob, 7, EYE); pm.rect(17, 14 + bob, 7, 3, g[2]); // false beard
+    pm.set(20, -2 + bob, hex('#5ccf6a')); pm.set(20, -3 + bob, hex('#5ccf6a')); // little cobra on the brow
+    pm.outline(null, { amt: 0.72 });
+    groundShadow(pm, 20, 45, 14, 2, 70);
+    frames.push(pm);
+  }
+  return frames;
+}
+function bossYeti() {
+  const frames = [];
+  for (let f = 0; f < 4; f++) {
+    const pm = new Pixmap(48, 50);
+    const fur = ramp(hex('#eaf4ff')), ice = ramp(hex('#7fc6f0')), face = ramp(hex('#9fd0ee'));
+    const step = f === 1 ? 1 : f === 3 ? -1 : 0, bob = f % 2 ? -1 : 0;
+    pm.rect(11, 38 - (step > 0 ? 1 : 0), 10, 11, fur[3]); pm.rect(27, 38 - (step < 0 ? 1 : 0), 10, 11, fur[3]);
+    pm.rect(9, 46, 13, 4, ice[3]); pm.rect(26, 46, 13, 4, ice[3]);
+    ballShade(pm, 24, 27 + bob, 16, 14, fur, { dither: 0.14 });
+    pm.rect(3, 20 + bob, 9, 20, fur[2]); pm.rect(36, 20 + bob, 9, 20, fur[3]); pm.circle(7, 41 + bob, 5, fur[1]); pm.circle(41, 41 + bob, 5, fur[2]);
+    for (const [x, y] of [[8, 38], [6, 43], [40, 38], [43, 43]]) pm.set(x, y + bob, ice[2]); // icy claws
+    for (const [x, y] of [[16, 28], [30, 32], [24, 36], [20, 22], [32, 24]]) { pm.hline(x, y + bob, 3, fur[3]); pm.set(x + 1, y + 1 + bob, fur[4]); } // fur tufts
+    ballShade(pm, 24, 11 + bob, 11, 9.5, fur, { dither: 0.1 });
+    pm.ellipse(24, 13 + bob, 7.4, 5.6, face[1]); pm.ellipse(24, 14 + bob, 6.4, 4.4, face[2]);
+    pm.rect(17, 10 + bob, 4, 3, EYE); pm.rect(27, 10 + bob, 4, 3, EYE); pm.set(18, 11 + bob, hex('#9ff0ff')); pm.set(28, 11 + bob, hex('#9ff0ff'));
+    pm.hline(16, 9 + bob, 5, EYE); pm.hline(27, 9 + bob, 5, EYE);
+    pm.rect(19, 16 + bob, 10, 3, EYE); for (const x of [20, 22, 25, 27]) pm.set(x, 16 + bob, WHITE);
+    pm.poly([[12, 6 + bob], [10, -2 + bob], [16, 3 + bob]], ice[1]); pm.poly([[36, 6 + bob], [38, -2 + bob], [32, 3 + bob]], ice[1]); // icicle horns
+    pm.poly([[22, 3 + bob], [24, -3 + bob], [26, 3 + bob]], ice[2]);
+    pm.outline(null, { amt: 0.72 });
+    groundShadow(pm, 24, 49, 18, 2.4, 70);
+    frames.push(pm);
+  }
+  return frames;
+}
+function bossColossus() {
+  const frames = [];
+  for (let f = 0; f < 4; f++) {
+    const pm = new Pixmap(56, 56);
+    const c = ramp(hex('#c46ae8')), deep = ramp(hex('#6a3a9a')), glow = hex('#ffe0ff'), core = hex('#ff9fd0');
+    const step = f === 1 ? 1 : f === 3 ? -1 : 0, bob = f % 2 ? -1 : 0;
+    pm.rect(14, 42 - (step > 0 ? 1 : 0), 11, 14, deep[2]); pm.rect(31, 42 - (step < 0 ? 1 : 0), 11, 14, deep[3]);
+    pm.poly([[12, 55], [16, 49], [24, 49], [26, 55]], deep[3]); pm.poly([[30, 55], [32, 49], [40, 49], [44, 55]], deep[3]);
+    pm.poly([[28, 16 + bob], [44, 26 + bob], [40, 46], [16, 46], [12, 26 + bob]], c[2]); // chest crystal
+    pm.poly([[28, 16 + bob], [44, 26 + bob], [28, 30 + bob]], c[1]); pm.poly([[12, 26 + bob], [28, 16 + bob], [28, 30 + bob]], glow);
+    pm.poly([[28, 30 + bob], [44, 26 + bob], [40, 46], [28, 46]], c[3]);
+    pm.ellipse(28, 33 + bob, 5, 6, core); pm.ellipse(28, 33 + bob, 2.4, 3.4, glow); // glowing heart
+    pm.poly([[3, 20 + bob], [12, 17 + bob], [14, 30 + bob], [4, 36 + bob]], c[2]); pm.poly([[53, 20 + bob], [44, 17 + bob], [42, 30 + bob], [52, 36 + bob]], c[3]); // shoulders
+    pm.rect(2, 30 + bob, 8, 16, deep[2]); pm.rect(46, 30 + bob, 8, 16, deep[3]); pm.poly([[1, 46 + bob], [6, 52 + bob], [11, 46 + bob]], c[1]); pm.poly([[45, 46 + bob], [50, 52 + bob], [55, 46 + bob]], c[2]); // fists
+    pm.poly([[4, 20 + bob], [7, 9 + bob], [11, 18 + bob]], glow); pm.poly([[45, 18 + bob], [49, 9 + bob], [52, 20 + bob]], c[1]); // shoulder spikes
+    pm.poly([[18, 12 + bob], [28, 0 + bob], [38, 12 + bob], [28, 20 + bob]], c[2]); pm.poly([[28, 0 + bob], [38, 12 + bob], [28, 20 + bob]], c[3]); pm.poly([[18, 12 + bob], [28, 0 + bob], [26, 12 + bob]], glow); // head
+    pm.rect(21, 10 + bob, 5, 3, core); pm.rect(31, 10 + bob, 5, 3, core); pm.set(22, 10 + bob, WHITE); pm.set(32, 10 + bob, WHITE);
+    for (const [x, y] of [[8, 14], [48, 12], [20, 40], [38, 42]]) { pm.set(x, y + bob, glow); pm.set(x - 1, y + bob, glow); pm.set(x, y - 1 + bob, glow); pm.set(x, y + 1 + bob, glow); } // glints
+    pm.outline(null, { amt: 0.75 });
+    groundShadow(pm, 28, 55, 20, 2.6, 70);
+    frames.push(pm);
+  }
+  return frames;
+}
+
 export function registerMobs(book) {
   const addFrames = (id, frames) => frames.forEach((pm, i) => book.add(`m_${id}_${i}`, pm));
   addFrames('slime_green', slime('#7ee27a'));
@@ -449,6 +552,7 @@ export function registerMobs(book) {
   addFrames('bog_slime', slime('#4aa088', { angry: true, decor: (pm, w, h, cy, rx, ry) => { pm.set(4, Math.round(cy - ry) + 1, hex('#8fd45a')); pm.set(5, Math.round(cy - ry), hex('#8fd45a')); pm.set(11, Math.round(cy - ry) + 1, hex('#8fd45a')); } }));
   addFrames('magma_slime', slime('#e8603a', { w: 18, h: 16, rx: 7.4, ry: 6, angry: true, decor: (pm, w, h, cy) => { for (const [x, y] of [[5, 0], [9, 2], [12, -1]]) { pm.set(x, Math.round(cy) + y, hex('#ffd27a')); pm.set(x + 1, Math.round(cy) + y, hex('#ffb347')); } } }));
   addFrames('star_slime', slime('#5a4ab8', { w: 18, h: 16, rx: 7.4, ry: 6, angry: true, decor: (pm, w, h, cy) => { for (const [x, y] of [[4, -2], [11, 1], [9, -3], [13, -1]]) pm.set(x, Math.round(cy) + y, hex('#fffbd0')); } }));
+  addFrames('golden_slime', slime('#ffd84a', { decor: (pm, w, h, cy, rx, ry) => { const sx = [[4, -1], [10, -2], [8, 1]]; for (const [x, y] of sx) { const px = x, py = Math.round(cy) + y; pm.set(px, py, WHITE); pm.set(px - 1, py, hex('#fff2a0')); pm.set(px + 1, py, hex('#fff2a0')); pm.set(px, py - 1, hex('#fff2a0')); pm.set(px, py + 1, hex('#fff2a0')); } } }));
   addFrames('bat', bat('#7a5aa8')); addFrames('ice_bat', bat('#8ad0f0', '#2a4a8a'));
   addFrames('ghost', ghost());
   addFrames('prism_wisp', wisp('#ff9fd0', '#ffffff')); addFrames('void_wisp', wisp('#7a5cff', '#fffbd0'));
@@ -458,5 +562,6 @@ export function registerMobs(book) {
   addFrames('crystal_golem', crystalGolem()); addFrames('shadow_knight', shadowKnight());
   addFrames('bunny', bunny('#f4eee8', '#ffb3c8')); addFrames('snow_bunny', bunny('#ffffff', '#c8e0ff'));
   addFrames('chick', chick()); addFrames('duck', duck()); addFrames('penguin', penguin()); addFrames('lizard', lizard()); addFrames('unicorn', unicorn());
+  addFrames('mushroom_mother', bossMushroom()); addFrames('sand_pharaoh', bossPharaoh()); addFrames('frost_yeti', bossYeti()); addFrames('crystal_colossus', bossColossus());
   addFrames('slime_king', bossSlime()); addFrames('bone_lord', bossBone()); addFrames('magma_titan', bossMagma()); addFrames('void_eye', bossEye());
 }

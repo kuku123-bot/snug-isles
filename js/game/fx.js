@@ -1,6 +1,6 @@
 // Client-side visual effects: particles, floating text, rings, screen shake. Driven by world 'fx' events (same on host and client).
 import { TILE, clamp, TAU } from '../util.js';
-import { ITEMS } from '../data/items.js';
+import { ITEMS, BOMB_IDS } from '../data/items.js';
 import { hex, css, R, G, B } from '../gfx/pixmap.js';
 import { colorHex, colorRGB } from '../data/paint.js';
 
@@ -18,6 +18,8 @@ export class FX {
     this.parts = [];
     this.pops = [];
     this.rings = [];
+    this.bombs = []; // thrown bombs on their way and ticking: { sx, sy, ex, ey, t, fuse, id }
+    this.later = []; // things that happen a moment from now: { t, fn }
     this.shakes = new Map(); // thing id -> seconds
     this.shake = 0; // camera shake magnitude
     this.flash = 0; // white flash (lightning etc)
@@ -114,6 +116,27 @@ export class FX {
       case 'faint': { this.burst(x, y, 12, PAL.star, { speed: 50, up: 30, life: 1.0 }); au.play('faint'); break; }
       case 'hurt': { g.onHurt(a); au.play('hurt'); break; }
       case 'shock': { this.ring(x, y, a, '#ffb347', 0.5); this.shake = Math.max(this.shake, 3); au.play('boom'); break; }
+      case 'bombthrow': { const idx = c % 10, fuse = (c - idx) / 100; this.bombs.push({ sx: a, sy: b, ex: x, ey: y, t: 0, fuse, id: BOMB_IDS[idx] || 'bomb', spark: 0 }); au.play('throw', { vol: 0.7 }); break; }
+      case 'boom': {
+        const kind = ['boom', 'boom', 'frost', 'fire', 'boom'][b] || 'boom', cols = kind === 'frost' ? ['#ffffff', '#cfeeff', '#8fd0ff', '#dff0ff'] : kind === 'fire' ? PAL.ember : ['#fff3a8', '#ffb347', '#ff7a3d', '#e8d09a', '#ffffff'];
+        this.burst(x, y - 4, 12 + (a / 3) | 0, cols, { speed: 40 + a * 1.4, up: 18, life: 0.7, spread: 6, size: 2 });
+        this.burst(x, y - 2, 8, PAL.dust, { speed: 30 + a * 0.8, up: 6, life: 0.9, spread: 10 });
+        this.ring(x, y, a + 10, kind === 'frost' ? '#bfeaff' : '#ffe9a0', 0.4);
+        this.shake = Math.max(this.shake, a > 50 ? 7 : 3.5);
+        this.flash = Math.max(this.flash, a > 50 ? 0.25 : 0.1);
+        au.play(kind === 'frost' ? 'freeze' : 'blast', { vol: a > 50 ? 1 : 0.8 });
+        break;
+      }
+      case 'firework': {
+        const pals = [['#ff5f8a', '#ffb3c8'], ['#ffd84a', '#fff3a8'], ['#5cc7ff', '#cfeeff'], ['#7ed957', '#d4ffbd'], ['#c49aff', '#e8d4ff']], hue = (a | 0) % pals.length;
+        for (let i = 0; i < 3; i++) {
+          const [c1, c2] = pals[(hue + i * 2) % pals.length], bx = x + (i - 1) * 22, by = y - 44 - (i === 1 ? 14 : 0);
+          this.later.push({ t: i * 0.22, fn: () => { this.burst(bx, by, 30, [c1, c2, '#ffffff'], { speed: 62, up: 0, grav: 36, life: 1.2, size: 2, spread: 2, drag: 1.2 }); this.ring(bx, by, 22, c1, 0.6); } });
+        }
+        au.play('firework', { vol: 0.8 });
+        break;
+      }
+      case 'ding': { this.burst(x, y - 6, 14, PAL.gold, { speed: 50, up: 30, life: 0.9, size: 2 }); this.pop(x, y - 14, 'Treasure!', '#ffe066', { big: true, life: 1.2 }); au.play('research', { vol: 0.5 }); break; }
       case 'bosswarn': { this.pop(x, y, '!', '#ff6b7a', { big: true, life: 0.9, vy: -8 }); au.play('warn'); break; }
       case 'bossspawn': { this.shake = Math.max(this.shake, 5); this.ring(x, y, 70, '#ff6b7a', 1.0); this.burst(x, y, 30, PAL.ember, { speed: 90, up: 30, life: 1.2, spread: 20 }); au.play('bossspawn'); break; }
       case 'bossdead': { this.shake = Math.max(this.shake, 6); this.ring(x, y, 80, '#ffe066', 1.2); this.burst(x, y, 50, PAL.star, { speed: 110, up: 50, life: 1.5, spread: 24 }); au.play('victory'); break; }
@@ -141,6 +164,12 @@ export class FX {
       const p = this.pops[i]; p.t += dt; p.y += p.vy * dt; p.vy *= 1 - 2.2 * dt;
       if (p.t > p.life) this.pops.splice(i, 1);
     }
+    for (let i = this.later.length - 1; i >= 0; i--) { const l = this.later[i]; l.t -= dt; if (l.t <= 0) { this.later.splice(i, 1); l.fn(); } }
+    for (let i = this.bombs.length - 1; i >= 0; i--) {
+      const bm = this.bombs[i]; bm.t += dt;
+      if (bm.t > 0.45) { bm.spark -= dt; if (bm.spark <= 0) { bm.spark = 0.05; this.burst(bm.ex + 3, bm.ey - 13, 1, ['#ffcf45', '#ff7a3d', '#ffffff'], { speed: 14, up: 18, life: 0.3, size: 1, spread: 1 }); } }
+      if (bm.t > bm.fuse + 0.05) this.bombs.splice(i, 1);
+    }
     for (let i = this.rings.length - 1; i >= 0; i--) { this.rings[i].t += dt; if (this.rings[i].t > this.rings[i].life) this.rings.splice(i, 1); }
     for (const [k, v] of this.shakes) { const n = v - dt; if (n <= 0) this.shakes.delete(k); else this.shakes.set(k, n); }
     for (const [k, v] of this.emotes) { v.t += dt; if (v.t > (v.long ? 2.5 : 2.2)) this.emotes.delete(k); }
@@ -161,6 +190,19 @@ export class FX {
   }
 
   /** draw world-space particles; ox/oy = -camera */
+  /** thrown bombs: a little arc to where they land, then they sit and blink faster and faster */
+  drawBombs(ctx, ox, oy, sp) {
+    for (const bm of this.bombs) {
+      const s = sp.get('i_' + bm.id);
+      if (!s) continue;
+      const k = Math.min(1, bm.t / 0.45), land = bm.t >= 0.45;
+      const x = bm.sx + (bm.ex - bm.sx) * k, y = bm.sy + (bm.ey - bm.sy) * k - (land ? Math.max(0, Math.sin((bm.t - 0.45) * 14)) * 3 : Math.sin(k * Math.PI) * 24);
+      // a shadow where it will land
+      ctx.globalAlpha = 0.3; ctx.fillStyle = '#1e1440'; ctx.beginPath(); ctx.ellipse(Math.round(bm.ex + ox), Math.round(bm.ey + 1 + oy), 5, 2, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+      const left = bm.fuse - bm.t, blink = land && left < 0.7 && Math.floor(bm.t * (left < 0.35 ? 14 : 7)) % 2 === 0;
+      sp.drawS(ctx, blink ? sp.silhouette('i_' + bm.id, 0xffffffff) : s, Math.round(x - 8 + ox), Math.round(y - 14 + oy));
+    }
+  }
   drawParticles(ctx, ox, oy) {
     for (const p of this.parts) {
       const a = p.fade ? Math.min(1, p.life / (p.max * 0.5)) : 1;

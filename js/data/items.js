@@ -120,6 +120,18 @@ add('pet_egg', 'Mystery Egg', 'misc', 90, { stack: 5, hatch: true });
 add('treasure_key', 'Old Key', 'misc', 30, { stack: 5, key: true });
 add('boss_token', 'Boss Trophy', 'misc', 300, { stack: 999 });
 
+// ---------------------------------------------------------------- bombs and fireworks: thrown with the action button, they go off after a short fuse
+// radius: pixels; dmg: to monsters at the centre (less further out); nodes: the toughest rock (pickaxe tier) it breaks; trees: it fells trees too; freeze/burn: seconds
+export const BOMB_IDS = ['bomb', 'mega_bomb', 'frost_bomb', 'fire_bomb', 'firework'];
+const BOMBS = [
+  ['bomb', 'Bomb', 14, 'Breaks rocks and ores, hurts monsters, and opens cracked boulders.', { radius: 34, dmg: 16, nodes: 2, kind: 'boom' }],
+  ['mega_bomb', 'Mega Bomb', 70, 'A huge blast: breaks even hard ores and trees, and hits monsters hard.', { radius: 56, dmg: 45, nodes: 5, trees: true, kind: 'boom' }],
+  ['frost_bomb', 'Frost Bomb', 34, 'Freezes monsters in place for a few seconds.', { radius: 46, dmg: 8, freeze: 4, kind: 'frost' }],
+  ['fire_bomb', 'Fire Bomb', 34, 'Sets monsters alight: they keep burning for a while.', { radius: 42, dmg: 10, burn: 5, kind: 'fire' }],
+  ['firework', 'Firework', 10, 'Pure fun: a big colourful burst in the sky.', { radius: 0, dmg: 0, kind: 'firework' }],
+];
+for (const [id, name, sell, desc, o] of BOMBS) add(id, name, 'bomb', sell, { stack: 99, bomb: o, desc });
+
 export const isTool = (it) => it && (it.cat === 'tool' || it.cat === 'weapon');
 export const itemName = (id) => (ITEMS[id] ? ITEMS[id].name : prettyId(id));
 export const ITEM_IDS = Object.keys(ITEMS);
@@ -133,6 +145,7 @@ export function itemDesc(it) {
   if (it.weapon) p.push(`${it.weapon === 'sword' ? 'Melee' : it.weapon === 'bow' ? 'Ranged' : 'Magic'} · ${it.dmg} damage`);
   if (it.armor) p.push(`Defense +${it.def}`);
   if (it.tool === 'shovel') p.push('Digs up buried treasure');
+  if (it.bomb) p.push(it.desc);
   if (it.tool === 'rod') p.push('Catches fish');
   if (it.hatch) p.push('Use it to hatch a pet that follows you around');
   if (it.key) p.push('Carry it: the next treasure chest you open gives double treasure');

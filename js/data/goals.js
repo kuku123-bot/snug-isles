@@ -2,6 +2,7 @@
 // "census" of the world (see sim/goals.js); clients only see which ids are done. Order = the suggested order of play.
 import { TECHS } from './techs.js';
 import { BIOMES } from './biomes.js';
+import { paceOf } from './difficulty.js';
 
 export const GOAL_SECTIONS = [
   { id: 'start', name: 'First steps', icon: 'ui_star' },
@@ -78,13 +79,21 @@ G('koi', 'farm', 'i_fish_koi', 'Catch a Golden Koi', 'A very rare fish. Better r
 // ---- adventure
 G('kill1', 'adv', 'i_sword_wood', 'Defeat a monster', 'Slimes hop toward you. Hit them with your sword!', { coins: 25, xp: 18 }, (c) => gs('kills')(c) >= 1);
 G('kill25', 'adv', 'i_sword_stone', 'Defeat 25 monsters', '', { coins: 100, xp: 60 }, (c) => gs('kills')(c) >= 25, (c) => [Math.min(gs('kills')(c), 25), 25]);
+G('bomb1', 'adv', 'i_bomb', 'Craft a bomb', 'Research Explosives, then make a bomb at the workbench. Throw it with a tap!', { coins: 90, xp: 60 }, made('bomb'));
+G('boulder', 'adv', 't_cracked_boulder', 'Blow open a cracked boulder', 'Look for a boulder with glowing cracks. Only a bomb opens it, and there is treasure inside!', { coins: 120, xp: 80 }, (c) => gs('cracked')(c) >= 1);
+G('firework', 'adv', 'i_firework', 'Light a firework', 'Research Pyrotechnics and craft one. Pure joy.', { coins: 150, xp: 90 }, (c) => gs('fireworks')(c) >= 1);
 G('boss1', 'adv', 'i_boss_token', 'Defeat the Slime King', 'Build a Slime Altar and offer goo and berries.', { coins: 200, xp: 120 }, (c) => (c.gs.boss || {}).slime_king >= 1);
+G('boss_mush', 'adv', 'i_boss_token', 'Defeat the Mushroom Mother', 'Research Herbal Lore, build a Spore Altar and offer mushrooms. She shoots spores!', { coins: 350, xp: 180 }, (c) => (c.gs.boss || {}).mushroom_mother >= 1);
+G('golden', 'adv', 'i_gem_emerald', 'Catch a Golden Slime', 'Rare and shy! It runs from you and vanishes after a minute. A frost bomb freezes it in place.', { coins: 450, xp: 200 }, (c) => gs('golden')(c) >= 1);
 G('lvl10', 'adv', 'ui_star', 'Reach level 10', '', { coins: 120, xp: 0 }, (c) => c.maxLevel >= 10, (c) => [Math.min(c.maxLevel, 10), 10]);
+G('boss_pharaoh', 'adv', 'i_boss_token', 'Defeat the Sand Pharaoh', 'Research Desert Craft and build a Sun Altar. Watch the ground shake!', { coins: 500, xp: 250 }, (c) => (c.gs.boss || {}).sand_pharaoh >= 1);
 G('boss2', 'adv', 'i_boss_token', 'Defeat the Bone Lord', 'It guards the graveyard.', { coins: 600, xp: 300 }, (c) => (c.gs.boss || {}).bone_lord >= 1);
 G('kill150', 'adv', 'i_sword_iron', 'Defeat 150 monsters', '', { coins: 400, xp: 200 }, (c) => gs('kills')(c) >= 150, (c) => [Math.min(gs('kills')(c), 150), 150]);
 G('lvl20', 'adv', 'ui_star', 'Reach level 20', '', { coins: 400, xp: 0 }, (c) => c.maxLevel >= 20, (c) => [Math.min(c.maxLevel, 20), 20]);
+G('boss_yeti', 'adv', 'i_boss_token', 'Defeat the Frost Yeti', 'Research Frostcraft and build a Frost Altar. Bring a warm heart and a sharp sword.', { coins: 900, xp: 450 }, (c) => (c.gs.boss || {}).frost_yeti >= 1);
 G('boss3', 'adv', 'i_boss_token', 'Defeat the Magma Titan', 'Wake it at a Magma Altar. Bring friends and potions!', { coins: 1500, xp: 700 }, (c) => (c.gs.boss || {}).magma_titan >= 1);
 G('lvl35', 'adv', 'ui_star', 'Reach level 35', '', { coins: 1200, xp: 0 }, (c) => c.maxLevel >= 35, (c) => [Math.min(c.maxLevel, 35), 35]);
+G('boss_colossus', 'adv', 'i_boss_token', 'Defeat the Crystal Colossus', 'Research Crystal Crafting and build a Crystal Altar. Its swirling shards hurt!', { coins: 2500, xp: 1200 }, (c) => (c.gs.boss || {}).crystal_colossus >= 1);
 G('boss4', 'adv', 'i_boss_token', 'Defeat the Void Eye', 'The last guardian.', { coins: 4000, xp: 2000 }, (c) => (c.gs.boss || {}).void_eye >= 1);
 
 // ---- growing the isles
@@ -102,10 +111,39 @@ G('heart', 'grow', 't_world_heart', 'Build the Heart of the Isles', 'The final m
 export const GOAL_BY_ID = Object.fromEntries(GOALS.map((g) => [g.id, g]));
 
 /** the suggested order for a brand-new player; after that, cheapest-reward first */
-const PATH = ['chop', 'mine', 'craft1', 'workbench', 'research_table', 'tech1', 'land1', 'floor', 'walls', 'door', 'window', 'bed', 'light', 'chest', 'cozy10', 'lvl3', 'furnace', 'copper', 'plant', 'harvest', 'sleep', 'fish1', 'kill1', 'dig1', 'sell1', 'tech5', 'pick_stone', 'furn10', 'lands3'];
+const PATH = ['chop', 'mine', 'craft1', 'workbench', 'research_table', 'tech1', 'land1', 'floor', 'walls', 'door', 'window', 'bed', 'light', 'chest', 'cozy10', 'lvl3', 'furnace', 'copper', 'plant', 'harvest', 'sleep', 'fish1', 'kill1', 'dig1', 'sell1', 'tech5', 'pick_stone', 'furn10', 'bomb1', 'boulder', 'boss1', 'firework', 'lands3', 'boss_mush', 'boss_pharaoh'];
 export function nextGoal(done) {
   for (const id of PATH) if (!done.has(id)) return GOAL_BY_ID[id];
   let best = null;
   for (const g of GOALS) if (!done.has(g.id) && (!best || g.reward.coins < best.reward.coins)) best = g;
   return best;
 }
+
+/** what a goal pays in a world: the listed reward times the game pace (a quicker game pays out more) */
+export const rewardOf = (settings, g) => { const p = paceOf(settings); return { coins: Math.round((g.reward.coins || 0) * p), xp: Math.round((g.reward.xp || 0) * p) }; };
+
+/**
+ * Where to look for what a goal needs, for the guide arrow (ui/guide.js). find: the thing to point at; ui: the button of the screen to press (it glows).
+ *   nodes: ids of natural things | trees | rocks      things: ids of built pieces | { behavior }      mobs: hostile creatures      water / land / dig: the nearest of them
+ *   altar: the altar of that boss
+ */
+const TREES = 'trees', ROCKS = ['rock'];
+export const AIM = {
+  chop: { find: { nodes: TREES } }, mine: { find: { nodes: ROCKS } }, craft1: { ui: 'craft' }, workbench: { ui: 'build' }, research_table: { ui: 'build' },
+  tech1: { find: { things: ['research_table'] }, ui: 'tech' }, land1: { find: { land: true } },
+  floor: { ui: 'build' }, walls: { ui: 'build' }, door: { ui: 'build' }, window: { ui: 'build' }, bed: { ui: 'build' }, light: { ui: 'build' }, chest: { ui: 'build' },
+  cozy10: { ui: 'build' }, furn10: { ui: 'build' }, cozy25: { ui: 'build' }, furn30: { ui: 'build' }, cozy45: { ui: 'build' }, furn80: { ui: 'build' }, sleep: { find: { things: { behavior: 'bed' } } },
+  furnace: { ui: 'build' }, copper: { find: { things: ['furnace'] } }, tech5: { find: { things: ['research_table'] }, ui: 'tech' }, tech10: { find: { things: ['research_table'] }, ui: 'tech' },
+  tech20: { find: { things: ['research_table', 'library'] }, ui: 'tech' }, tech35: { find: { things: ['research_table', 'library'] }, ui: 'tech' }, tech50: { find: { things: ['library', 'observatory'] }, ui: 'tech' },
+  tech_all: { find: { things: ['observatory'] }, ui: 'tech' },
+  pick_stone: { find: { things: ['workbench'] }, ui: 'craft' }, pick_copper: { find: { things: ['workbench', 'anvil'] }, ui: 'craft' }, pick_iron: { find: { things: ['anvil', 'workbench'] }, ui: 'craft' },
+  pick_gold: { find: { things: ['anvil'] }, ui: 'craft' }, steel: { find: { things: ['blast_furnace'] } }, pick_obsidian: { ui: 'craft' }, pick_crystal: { ui: 'craft' }, pick_star: { ui: 'craft' },
+  drill: { ui: 'build' }, plant: { find: { things: ['farm_plot'] }, ui: 'build' }, harvest: { find: { things: ['farm_plot'] } }, fish1: { find: { water: true } }, koi: { find: { water: true } },
+  dig1: { find: { dig: true } }, sell1: { find: { things: ['market_stall'] }, ui: 'build' }, honey: { find: { things: ['beehive'] } }, cake: { find: { things: ['kitchen'] } },
+  bomb1: { find: { things: ['workbench'] }, ui: 'craft' }, boulder: { find: { nodes: ['cracked_boulder'] } }, firework: { ui: 'craft' }, golden: { find: { mobs: 'golden_slime' } },
+  boss_mush: { find: { altar: 'mushroom_mother' }, ui: 'build' }, boss_pharaoh: { find: { altar: 'sand_pharaoh' }, ui: 'build' }, boss_yeti: { find: { altar: 'frost_yeti' }, ui: 'build' }, boss_colossus: { find: { altar: 'crystal_colossus' }, ui: 'build' },
+  kill1: { find: { mobs: true } }, kill25: { find: { mobs: true } }, kill150: { find: { mobs: true } },
+  boss1: { find: { altar: 'slime_king' }, ui: 'build' }, boss2: { find: { altar: 'bone_lord' }, ui: 'build' }, boss3: { find: { altar: 'magma_titan' }, ui: 'build' }, boss4: { find: { altar: 'void_eye' }, ui: 'build' },
+  lands3: { find: { land: true } }, lands6: { find: { land: true } }, lands12: { find: { land: true } }, lands25: { find: { land: true } }, lands50: { find: { land: true } },
+  biomes3: { find: { land: true } }, biomes5: { find: { land: true } }, biomes8: { find: { land: true } }, bridge: { ui: 'build' }, heart: { ui: 'build' },
+};

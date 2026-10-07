@@ -9,7 +9,8 @@ import { fmtNum } from '../util.js';
 import { GROUND_IDS, BIOMES } from '../data/biomes.js';
 import { BUILD, WALL_IDS } from '../data/build.js';
 import { MOBS } from '../data/mobs.js';
-import { GOAL_BY_ID, nextGoal } from '../data/goals.js';
+import { GOAL_BY_ID, nextGoal, rewardOf } from '../data/goals.js';
+import { Guide } from './guide.js';
 import { census } from '../sim/goals.js';
 import { colorRGB } from '../data/paint.js';
 
@@ -38,8 +39,10 @@ export class HUD {
     this.meters = h('div', { class: 'meters' }, h('div', { class: 'meter' }, ic('ui_bolt', 1), h('div', { class: 'bar' }, this.energyFill)), this.hungerMeter);
     this.partnerEl = h('div', { class: 'pill small', style: 'display:none;font-size:14px;padding:2px 10px 2px 6px' });
     this.cozyEl = h('div', { class: 'pill small', style: 'display:none;font-size:14px' });
-    this.goalTxt = h('span'); this.goalProg = h('span', { class: 'gp' });
-    this.goalPill = h('div', { class: 'goalpill', style: 'display:none', onclick: () => { g.audio.play('click'); g.ui.toggle('goals'); } }, ic('ui_star', 1), this.goalTxt, this.goalProg);
+    this.goalIcon = h('div', { class: 'gcicon' }); this.goalTxt = h('b'); this.goalProg = h('span', { class: 'gp' }); this.goalDesc = h('div', { class: 'gcdesc' });
+    this.goalBar = h('i'); this.goalBarWrap = h('div', { class: 'xpbar' }, this.goalBar); this.goalRw = h('div', { class: 'gcrw' });
+    this.goalPill = h('div', { class: 'goalcard', style: 'display:none', onclick: () => { g.audio.play('click'); g.ui.toggle('goals'); } },
+      h('span', { class: 'gcnext' }, 'NEXT'), this.goalIcon, h('div', { class: 'gcbody' }, h('div', { class: 'gchead' }, this.goalTxt, this.goalProg), this.goalDesc, h('div', { class: 'gcfoot' }, this.goalBarWrap, this.goalRw)));
     const tl = h('div', { class: 'hud-tl' }, this.heartsEl, this.lvlEl, this.meters, this.goalPill, this.partnerEl);
 
     this.coinNum = h('span', null, '0');
@@ -53,22 +56,22 @@ export class HUD {
     this.mm = h('canvas', { class: 'minimap', width: 56, height: 56, onclick: () => g.ui.open('map') });
     this.mmCtx = this.mm.getContext('2d');
     this.mmImg = this.mmCtx.createImageData(56, 56);
-    const btn = (icon, act, key, label) => {
-      const b = h('div', { class: 'hbtn', title: label, onclick: (e) => { g.audio.play('click'); act(); } }, ic(icon, 2), key ? h('span', { class: 'keycap' }, key) : null);
+    const btn = (icon, act, key, label, ui) => {
+      const b = h('div', { class: 'hbtn', title: label, dataset: { ui }, onclick: (e) => { g.audio.play('click'); act(); } }, ic(icon, 3), h('span', { class: 'hlabel' }, label), key ? h('span', { class: 'keycap' }, key) : null);
       return b;
     };
-    this.skillBtn = btn('ui_skills', () => g.ui.toggle('skills'), 'K', 'Skills');
+    this.skillBtn = btn('ui_skills', () => g.ui.toggle('skills'), 'K', 'Skills', 'skills');
     this.skillDot = h('span', { class: 'dot', style: 'display:none' });
     this.skillBtn.appendChild(this.skillDot);
     const hb = h('div', { class: 'hbtns' },
-      btn('ui_bag', () => g.ui.toggle('inventory'), 'I', 'Bag'),
-      btn('ui_hammer', () => g.ui.toggle('craft'), 'C', 'Craft'),
-      btn('ui_house', () => g.ui.toggle('build'), 'B', 'Build'),
-      btn('ui_flask', () => g.ui.toggle('tech'), 'T', 'Research'),
+      btn('ui_bag', () => g.ui.toggle('inventory'), 'I', 'Bag', 'bag'),
+      btn('ui_hammer', () => g.ui.toggle('craft'), 'C', 'Craft', 'craft'),
+      btn('ui_house', () => g.ui.toggle('build'), 'B', 'Build', 'build'),
+      btn('ui_flask', () => g.ui.toggle('tech'), 'T', 'Research', 'tech'),
       this.skillBtn,
-      btn('ui_map', () => g.ui.toggle('map'), 'M', 'Map'),
-      btn('ui_smile', () => g.ui.toggle('emote'), 'G', 'Emotes'),
-      btn('ui_gear', () => g.ui.toggle('pause'), 'Esc', 'Menu'));
+      btn('ui_map', () => g.ui.toggle('map'), 'M', 'Map', 'map'),
+      btn('ui_smile', () => g.ui.toggle('emote'), 'G', 'Emotes', 'emote'),
+      btn('ui_gear', () => g.ui.toggle('pause'), 'Esc', 'Menu', 'menu'));
     const tr = h('div', { class: 'hud-tr' }, this.mm, hb);
 
     this.slots = [];
@@ -89,6 +92,7 @@ export class HUD {
     if (!jr) { jr = h('div', { id: 'joinreqs', class: 'joinreqs' }); document.getElementById('app').appendChild(jr); }
     jr.replaceChildren(); this.joinReqs = jr;
     root.append(tl, tc, tr, this.pickups, this.statusRow, this.bossEl, this.buildBar, this.buildSide, hot);
+    this.guide = new Guide(g, root);
     window.addEventListener('resize', () => this.layoutBuildSide());
     this.last = {};
     this.refreshAll();
@@ -130,10 +134,20 @@ export class HUD {
     const nxt = g.settings.showGoals === false ? null : nextGoal(done);
     this.goalNow = nxt;
     this.goalPill.style.display = nxt ? '' : 'none';
+    if (this.guide && this.guide.goalId !== (nxt ? nxt.id : null)) this.guide.setGoal(nxt);
     if (!nxt) return;
+    if (this.goalIcon.dataset.id !== nxt.id) { this.goalIcon.dataset.id = nxt.id; clear(this.goalIcon); this.goalIcon.appendChild(ic(nxt.icon, 3)); }
     this.goalTxt.textContent = nxt.title;
+    this.goalDesc.textContent = nxt.desc || '';
+    this.goalDesc.style.display = nxt.desc ? '' : 'none';
     const pr = nxt.prog ? nxt.prog(census(w)) : null;
-    this.goalProg.textContent = pr ? ` ${pr[0]}/${pr[1]}` : '';
+    this.goalProg.textContent = pr ? `${pr[0]}/${pr[1]}` : '';
+    this.goalBarWrap.style.display = pr ? '' : 'none';
+    if (pr) this.goalBar.style.width = Math.round(100 * pr[0] / pr[1]) + '%';
+    const rw = rewardOf(w.settings, nxt);
+    clear(this.goalRw);
+    if (rw.coins) this.goalRw.appendChild(h('span', { class: 'chip' }, ic('i_coin', 1), rw.coins));
+    if (rw.xp) this.goalRw.appendChild(h('span', { class: 'chip' }, ic('ui_star', 1), rw.xp));
   }
 
   refreshAll() { this.last = {}; this.update(0, true); this.renderHotbar(); this.refreshGoal(); }
@@ -160,6 +174,7 @@ export class HUD {
     const g = this.g, p = g.me, w = g.world;
     if (!p) return;
     const L = this.last;
+    if (this.guide) this.guide.update(dt);
     this.goalT = (this.goalT || 0) + dt;
     const gl = (w.shared.flags.goals || []).length;
     if (gl !== this.goalLen || (this.goalT > 2 && this.goalNow && this.goalNow.prog)) { this.goalT = 0; this.goalLen = gl; this.refreshGoal(); }

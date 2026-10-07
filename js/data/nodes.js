@@ -33,6 +33,8 @@ node('ember_rock', 'Ember Rock', { hp: 44, hard: 5, xp: 14, fx: 'ember', drops: 
 node('obsidian_rock', 'Obsidian Spire', { hp: 62, hard: 5, xp: 18, fx: 'spark', drops: [['obsidian', 1, 3], ['ember_stone', 0, 1, 0.2]] });
 node('crystal_rock', 'Crystal Cluster', { hp: 76, hard: 6, xp: 24, fx: 'spark', drops: [['crystal_shard', 1, 3], ['gem_amethyst', 0, 1, 0.05]] });
 node('star_rock', 'Star Rock', { hp: 100, hard: 7, xp: 34, fx: 'void', drops: [['star_fragment', 1, 2], ['void_essence', 0, 1, 0.2]] });
+// a boulder with glowing cracks: a pickaxe cannot touch it, a bomb opens it and a treasure falls out
+node('cracked_boulder', 'Cracked Boulder', { hp: 1, hard: 8, cracked: true, coins: [25, 60], xp: 12, respawn: 0, fx: 'spark', drops: [['gem_ruby', 0, 1, 0.25], ['gem_sapphire', 0, 1, 0.25], ['gem_emerald', 0, 1, 0.25], ['pet_egg', 0, 1, 0.12], ['bomb', 1, 3, 0.7], ['gold_ore', 0, 2, 0.5]] });
 node('geode', 'Geode', { hp: 30, hard: 3, xp: 10, fx: 'spark', drops: [['gem_ruby', 0, 1, 0.3], ['gem_sapphire', 0, 1, 0.3], ['gem_emerald', 0, 1, 0.3], ['gem_amethyst', 0, 1, 0.15], ['stone', 1, 2]] });
 
 // ---- plants (walk-through ones are solid:false)

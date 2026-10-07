@@ -11,6 +11,8 @@ import { lootDig, lootChest, lootFish } from './loot.js';
 import { ensureState } from './machines.js';
 import { hatchEgg } from './pets.js';
 import { standUp } from './furniture.js';
+import { throwBomb } from './bombs.js';
+import { paceOf, paceEase } from '../data/difficulty.js';
 import { invCount, invRemove } from './inventory.js';
 
 // ------------------------------------------------------------------ drops
@@ -19,7 +21,7 @@ const RARE_ITEM = (id) => ITEMS[id] && (ITEMS[id].sell >= 40 || id.startsWith('g
 export function rollNodeDrops(sim, def, p, mult = 1) {
   const w = sim.world, rng = sim.rng, s = w.settings;
   const st = p ? calcStats(w, p) : null;
-  const ym = (s.resourceYield || 1) * (1 + techFx(w, 'drop')) * mult;
+  const ym = (s.resourceYield || 1) * paceEase(s) * (1 + techFx(w, 'drop')) * mult;
   const out = [];
   const double = st && rng.next() < st.doubleDrop ? 2 : 1;
   for (let i = 0; i < def.drops.length; i++) {
@@ -42,7 +44,7 @@ export function rollNodeDrops(sim, def, p, mult = 1) {
 export function depleteNode(sim, t, nd, regrowBonus = 0) {
   const w = sim.world;
   if (nd.respawn > 0) {
-    t.t = (nd.respawn / (w.settings.resourceRespawn || 1)) * (1 - Math.min(0.6, regrowBonus)) * (0.85 + sim.rng.next() * 0.3);
+    t.t = (nd.respawn / ((w.settings.resourceRespawn || 1) * paceOf(w.settings))) * (1 - Math.min(0.6, regrowBonus)) * (0.85 + sim.rng.next() * 0.3);
     w.patchThing(t.id, { dep: 1, hp: nd.hp });
   } else w.removeThing(t.id);
 }
@@ -53,6 +55,10 @@ export function breakNode(sim, t, p) {
   const cx = (t.x + 0.5) * TILE, cy = (t.y + 0.7) * TILE;
   for (const it of items) sim.spawnDrop(it.id, it.n, cx, cy);
   const st = p ? calcStats(w, p) : null;
+  if (nd.coins) { // a treasure of coins that pops out in a few pieces
+    const n = Math.max(1, Math.round((nd.coins[0] + sim.rng.int(nd.coins[1] - nd.coins[0] + 1)) * (st ? st.coinMul : 1))), pieces = Math.min(n, 6);
+    for (let i = 0; i < pieces; i++) sim.spawnDrop('coin', Math.floor(n / pieces) + (i < n % pieces ? 1 : 0), cx, cy);
+  }
   if (p) { addXp(w, p, nd.xp * st.gatherXp); sim.bump(nd.tree ? 'chop' : nd.plant ? 'pick' : 'mine'); }
   w.fx('break', cx, cy, nd.fx, nd.tree ? 1 : 0);
   depleteNode(sim, t, nd, st ? st.regrow : 0);
@@ -109,6 +115,8 @@ export function useItem(sim, p, slot, ax, ay) {
   standUp(sim, p);
   const face = Math.atan2(ay - (p.y - 6), ax - p.x);
 
+  if (item.bomb) return throwBomb(sim, p, slot, item, ax, ay);
+
   if (item.tool === 'pick') {
     const reach = item.reach + st.reachBonus;
     const tgt = pickTarget(sim, p, ax, ay, reach);
@@ -120,6 +128,7 @@ export function useItem(sim, p, slot, ax, ay) {
       return true;
     }
     const t = tgt.ref, nd = NODES[t.type];
+    if (nd.cracked) { w.fx('clink', tgt.cx, tgt.cy, t.id); if (!p.warnT || w.time - p.warnT > 2.5) { p.warnT = w.time; sim.toast(p.pid, 'Cracks run all through it. A bomb would open it!', 'info'); } return true; }
     if (nd.hard > item.tier) {
       w.fx('clink', tgt.cx, tgt.cy, t.id);
       if (!p.warnT || w.time - p.warnT > 2.5) { p.warnT = w.time; sim.toast(p.pid, `Too tough! Needs a tier ${nd.hard} pickaxe.`, 'warn'); }

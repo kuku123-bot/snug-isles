@@ -379,6 +379,10 @@ function altar(color, glow, shape) {
 }
 S.slime_altar = () => altar('#7ed87a', '#ffffff', (pm, g) => { ballShade(pm, 16, 9, 5, 4, R('#7ee27a'), { dither: 0 }); pm.set(14, 8, EYE); pm.set(18, 8, EYE); pm.rect(13, 3, 6, 2, GOLD[2]); });
 S.bone_altar = () => altar('#8a7a9a', '#c9a0ff', (pm, g) => { ballShade(pm, 16, 9, 5, 4.4, R('#f1ead7'), { dither: 0 }); pm.rect(13, 7, 2, 2, EYE); pm.rect(18, 7, 2, 2, EYE); pm.hline(14, 11, 4, EYE); });
+S.spore_altar = () => altar('#8a5a8a', '#d7a0ff', (pm, g) => { ballShade(pm, 16, 8, 6, 3.6, R('#d6457f'), { dither: 0 }); for (const x of [13, 16, 19]) pm.set(x, 6, WHITE); pm.rect(15, 11, 3, 2, hex('#f4ecd8')); });
+S.sun_altar = () => altar('#c8a860', '#ffe27a', (pm, g) => { pm.ellipse(16, 8, 5, 5, hex('#ffd84a')); pm.ellipse(16, 8, 3, 3, hex('#fff2a0')); for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; pm.set(Math.round(16 + Math.cos(a) * 7.6), Math.round(8 + Math.sin(a) * 7.6), hex('#ffd84a')); } });
+S.frost_altar = () => altar('#8ab8d8', '#e8f8ff', (pm, g) => { pm.poly([[16, 0], [20, 10], [12, 10]], hex('#bfe8ff')); pm.poly([[16, 3], [18, 10], [14, 10]], hex('#ffffff')); pm.poly([[10, 5], [13, 10], [8, 10]], hex('#7fc6f0')); pm.poly([[22, 5], [24, 10], [19, 10]], hex('#7fc6f0')); });
+S.crystal_altar = () => altar('#7a4aa8', '#ff9fd0', (pm, g) => { pm.poly([[16, 0], [21, 6], [16, 12], [11, 6]], hex('#e08ae8')); pm.poly([[16, 0], [21, 6], [16, 12]], hex('#b45ad0')); pm.poly([[11, 6], [16, 0], [15, 6]], hex('#ffe0ff')); });
 S.magma_altar = () => altar('#4a3a48', '#ff7a3d', (pm, g) => { pm.poly([[16, 1], [21, 10], [11, 10]], hex('#ff6a2e')); pm.poly([[16, 4], [19, 10], [13, 10]], hex('#ffb347')); });
 S.void_altar = () => altar('#2a2060', '#b79cff', (pm, g) => { pm.ellipse(16, 8, 6, 4, hex('#14102a')); pm.ellipse(16, 8, 3, 2, hex('#fffbd0')); pm.ellipse(16, 8, 1, 3, hex('#b79cff')); });
 S.world_heart = (f = 0) => {

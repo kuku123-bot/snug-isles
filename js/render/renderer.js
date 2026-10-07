@@ -274,6 +274,7 @@ export class Renderer {
     this._drawBobbers(ctx, g, ox, oy);
     this._drawLandTags(ctx, g, ox, oy);
     if (g.builder && g.builder.active) this._drawBuildGhost(ctx, g, ox, oy, t);
+    g.fx.drawBombs(ctx, ox, oy, sp);
     g.fx.drawParticles(ctx, ox, oy);
 
     // ---- lighting & weather
@@ -397,9 +398,12 @@ export class Renderer {
     ctx.globalAlpha = 1;
     if (g.hover && g.hover.mobId === m.id) this._outline(ctx, name, flip, dx, dy, '#fff');
     sp.drawS(ctx, s2, dx, dy);
+    const fz = m.fz || (m.frozen > 0 ? 2 : m.burn > 0 ? 1 : 0); // frozen: icy; burning: flickers orange
+    if (fz === 2) { ctx.globalAlpha = 0.5; sp.drawS(ctx, sp.silhouette(flip ? name + '|flip' : name, 0xfffadc9c), dx, dy); ctx.globalAlpha = 1; }
+    else if (fz === 1 && Math.floor(t * 10) % 2 === 0) { ctx.globalAlpha = 0.4; sp.drawS(ctx, sp.silhouette(flip ? name + '|flip' : name, 0xff3c8cff), dx, dy); ctx.globalAlpha = 1; }
     if (m.hit > 0) { ctx.globalAlpha = Math.min(0.85, m.hit * 6); sp.drawS(ctx, sp.silhouette(flip ? name + '|flip' : name, 0xffffffff), dx, dy); ctx.globalAlpha = 1; }
     if (m.hp < m.maxhp && def.hostile && !m.boss) this._hpBar(ctx, dx + (s2.w >> 1), dy - 3, 12, m.hp / m.maxhp);
-    if (m.st === 'windup' || (m.boss && (m.st === 'slam' || m.st === 'charge' || m.st === 'summon' || m.st === 'ring' || m.st === 'hop'))) { ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 20); ctx.fillStyle = '#ff6b7a'; ctx.fillRect(dx + (s2.w >> 1) - 1, dy - 8, 2, 5); ctx.fillRect(dx + (s2.w >> 1) - 1, dy - 2, 2, 2); ctx.globalAlpha = 1; }
+    if (m.st === 'windup' || (m.boss && (m.st === 'slam' || m.st === 'charge' || m.st === 'summon' || m.st === 'ring' || m.st === 'hop' || m.st === 'volley' || m.st === 'spin' || m.st === 'quake'))) { ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 20); ctx.fillStyle = '#ff6b7a'; ctx.fillRect(dx + (s2.w >> 1) - 1, dy - 8, 2, 5); ctx.fillRect(dx + (s2.w >> 1) - 1, dy - 2, 2, 2); ctx.globalAlpha = 1; }
   }
   mobFrames(type) {
     this._mf = this._mf || {};

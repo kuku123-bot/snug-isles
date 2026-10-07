@@ -8,6 +8,7 @@ import { RECIPES } from '../data/recipes.js';
 import { TECHS, researchTierFor } from '../data/techs.js';
 import { wallCodeOf, floorCodeOf, decoCodeOf, wallDefOf, floorDefOf } from './world.js';
 import { normColor } from '../data/paint.js';
+import { techCostMult } from '../data/difficulty.js';
 import { calcStats, addXp, touch, levelSkill, HOTBAR, EQUIP_SLOTS, syncSlots } from './player.js';
 import { invCount, invRemove, invAdd, stackMax, compact } from './inventory.js';
 import { useItem, harvestPlot, equipFromSlot, unequip, openWildChest } from './gather.js';
@@ -380,7 +381,7 @@ function doResearch(sim, p, cmd) {
     if (!ok) return sim.toast(p.pid, needTier === 1 ? 'Stand near a Research Table.' : needTier === 2 ? 'Needs a Library Desk nearby.' : 'Needs an Observatory nearby.', 'warn');
   }
   const src = sourcesFor(sim, p);
-  const mult = w.settings.techCost;
+  const mult = techCostMult(w.settings);
   if (mult > 0 && !canAffordAll(src, t.cost, mult)) {
     const miss = missingAll(src, t.cost, mult).map(([k, n]) => `${n} ${ITEMS[k] ? ITEMS[k].name : k}`).join(', ');
     return sim.toast(p.pid, `Need ${miss}`, 'warn');

@@ -1,6 +1,6 @@
 // The running game session (solo / host / client). Owns the world mirror, local player control, camera, fx, HUD and UI.
 import { TILE, clamp, TAU, hash32 } from '../util.js';
-import { GOAL_BY_ID } from '../data/goals.js';
+import { GOAL_BY_ID, rewardOf } from '../data/goals.js';
 import { FX } from './fx.js';
 import { Builder } from './builder.js';
 import { HUD } from '../ui/hud.js';
@@ -164,7 +164,7 @@ export class Game {
         if (me) { this.fx.ring(me.x, me.y - 6, 22, '#ffe066', 0.8); this.fx.burst(me.x, me.y - 14, 16, ['#ffe066', '#ffffff', '#ff9fd0'], { speed: 58, up: 34, life: 0.9 }); }
         this.audio.play('research');
         if (ev.late === 1) { this.toast('More goals complete! Open the goal list to see them.', 'good'); break; }
-        this.toast(`Goal complete: ${gd.title}${gd.reward.coins ? '   +' + gd.reward.coins + ' coins' : ''}`, 'good');
+        this.toast(`Goal complete: ${gd.title}${rewardOf(this.world.settings, gd).coins ? '   +' + rewardOf(this.world.settings, gd).coins + ' coins' : ''}`, 'good');
         break;
       }
       case 'dead': this.ui.open('dead'); break;

@@ -3,6 +3,7 @@ import { ITEMS } from '../data/items.js';
 import { SKILLS, xpForLevel, MAX_LEVEL } from '../data/skills.js';
 import { TECHS } from '../data/techs.js';
 import { makeInv, invAdd, resizeInv } from './inventory.js';
+import { paceOf, paceEase } from '../data/difficulty.js';
 
 export const BASE_SLOTS = 24;
 export const HOTBAR = 8;
@@ -81,9 +82,9 @@ export function calcStats(world, p) {
     buildDiscount: Math.min(0.7, fx('buildDiscount')),
     wallDiscount: fx('wallDiscount'),
     buildReach: 7 + fx('buildReach'),
-    xpMul: (1 + techFx(world, 'xp') + (charm.xp || 0) + 0.15 * buffPow(p, 'xp')) * (st.xpRate === undefined ? 1 : st.xpRate),
+    xpMul: (1 + techFx(world, 'xp') + (charm.xp || 0) + 0.15 * buffPow(p, 'xp')) * (st.xpRate === undefined ? 1 : st.xpRate) * paceOf(st),
     gatherXp: 1 + fx('gatherXp'),
-    coinMul: 1 + fx('coins'),
+    coinMul: (1 + fx('coins')) * paceEase(st),
     sellMul: 1 + fx('sell'),
     landDiscount: fx('landDiscount'),
     dropMul: techFx(world, 'drop'),

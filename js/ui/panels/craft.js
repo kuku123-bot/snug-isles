@@ -6,7 +6,8 @@ import { TECHS } from '../../data/techs.js';
 import { sourcesFor, countAll, stationNear } from '../../sim/commands.js';
 
 const STATION_ORDER = ['hand', 'workbench', 'campfire', 'kitchen', 'sewing', 'anvil', 'alchemy', 'arcane', 'forge', 'prism', 'starforge'];
-const STATION_ICON = { hand: 'ui_hand', workbench: 'ui_hammer', campfire: 'ui_sun', kitchen: 'ui_hunger', sewing: 'ui_book', anvil: 'ui_hammer', alchemy: 'ui_flask', arcane: 'ui_star', forge: 'ui_hammer', prism: 'ui_star', starforge: 'ui_star' };
+// the station's own picture (what you build), so the side list looks like the things you stand next to
+const STATION_ICON = { hand: 'ui_hand', workbench: 't_workbench', campfire: 't_campfire', kitchen: 't_kitchen', sewing: 't_sewing_station', anvil: 't_anvil', alchemy: 't_alchemy_table', arcane: 't_arcane_altar', forge: 't_forge', prism: 't_prism_workshop', starforge: 't_star_forge', fireworks: 't_workbench' };
 
 export function craftPanel(g, data, ui) {
   let tab = data.station || 'avail';
@@ -14,10 +15,11 @@ export function craftPanel(g, data, ui) {
   let qty = 1;
   let showLocked = false;
   const w = () => g.world, me = () => g.me;
-  const list = h('div', { class: 'scroll col', style: 'gap:4px;min-width:260px;max-width:330px;max-height:56vh;padding-right:4px' });
-  const detail = h('div', { class: 'col', style: 'min-width:240px;max-width:320px;flex:1' });
-  const tabs = h('div', { class: 'tabs' });
-  const body = h('div', { class: 'col' }, tabs, h('div', { class: 'row', style: 'align-items:flex-start;flex-wrap:wrap;gap:12px' }, list, detail));
+  // side list of stations (big pictures), grid of big item pictures, details
+  const rail = h('div', { class: 'crrail scroll' });
+  const grid = h('div', { class: 'crgrid scroll' });
+  const detail = h('div', { class: 'col crdetail' });
+  const body = h('div', { class: 'crafter' }, rail, grid, detail);
 
   const status = (r) => {
     const world = w(), p = me();
@@ -27,7 +29,7 @@ export function craftPanel(g, data, ui) {
     let can = unlocked && stOk;
     const miss = [];
     for (const k in r.in) { const have = countAll(src, k), need = r.in[k]; if (have < need) { can = false; miss.push(k); } }
-    return { unlocked, stOk, can, src };
+    return { unlocked, stOk, can, src, haveAll: miss.length === 0 };
   };
   function visibleRecipes() {
     const world = w();
@@ -39,23 +41,30 @@ export function craftPanel(g, data, ui) {
       return r.station === tab;
     });
   }
+  const stationPic = (st) => { const name = STATION_ICON[st] || 'ui_hammer', [sw] = g.sprites.size(name); return h('div', { class: 'crpic' }, ic(name, sw <= 16 ? 3 : 2)); };
   function render() {
     const world = w();
-    clear(tabs);
-    const mk = (id, label, icon) => h('div', { class: 'tab' + (tab === id ? ' on' : ''), onclick: () => { tab = id; selId = null; g.audio.play('click', { vol: 0.5 }); render(); } }, icon ? ic(icon, 1) : null, label);
-    tabs.append(mk('avail', 'Can craft', 'ui_check'), mk('all', 'All'));
-    for (const st of STATION_ORDER) { if (RECIPES.some((r) => r.station === st && (!r.tech || world.techs.has(r.tech)))) tabs.append(mk(st, STATION_NAMES[st], STATION_ICON[st])); }
-    tabs.append(h('div', { class: 'tab', style: 'margin-left:auto', onclick: () => { showLocked = !showLocked; render(); } }, ic(showLocked ? 'ui_unlock' : 'ui_lock', 1), showLocked ? 'Hide locked' : 'Show locked'));
-    clear(list);
+    clear(rail);
+    const count = (st) => RECIPES.filter((r) => (st === 'avail' ? true : r.station === st) && (!r.tech || world.techs.has(r.tech)) && status(r).can).length;
+    const mk = (id, label, pic) => {
+      const n = id === 'all' ? 0 : count(id);
+      return h('div', { class: 'crst' + (tab === id ? ' on' : ''), title: label, onclick: () => { tab = id; selId = null; g.audio.play('click', { vol: 0.5 }); render(); } },
+        pic, h('span', { class: 'crname' }, label), n ? h('span', { class: 'crbadge' }, n) : null);
+    };
+    rail.append(mk('avail', 'Can craft', h('div', { class: 'crpic' }, ic('ui_check', 3))), mk('all', 'Everything', h('div', { class: 'crpic' }, ic('ui_bag', 3))));
+    for (const st of STATION_ORDER) { if (RECIPES.some((r) => r.station === st && (!r.tech || world.techs.has(r.tech)))) rail.append(mk(st, STATION_NAMES[st], stationPic(st))); }
+    rail.append(h('div', { class: 'crst lock', onclick: () => { showLocked = !showLocked; render(); } }, h('div', { class: 'crpic' }, ic(showLocked ? 'ui_unlock' : 'ui_lock', 2)), h('span', { class: 'crname' }, showLocked ? 'Hide locked' : 'Show locked')));
+    clear(grid);
     const rows = visibleRecipes();
-    if (!rows.length) list.appendChild(h('div', { class: 'muted', style: 'padding:14px' }, tab === 'avail' ? 'Nothing you can make right now. Gather materials, or stand next to a workbench or other station!' : 'No recipes here yet. Research more!'));
+    if (!rows.length) grid.appendChild(h('div', { class: 'muted', style: 'padding:14px;grid-column:1/-1' }, tab === 'avail' ? 'Nothing you can make right now. Gather materials, or stand next to a workbench or other station!' : 'No recipes here yet. Research more!'));
     for (const r of rows) {
       const s = status(r);
-      const row = h('div', { class: 'card' + (selId === r.id ? ' on' : '') + (s.unlocked ? '' : ' locked'), style: 'flex-direction:row;align-items:center;gap:8px;text-align:left', onclick: () => { selId = r.id; qty = 1; g.audio.play('click', { vol: 0.5 }); render(); } },
-        itemIc(r.out, 2), h('div', { class: 'grow' }, h('div', { style: 'font-weight:700;font-size:15px' }, ITEMS[r.out].name + (r.n > 1 ? ` ×${r.n}` : '')),
-          h('div', { class: 'cost', style: 'justify-content:flex-start' }, ...Object.keys(r.in).map((k) => { const have = countAll(s.src, k), need = r.in[k]; return h('span', { class: 'chip ' + (have >= need ? 'ok' : 'bad') }, k === '@fish' ? ic('ui_fish', 1) : itemIc(k, 1), `${Math.min(have, 999)}/${need}`); }))),
-        s.unlocked ? (s.can ? ic('ui_check', 1) : null) : ic('ui_lock', 1));
-      list.appendChild(row);
+      const card = h('div', { class: 'crcard' + (selId === r.id ? ' on' : '') + (s.unlocked ? (s.can ? ' can' : s.haveAll ? ' far' : '') : ' locked'), title: ITEMS[r.out].name,
+        onclick: () => { selId = r.id; qty = 1; g.audio.play('click', { vol: 0.5 }); render(); } },
+        itemIc(r.out, 3), h('span', { class: 'crtitle' }, ITEMS[r.out].name), r.n > 1 ? h('span', { class: 'crqty' }, '×' + r.n) : null,
+        s.unlocked ? (s.can ? h('span', { class: 'crok' }, ic('ui_check', 1)) : null) : h('span', { class: 'crok' }, ic('ui_lock', 1)));
+      tip(card, () => `<b>${esc(ITEMS[r.out].name)}</b><br>` + Object.keys(r.in).map((k) => `${r.in[k]} ${esc(k === '@fish' ? 'any fish' : ITEMS[k].name)}`).join(', '));
+      grid.appendChild(card);
     }
     renderDetail();
   }

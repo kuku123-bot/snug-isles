@@ -7,20 +7,22 @@ import { TILE, RNG } from '../js/util.js';
 import { MOBS } from '../js/data/mobs.js';
 import { NODES } from '../js/data/nodes.js';
 import { BUILD } from '../js/data/build.js';
-import { OPTIONS, presetSettings } from '../js/data/difficulty.js';
+import { OPTIONS, presetSettings, sanitizeSettings } from '../js/data/difficulty.js';
+import { landPrice } from '../js/sim/worldgen.js';
 import { invCount } from '../js/sim/inventory.js';
 import { hurtPlayer, killPlayer, spawnMob, spawnBoss } from '../js/sim/combat.js';
 import { rollNodeDrops, breakNode } from '../js/sim/gather.js';
 import { addXp } from '../js/sim/player.js';
 import { xpForLevel } from '../js/data/skills.js';
 
-const sim = (o = {}, seed = 4242) => { const s = makeSim('classic', { enemyDensity: 1, ...o }, seed); s.world.shared.flags.age = 1e6; /* past the safe-start grace */ const p = s.addPlayer('a', 'Alice'); return { sim: s, w: s.world, p }; };
+const sim = (o = {}, seed = 4242) => { const s = makeSim('classic', { enemyDensity: 1, pace: 1, ...o }, seed); // (pace 1: every rule below is tested on its own; 'pace' has its own test)
+   s.world.shared.flags.age = 1e6; /* past the safe-start grace */ const p = s.addPlayer('a', 'Alice'); return { sim: s, w: s.world, p }; };
 const hostile = (w) => [...w.mobs.values()].filter((m) => MOBS[m.type].hostile && !m.boss);
 const night = (s) => { s.world.time = s.world.settings.dayLength * 0.85; };
 const avg = (f, n = 200) => { let a = 0; for (let i = 0; i < n; i++) a += f(i); return a / n; };
 
 test('every option has a rule test below (adding an option without a test fails here)', () => {
-  const covered = new Set(['worldSize', 'dayLength', 'weather', 'startKit', 'enemyDensity', 'enemyDamage', 'enemyHealth', 'aggro', 'nightDanger', 'bossPower', 'resourceYield', 'resourceRespawn', 'xpRate', 'landPrice', 'buildCost', 'techCost', 'hunger', 'regen', 'death', 'sleep']);
+  const covered = new Set(['worldSize', 'dayLength', 'weather', 'startKit', 'enemyDensity', 'enemyDamage', 'enemyHealth', 'aggro', 'nightDanger', 'bossPower', 'resourceYield', 'resourceRespawn', 'xpRate', 'landPrice', 'buildCost', 'techCost', 'pace', 'hunger', 'regen', 'death', 'sleep']);
   assert.deepEqual(OPTIONS.map((o) => o.id).filter((id) => !covered.has(id)), []);
 });
 
@@ -154,4 +156,25 @@ test('safe start: a brand-new world is peaceful for two minutes, then monsters r
   assert.ok(w.shared.flags.age > 400, 'the clock counts played time');
   // sleeping through the night does not burn the grace period, and an offline world does not age
   const q = makeSim('classic', {}, 5); const before = q.world.shared.flags.age; step(q, 30); assert.equal(q.world.shared.flags.age, before, 'no one is playing: no ageing');
+});
+
+test('pace: a quicker game levels faster, pays more, regrows faster, and makes research and land cheaper', () => {
+  const xpGain = (pace) => { const { w, p } = sim({ pace, xpRate: 1 }); const before = p.xp; addXp(w, p, 3); return p.xp - before; }; // (small, so that no level-up resets the bar)
+  assert.ok(Math.abs(xpGain(2) - 2 * xpGain(1)) < 1e-6, 'pace 2 doubles XP');
+  assert.ok(Math.abs(xpGain(3) - 3 * xpGain(1)) < 1e-6, 'pace 3 triples it');
+  const research = (pace) => { const { sim: s, w, p } = sim({ pace, techCost: 1 }); give(p, 'wood', 200); give(p, 'fiber', 100); const t = w.addThing('research_table', Math.floor(p.x / TILE) + 2, Math.floor(p.y / TILE)); p.x = (t.x + 1) * TILE; p.y = (t.y + 1.8) * TILE; const before = invCount(p.inv, 'wood'); s.exec('a', { c: 'research', tid: 'carpentry' }); return before - invCount(p.inv, 'wood'); };
+  assert.equal(research(1), 15); assert.equal(research(2), 10, 'pace 2: a third cheaper');
+  assert.ok(research(3) < research(2), 'turbo is cheaper still');
+  const price = (pace) => sim({ pace, landPrice: 1 }).sim.priceOf(0, 0, null);
+  const land = (pace) => { const { sim: s, w } = sim({ pace, landPrice: 1 }); return landPrice(w, 4, 3, 0); };
+  assert.ok(land(2) < land(1) && land(3) < land(2), 'new lands cost less');
+  void price;
+  const yieldN = (pace) => { const { sim: s, w, p } = sim({ pace, resourceYield: 1 }); let n = 0; for (let i = 0; i < 400; i++) for (const d of rollNodeDrops(s, NODES.oak, p)) if (d.id === 'wood') n += d.n; return n; };
+  assert.ok(yieldN(2) > yieldN(1) * 1.3, 'richer drops');
+  const regrow = (pace) => { const { sim: s, w, p } = sim({ pace }); const t = w.addThing('oak', 3, 3); t.hp = 1; breakNode(s, t, p); return t.t; };
+  assert.ok(regrow(2) < regrow(1) * 0.6, 'regrows about twice as fast');
+  const worlds = presetSettings('classic'); assert.equal(worlds.pace, 2, 'the default is Speedy');
+  assert.equal(presetSettings('nightmare').pace, 1); assert.equal(presetSettings('challenging').pace, 1.5);
+  assert.equal(sanitizeSettings({ enemyDensity: 1 }).pace, 2, 'a world saved before the rule existed gets the default');
+  assert.equal(sanitizeSettings({ pace: 99 }).pace, 2, 'nonsense is the default');
 });

@@ -103,6 +103,10 @@ export class AudioEngine {
       case 'placewall': this.tone(260, 0.1, { type: 'triangle', to: 420, vol: 0.3 }); this.noise(0.07, { freq: 500, q: 0.6, vol: 0.28 }); break;
       case 'remove': this.tone(600, 0.1, { type: 'sine', to: 260, vol: 0.25 }); this.noise(0.06, { freq: 900, vol: 0.18 }); break;
       case 'craft': [76, 79, 83].forEach((m, i) => this.tone(MIDI(m), 0.12, { type: 'triangle', vol: 0.2, at: now + i * 0.06 })); this.bell(MIDI(88), 0.4, 0.15, now + 0.18); break;
+      case 'throw': this.noise(0.14, { freq: 1100, to: 300, q: 0.9, vol: 0.35 * v }); this.tone(220, 0.1, { type: 'triangle', to: 120, vol: 0.2 * v }); break;
+      case 'blast': this.noise(0.55, { type: 'lowpass', freq: 600, to: 70, q: 0.7, vol: 0.9 * v }); this.tone(95, 0.45, { type: 'sine', to: 32, vol: 0.8 * v }); this.noise(0.12, { freq: 2600, q: 0.9, vol: 0.4 * v }); break;
+      case 'freeze': this.noise(0.3, { freq: 3800, to: 1500, q: 1.4, vol: 0.4 * v }); [0, 0.05, 0.1].forEach((d, i) => this.tone(1500 + i * 400, 0.25, { type: 'sine', vol: 0.12 * v, at: now + d, echo: true })); this.tone(120, 0.3, { type: 'sine', to: 50, vol: 0.4 * v }); break;
+      case 'firework': this.tone(500, 0.45, { type: 'sine', to: 1900, vol: 0.18 * v }); [0.5, 0.72, 0.94].forEach((d) => { this.noise(0.22, { freq: 2200, to: 800, q: 0.8, vol: 0.45 * v, at: now + d }); this.bell(MIDI(84 + ((d * 10) | 0) % 7), 0.7, 0.12 * v, now + d); }); break;
       case 'research': [67, 71, 74, 79, 83, 86].forEach((m, i) => this.bell(MIDI(m), 0.8, 0.16, now + i * 0.09)); break;
       case 'skill': this.bell(MIDI(84), 0.3, 0.2); this.bell(MIDI(91), 0.5, 0.2, now + 0.09); break;
       case 'land': this.tone(70, 1.0, { type: 'sine', to: 35, vol: 0.6 }); this.noise(0.9, { type: 'lowpass', freq: 400, to: 80, vol: 0.5 }); [60, 64, 67, 72, 76].forEach((m, i) => this.bell(MIDI(m), 0.9, 0.16, now + 0.3 + i * 0.1)); break;

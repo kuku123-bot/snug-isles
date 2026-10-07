@@ -12,6 +12,7 @@ export const OPTIONS = [
   { group: 'Creatures', id: 'nightDanger', label: 'Night danger', desc: 'Extra monsters after dark.', opts: [[0, 'Calm nights'], [1, 'Normal'], [2, 'Fierce']], def: 1 },
   { group: 'Creatures', id: 'bossPower', label: 'Boss strength', desc: 'Boss health and damage.', opts: [[0.6, 'Friendly'], [1, 'Normal'], [1.6, 'Fearsome']], def: 1 },
 
+  { group: 'Economy', id: 'pace', label: 'Game pace', desc: 'How fast the game moves: more XP, bigger goal rewards, faster regrowth, richer drops, and cheaper research and land.', opts: [[1, 'Relaxed (the original pace)'], [1.5, 'Quick'], [2, 'Speedy'], [3, 'Turbo']], def: 2 },
   { group: 'Economy', id: 'resourceYield', label: 'Resource yield', desc: 'How much you get from nodes.', opts: [[0.5, '×0.5'], [0.75, '×0.75'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
   { group: 'Economy', id: 'resourceRespawn', label: 'Regrowth speed', desc: 'How fast trees, rocks and bushes return.', opts: [[0.5, 'Slow'], [1, 'Normal'], [2, 'Fast'], [4, 'Very fast']], def: 1 },
   { group: 'Economy', id: 'xpRate', label: 'XP gain', desc: 'How fast you level up.', opts: [[0.5, '×0.5'], [0.75, '×0.75'], [1, 'Normal'], [1.5, '×1.5'], [2, '×2'], [3, '×3']], def: 1 },
@@ -27,12 +28,19 @@ export const OPTIONS = [
 
 export const DEFAULTS = Object.fromEntries(OPTIONS.map((o) => [o.id, o.def]));
 
+/** the game pace of a world (worlds saved before the rule existed get the default, so they speed up too) */
+export const paceOf = (s) => (s && s.pace !== undefined ? s.pace : DEFAULTS.pace);
+/** the pace as it applies to drops, prices and research: half as strong as the pace itself (pace 2 -> 1.5) */
+export const paceEase = (s) => 1 + (paceOf(s) - 1) * 0.5;
+/** how many times the listed research costs a world asks for (0 = free) */
+export const techCostMult = (s) => (s && s.techCost === 0 ? 0 : ((s && s.techCost !== undefined ? s.techCost : 1)) / paceEase(s));
+
 export const PRESETS = [
   { id: 'dreamy', name: 'Dreamy Builder', emoji: 'heart', blurb: 'No monsters, free building, free research, free land. Pure decorating.', v: { enemyDensity: 0, buildCost: 0, techCost: 0, landPrice: 0, resourceYield: 3, resourceRespawn: 4, xpRate: 3, startKit: 'generous', death: 'none', hunger: 0, nightDanger: 0, regen: 'fast', weather: 1, sleep: 'any' } },
   { id: 'cozy', name: 'Cozy', emoji: 'flower', blurb: 'Relaxed. Few gentle monsters, generous rewards.', v: { enemyDensity: 0.5, enemyDamage: 0.5, resourceYield: 1.5, resourceRespawn: 2, xpRate: 1.5, landPrice: 0.5, buildCost: 0.5, techCost: 0.5, dayLength: 720, hunger: 0, death: 'none', startKit: 'generous', regen: 'fast', nightDanger: 0, sleep: 'any' } },
   { id: 'classic', name: 'Classic', emoji: 'sun', blurb: 'The intended experience.', v: {} },
-  { id: 'challenging', name: 'Challenging', emoji: 'sword', blurb: 'Tougher monsters, scarcer resources, hunger on.', v: { enemyDensity: 1.6, enemyDamage: 1.5, enemyHealth: 1.5, aggro: 1.5, resourceYield: 1, landPrice: 1.5, techCost: 1, hunger: 1, death: 'drop', startKit: 'bare', regen: 'normal', nightDanger: 1, bossPower: 1.6 } },
-  { id: 'nightmare', name: 'Nightmare', emoji: 'skull', blurb: 'Swarms, brutal hits, and losing it all. Good luck!', v: { enemyDensity: 2.4, enemyDamage: 2.5, enemyHealth: 2.5, aggro: 1.5, resourceYield: 0.75, resourceRespawn: 0.5, landPrice: 2.5, buildCost: 1.5, techCost: 2, hunger: 1, death: 'hardcore', startKit: 'bare', regen: 'none', nightDanger: 2, bossPower: 1.6, xpRate: 0.75 } },
+  { id: 'challenging', name: 'Challenging', emoji: 'sword', blurb: 'Tougher monsters, scarcer resources, hunger on.', v: { pace: 1.5, enemyDensity: 1.6, enemyDamage: 1.5, enemyHealth: 1.5, aggro: 1.5, resourceYield: 1, landPrice: 1.5, techCost: 1, hunger: 1, death: 'drop', startKit: 'bare', regen: 'normal', nightDanger: 1, bossPower: 1.6 } },
+  { id: 'nightmare', name: 'Nightmare', emoji: 'skull', blurb: 'Swarms, brutal hits, and losing it all. Good luck!', v: { pace: 1, enemyDensity: 2.4, enemyDamage: 2.5, enemyHealth: 2.5, aggro: 1.5, resourceYield: 0.75, resourceRespawn: 0.5, landPrice: 2.5, buildCost: 1.5, techCost: 2, hunger: 1, death: 'hardcore', startKit: 'bare', regen: 'none', nightDanger: 2, bossPower: 1.6, xpRate: 0.75 } },
 ];
 
 export function presetSettings(id) {

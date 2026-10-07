@@ -56,7 +56,7 @@ export class Input {
       if (e.pointerType === 'mouse') {
         this.lastInputKind = 'mouse';
         this.mouse.cx = e.clientX; this.mouse.cy = e.clientY; this.mouse.inside = true;
-        if (e.button === 0) this.mouse.down = true; else if (e.button === 2) this.mouse.right = true;
+        if (e.button === 0) { this.mouse.down = true; this._tap = true; } else if (e.button === 2) this.mouse.right = true; // (_tap: a click quicker than one frame still counts once)
       }
     });
     window.addEventListener('pointerup', (e) => {
@@ -66,7 +66,7 @@ export class Input {
   }
 
   /** clear per-frame edges (call at end of frame) */
-  endFrame() { this.edges.clear(); this.wheel = 0; this.digitPressed = -1; this.mouse.moved = false; this._clickEdge = false; }
+  endFrame() { this.edges.clear(); this.wheel = 0; this.digitPressed = -1; this.mouse.moved = false; this._clickEdge = false; this._tap = false; }
   pressed(a) { return this.edges.has(a); }
   down(a) { const ks = KEYMAP[a]; if (!ks) return false; for (const c of ks) if (this.keys.has(c)) return true; return false; }
 
@@ -80,7 +80,7 @@ export class Input {
     if (l > 1) { x /= l; y /= l; }
     return [x, y];
   }
-  get useHeld() { return this.mouse.down || this.btn.use || !!this.padBtn.use; }
+  get useHeld() { return this.mouse.down || this._tap || this.btn.use || !!this.padBtn.use; }
   pollGamepad() {
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     let pad = null;
