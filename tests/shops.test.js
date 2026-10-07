@@ -10,7 +10,7 @@ import { TECHS } from '../js/data/techs.js';
 import { footprintFor } from '../js/data/facing.js';
 import { genStock, buyPrice, shopCap, restockCost, SHOP_SLOTS, TAG_DEAL, TAG_RARE } from '../js/data/shop.js';
 import { invCount } from '../js/sim/inventory.js';
-import { beaconAt, resourcesInCircle } from '../js/sim/beacon.js';
+import { beaconAt, boostAt, resourcesInCircle, MAX_YIELD, MAX_REGROW } from '../js/sim/beacon.js';
 import { breakNode, depleteNode } from '../js/sim/gather.js';
 import { marketNear } from '../js/sim/shop.js';
 import { applyEvent } from '../js/net/protocol.js';
@@ -36,7 +36,7 @@ test('three lighthouses, each bigger than the last; the old decoration is now a 
   assert.equal(BUILD.lighthouse.tech, 'optics');
 });
 
-test('beaconAt: inside the circle only, the best lighthouse counts (they do not add up), depleted-by-removal gives nothing', () => {
+test('beaconAt: inside the circle only, overlapping lighthouses stack up, a removed one stops counting', () => {
   const { sim: s, w, p } = sim();
   clearAround(w, p, 14);
   const [bx, by] = spot(s, p, 0, 0);
@@ -45,11 +45,32 @@ test('beaconAt: inside the circle only, the best lighthouse counts (they do not 
   assert.equal(beaconAt(s, bx + 4, by + 1).regrow, 2);
   assert.equal(beaconAt(s, bx + 14, by).yield, 0, 'outside the circle');
   const b = w.addThing('little_lighthouse', bx + 3, by + 5); // radius 5, +30%, overlapping
-  assert.equal(beaconAt(s, bx + 3, by + 4).yield, 0.75, 'the better one counts, not the sum');
+  const both = beaconAt(s, bx + 3, by + 4);
+  assert.ok(Math.abs(both.yield - 1.05) < 1e-9, `the yields add up: ${both.yield}`);
+  assert.ok(Math.abs(both.regrow - 2.4) < 1e-9, `and so do the extra speeds (1 + 1 + 0.4): ${both.regrow}`);
+  assert.equal(both.n, 2);
+  assert.equal(beaconAt(s, bx + 4, by + 10).yield, 0.3, 'where only the little one reaches, only its bonus counts');
   w.removeThing(a.id);
   assert.equal(beaconAt(s, bx + 4, by + 5).yield, 0.3, 'only the little one is left');
   w.removeThing(b.id);
   assert.equal(beaconAt(s, bx + 4, by + 5).yield, 0);
+});
+
+test('stacked lighthouses give more drops and faster regrowth than one, and there is a limit', () => {
+  const { sim: s, w, p } = sim({ resourceRespawn: 1 });
+  clearAround(w, p, 16);
+  const [lx, ly] = spot(s, p, 0, 0);
+  w.addThing('lighthouse', lx, ly);
+  const measure = (tx, ty, n) => { let wood = 0, regrow = 0; for (let i = 0; i < n; i++) { const t = w.addThing('oak', tx, ty); for (const d of [...w.drops.values()]) w.drops.delete(d.id); breakNode(s, t, p); for (const d of w.drops.values()) if (d.item === 'wood') wood += d.n; regrow += t.t; w.removeThing(t.id); } return { wood, regrow }; };
+  const one = measure(lx + 3, ly + 1, 150);
+  w.addThing('lighthouse', lx + 3, ly + 4); // a second one close by: both circles cover the oak
+  const two = measure(lx + 3, ly + 1, 150);
+  assert.ok(two.wood > one.wood * 1.3 && two.wood < one.wood * 1.6, `a second lighthouse gives clearly more: +75% becomes +150% (${one.wood} → ${two.wood})`);
+  assert.ok(two.regrow < one.regrow * 0.8, 'and it grows back sooner');
+  // the limit
+  const many = []; for (let i = 0; i < 12; i++) many.push({ type: 'grand_lighthouse', x: 10, y: 10, w: 3, h: 3 });
+  const top = boostAt(many, 11, 11);
+  assert.equal(top.yield, MAX_YIELD); assert.equal(top.regrow, MAX_REGROW); assert.equal(top.n, 12);
 });
 
 test('gathering inside a lighthouse circle gives more, and the resource grows back sooner', () => {

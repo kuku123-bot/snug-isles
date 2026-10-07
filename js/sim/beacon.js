@@ -1,30 +1,37 @@
 // Lighthouses (host side). Everything natural inside the circle of a lighthouse gives more when you gather it, grows back faster, and now and then a new
-// resource pops up on a free tile of the land (never beside your buildings or on top of you). Overlapping lighthouses do not add up: the best one counts.
+// resource pops up on a free tile of the land (never beside your buildings or on top of you). Overlapping lighthouses stack up: every lighthouse whose circle covers a tile adds its bonus (up to a generous limit).
 import { TILE, TAU } from '../util.js';
 import { BUILD } from '../data/build.js';
 import { NODES } from '../data/nodes.js';
 import { BIOMES } from '../data/biomes.js';
 import { paceOf } from '../data/difficulty.js';
 
-const NONE = { yield: 0, regrow: 1 };
+const NONE = { yield: 0, regrow: 1, n: 0 };
 const centerOf = (t) => [t.x + t.w / 2, t.y + t.h / 2];
 
-/** what the lighthouses around tile (tx, ty) give there: { yield: extra share of the drops (0.5 = half more), regrow: how many times faster it grows back } */
-export function beaconAt(sim, tx, ty) {
-  if (!sim.beaconIds || !sim.beaconIds.size) return NONE;
-  const w = sim.world;
-  let y = 0, r = 1;
-  for (const id of sim.beaconIds) {
-    const t = w.things.get(id);
+export const MAX_YIELD = 5, MAX_REGROW = 12; // however many lighthouses pile up: at most six times the drops and twelve times as fast
+/**
+ * what a set of lighthouses (things) gives at tile (tx, ty): { yield: extra share of the drops (0.5 = half more), regrow: how many times faster it grows back, n: how many cover it }.
+ * They stack: the yields add up, and so do the extra speeds (two lighthouses that each make it 2x faster make it 3x faster).
+ */
+export function boostAt(things, tx, ty) {
+  let y = 0, r = 0, n = 0;
+  for (const t of things) {
     if (!t || t.dep) continue;
     const c = BUILD[t.type] && BUILD[t.type].conf;
-    if (!c) continue;
+    if (!c || !c.radius) continue;
     const [cx, cy] = centerOf(t);
     if (Math.hypot(tx + 0.5 - cx, ty + 0.5 - cy) > c.radius) continue;
-    if (c.yield > y) y = c.yield;
-    if (c.regrow > r) r = c.regrow;
+    y += c.yield; r += c.regrow - 1; n++;
   }
-  return y || r > 1 ? { yield: y, regrow: r } : NONE;
+  return n ? { yield: Math.min(MAX_YIELD, y), regrow: Math.min(MAX_REGROW, 1 + r), n } : NONE;
+}
+/** the same for the lighthouses standing in the world (host side) */
+export function beaconAt(sim, tx, ty) {
+  if (!sim.beaconIds || !sim.beaconIds.size) return NONE;
+  const w = sim.world, list = [];
+  for (const id of sim.beaconIds) list.push(w.things.get(id));
+  return boostAt(list, tx, ty);
 }
 
 const isGrowable = (id) => { const nd = NODES[id]; return !!nd && nd.kind === 'node' && !/grass|tombstone/.test(id); };
@@ -85,6 +92,7 @@ export function beaconTick(sim, t, d, dt) {
 
 /** pressing E on a lighthouse: what it does for you */
 export function beaconInfo(sim, p, t, d) {
-  const c = d.conf, n = resourcesInCircle(sim.world, t, c.radius);
-  sim.toast(p.pid, `${d.name}: gathering within ${c.radius} tiles gives ${Math.round(c.yield * 100)}% more and grows back ${c.regrow}x faster. ${n} resource${n === 1 ? '' : 's'} in the circle now, and new ones pop up (up to ${c.cap}).`, 'info');
+  const c = d.conf, n = resourcesInCircle(sim.world, t, c.radius), here = beaconAt(sim, t.x, t.y);
+  const stack = here.n > 1 ? ` Together with the other lighthouses around, it is ${Math.round(here.yield * 100)}% more and ${+here.regrow.toFixed(1)}x faster here (they stack up).` : '';
+  sim.toast(p.pid, `${d.name}: gathering within ${c.radius} tiles gives ${Math.round(c.yield * 100)}% more and grows back ${c.regrow}x faster. ${n} resource${n === 1 ? '' : 's'} in the circle now, and new ones pop up (up to ${c.cap}).${stack}`, 'info');
 }

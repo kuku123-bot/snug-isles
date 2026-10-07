@@ -5,6 +5,7 @@ import { wallSprite, fenceSprite } from '../gfx/art/walls.js';
 import { playerFrame, playerSleep, playerSleepHead, lookKey } from '../gfx/art/player.js';
 import { GROUND_IDS } from '../data/biomes.js';
 import { BUILD } from '../data/build.js';
+import { boostAt } from '../sim/beacon.js';
 import { NODES } from '../data/nodes.js';
 import { MOBS } from '../data/mobs.js';
 import { ITEMS } from '../data/items.js';
@@ -696,7 +697,13 @@ export class Renderer {
       const mirrored = !!b.flip && !turnable(d);
       if (spr && mirrored) spr = sp.flipped(name);
       if (spr && b.col) spr = this._painted(mirrored ? name + '|flip' : name, spr, b.col);
-      if (d.behavior === 'beacon') this._beaconRing(ctx, px + fw * TILE / 2, py + fh * TILE / 2, d.conf.radius * TILE, t, 1);
+      if (d.behavior === 'beacon') {
+        this._beaconRing(ctx, px + fw * TILE / 2, py + fh * TILE / 2, d.conf.radius * TILE, t, 1);
+        // lighthouses stack up: say what this one would make of the spot together with the ones already around
+        const cx = b.tx + fw / 2, cy = b.ty + fh / 2, near = w.thingsNear(cx * TILE, cy * TILE, 28 * TILE, (q) => { const qd = BUILD[q.type]; return !!qd && qd.behavior === 'beacon'; });
+        const here = boostAt([...near, { type: d.id, x: b.tx, y: b.ty, w: fw, h: fh }], Math.floor(cx), Math.floor(cy));
+        if (here.n > 1) this._ghostLabel(ctx, g, `Stacks with ${here.n - 1} more: +${Math.round(here.yield * 100)}% here`, '#fff3a8', px + fw * TILE / 2, py - (b.ok || !b.reason ? 6 : 16));
+      }
       this._ghostBox(ctx, px, py, fw * TILE, fh * TILE, b.ok, pulse * 0.8);
       if (spr) {
         ctx.globalAlpha = b.ok ? 0.72 : 0.5;
