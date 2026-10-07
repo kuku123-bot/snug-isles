@@ -171,6 +171,7 @@ S({ id: 'arcane_altar', name: 'Arcane Altar', w: 2, h: 1, cost: { stone: 20, gol
 S({ id: 'prism_workshop', name: 'Prism Workshop', w: 2, h: 1, cost: { crystal_bar: 8, gold_ingot: 6, glass: 10 }, tech: 'crystal_craft', behavior: 'station', conf: { station: 'prism' }, light: { r: 40, c: '#ff9fd0' }, desc: 'Cut crystal gear and prism cores.' });
 S({ id: 'star_forge', name: 'Star Forge', w: 2, h: 2, cost: { star_bar: 6, void_bar: 4, crystal_bar: 10 }, tech: 'star_forging', behavior: 'station', conf: { station: 'starforge' }, light: { r: 56, c: '#b8c4ff' }, desc: 'Forge star-metal gear.' });
 S({ id: 'market_stall', name: 'Market Stall', w: 2, h: 1, cost: { plank: 14, cloth: 4, rope: 3 }, tech: 'trade', behavior: 'market', comfort: 1, desc: 'Sell goods for coins.' });
+S({ id: 'marketplace', name: 'Marketplace', w: 3, h: 2, cost: { plank: 30, cloth: 8, copper_ingot: 6, rope: 6 }, tech: 'marketplace', behavior: 'shop', conf: { sellBonus: 1.1 }, comfort: 2, desc: 'A shop! Buy a fresh random selection of goods every day with your coins, and sell your things for 10% more than at a Market Stall.' });
 
 // storage
 const ST = (o) => reg({ cat: 'storage', behavior: 'storage', ...o });
@@ -209,6 +210,10 @@ A({ id: 'frost_altar', name: 'Frost Altar', w: 2, h: 1, cost: { ice_shard: 30, i
 A({ id: 'magma_altar', name: 'Magma Altar', w: 2, h: 1, cost: { obsidian_plate: 6, ember_stone: 20 }, tech: 'fire_arts', behavior: 'altar', conf: { boss: 'magma_titan', offer: { ember_stone: 16, obsidian: 8 } }, desc: 'Wakes the Magma Titan.' });
 A({ id: 'crystal_altar', name: 'Crystal Altar', w: 2, h: 1, cost: { crystal_bar: 6, stone: 30 }, tech: 'crystal_craft', behavior: 'altar', conf: { boss: 'crystal_colossus', offer: { crystal_shard: 14, gem_sapphire: 2 } }, desc: 'Rouses the Crystal Colossus.' });
 A({ id: 'void_altar', name: 'Void Altar', w: 2, h: 1, cost: { void_bar: 6, star_bar: 6 }, tech: 'void_defense', behavior: 'altar', conf: { boss: 'void_eye', offer: { void_essence: 12, star_fragment: 8 } }, desc: 'Opens the Void Eye.' });
+// lighthouses: resources around them give more, grow back faster, and now and then a new one pops up (sim/beacon.js). The middle one was only a decoration before: ones already built start working.
+A({ id: 'little_lighthouse', name: 'Little Lighthouse', w: 2, h: 2, cost: { stone: 30, plank: 20, rope: 4, coal: 6 }, tech: 'little_lighthouse', behavior: 'beacon', conf: { radius: 5, yield: 0.3, regrow: 1.4, spawn: 40, cap: 14 }, light: { r: 60, c: '#fff0b0', flick: false }, comfort: 3, desc: 'Resources within 5 tiles give 30% more and grow back faster. New ones pop up now and then.' });
+A({ id: 'lighthouse', name: 'Lighthouse', w: 2, h: 3, cost: { stone: 60, brick: 30, glass: 8, lens: 2 }, tech: 'optics', behavior: 'beacon', conf: { radius: 9, yield: 0.75, regrow: 2, spawn: 22, cap: 46 }, light: { r: 110, c: '#fff0b0', flick: false }, comfort: 6, desc: 'Resources within 9 tiles give 75% more and grow back twice as fast. New ones pop up often.' });
+A({ id: 'grand_lighthouse', name: 'Grand Lighthouse', w: 3, h: 3, cost: { crystal_bar: 12, brick: 40, glass: 16, lens: 4, gold_ingot: 6 }, tech: 'grand_lighthouse', behavior: 'beacon', conf: { radius: 13, yield: 1.5, regrow: 3, spawn: 12, cap: 100 }, light: { r: 150, c: '#fff6c8', flick: false }, comfort: 9, desc: 'Resources within 13 tiles give two and a half times as much and grow back three times as fast. New ones keep popping up.' });
 reg({ id: 'world_heart', name: 'Heart of the Isles', cat: 'industry', w: 3, h: 3, cost: { star_bar: 20, void_bar: 20, crystal_bar: 20, gold_ingot: 40, plank: 100 }, tech: 'world_heart', behavior: 'monument', light: { r: 90, c: '#ffd0f0', flick: false }, comfort: 20, desc: 'The final monument. Your isles shine for everyone.' });
 
 // ====================================================================== LIGHTS
@@ -258,7 +263,6 @@ D({ id: 'deck_chair', name: 'Deck Chair', cost: { plank: 4, cloth: 3 }, tech: 'b
 D({ id: 'sandcastle', name: 'Sandcastle', cost: { sand: 12 }, tech: 'beach_decor', comfort: 1 });
 D({ id: 'shell_lamp', name: 'Shell Lamp', cost: { sand: 4, glass: 2, clay: 2 }, tech: 'shell_craft', light: { r: 46, c: '#ffd6c0', flick: false }, comfort: 2 });
 D({ id: 'hot_tub', name: 'Hot Tub', w: 2, h: 2, cost: { stone: 24, brick: 8, clay: 6, glass: 2 }, tech: 'hot_springs', comfort: 6 });
-D({ id: 'lighthouse', name: 'Lighthouse', w: 2, h: 3, cost: { stone: 60, brick: 30, glass: 8, lens: 2 }, tech: 'optics', light: { r: 110, c: '#fff0b0', flick: false }, comfort: 6 });
 // kitchen & bath & living extras
 D({ id: 'counter', name: 'Kitchen Counter', cost: { plank: 6, stone: 2 }, tech: 'kitchen', comfort: 1 });
 D({ id: 'sink', name: 'Sink Counter', cost: { plank: 6, stone: 2, iron_ingot: 1 }, tech: 'kitchen', comfort: 1 });

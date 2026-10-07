@@ -19,7 +19,7 @@ import { paintTarget } from '../sim/commands.js';
 import { furnitureUnder, nearestSlot, pillowAt } from '../sim/furniture.js';
 
 const SKY_DEEP = '#3388dc';
-const ANIM_RATE = { campfire: 6, torch: 7, brazier: 6, candelabra: 6, lava_lamp: 2, star_lantern: 2, warp_pad: 4, fountain: 5, fireplace: 6, cauldron: 3, crystal_ball: 2, mushroom_lamp: 2, star_orb: 2, portal_ring: 3, fairy_ring: 2, forge: 5, arcane_altar: 2, prism_workshop: 2, star_forge: 2, alchemy_table: 3, world_heart: 2, windmill: 4 };
+const ANIM_RATE = { lighthouse: 2, little_lighthouse: 2, grand_lighthouse: 2, campfire: 6, torch: 7, brazier: 6, candelabra: 6, lava_lamp: 2, star_lantern: 2, warp_pad: 4, fountain: 5, fireplace: 6, cauldron: 3, crystal_ball: 2, mushroom_lamp: 2, star_orb: 2, portal_ring: 3, fairy_ring: 2, forge: 5, arcane_altar: 2, prism_workshop: 2, star_forge: 2, alchemy_table: 3, world_heart: 2, windmill: 4 };
 const MULTI = ['bed', 'seat'];
 const SEAT_LIP = 6; // rows of a seat's picture (from the bottom) drawn over whoever sits in it
 const SIT_DY = [0, -6, 0]; // how far (px) a seated person is moved down for the front, back and side views
@@ -273,6 +273,7 @@ export class Renderer {
     this._drawProjectiles(ctx, w, ox, oy, g);
     this._drawBobbers(ctx, g, ox, oy);
     this._drawLandTags(ctx, g, ox, oy);
+    this._drawBeaconRings(ctx, g, ox, oy, t);
     if (g.builder && g.builder.active) this._drawBuildGhost(ctx, g, ox, oy, t);
     g.fx.drawBombs(ctx, ox, oy, sp);
     g.fx.drawParticles(ctx, ox, oy);
@@ -612,6 +613,31 @@ export class Renderer {
     const txt = g.fx.textSprite(text, color, '#2a1f3d');
     ctx.drawImage(txt, Math.round(x - txt.width / 2), Math.round(y - txt.height / 2));
   }
+  /** the glowing circle of a lighthouse: a soft golden disc with a slowly turning dashed edge */
+  _beaconRing(ctx, cx, cy, r, t, strength) {
+    cx = Math.round(cx); cy = Math.round(cy);
+    ctx.save();
+    ctx.fillStyle = `rgba(255,236,150,${0.1 * strength})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.fill();
+    ctx.lineWidth = 1; ctx.setLineDash([5, 5]); ctx.lineDashOffset = -t * 6;
+    ctx.strokeStyle = `rgba(70,90,20,${0.35 * strength})`; ctx.beginPath(); ctx.arc(cx, cy + 1, r, 0, TAU); ctx.stroke(); // (a darker line just under it, so it shows on light ground too)
+    ctx.strokeStyle = `rgba(255,250,200,${0.9 * strength})`; ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    ctx.restore();
+  }
+  /** a lighthouse's circle shows while you stand near it (so you can see which resources it helps), strongest inside */
+  _drawBeaconRings(ctx, g, ox, oy, t) {
+    const me = g.me, w = g.world;
+    if (!me || !w) return;
+    if (!this._bk || t - this._bk.t > 0.4) { // (looked up a few times a second, not every frame)
+      const list = [];
+      for (const th of w.thingsNear(me.x, me.y, 22 * TILE)) { const d = BUILD[th.type]; if (d && d.behavior === 'beacon' && !th.dep) list.push([th, d.conf.radius]); }
+      this._bk = { t, list };
+    }
+    for (const [th, rad] of this._bk.list) {
+      const cx = (th.x + th.w / 2) * TILE, cy = (th.y + th.h / 2) * TILE, d = Math.hypot(me.x - cx, me.y - cy) / TILE;
+      if (d > rad + 5) continue;
+      this._beaconRing(ctx, cx + ox, cy + oy, rad * TILE, t, d <= rad ? 0.9 : 0.5);
+    }
+  }
   /** build mode: a see-through picture of the piece where it would go (turned the way it will face), green or red, with the reason when it will not go */
   _drawBuildGhost(ctx, g, ox, oy, t) {
     const b = g.builder, sp = this.sprites, w = g.world, me = g.me;
@@ -670,6 +696,7 @@ export class Renderer {
       const mirrored = !!b.flip && !turnable(d);
       if (spr && mirrored) spr = sp.flipped(name);
       if (spr && b.col) spr = this._painted(mirrored ? name + '|flip' : name, spr, b.col);
+      if (d.behavior === 'beacon') this._beaconRing(ctx, px + fw * TILE / 2, py + fh * TILE / 2, d.conf.radius * TILE, t, 1);
       this._ghostBox(ctx, px, py, fw * TILE, fh * TILE, b.ok, pulse * 0.8);
       if (spr) {
         ctx.globalAlpha = b.ok ? 0.72 : 0.5;

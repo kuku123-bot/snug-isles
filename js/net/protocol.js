@@ -4,7 +4,7 @@ import { TILE, clamp } from '../util.js';
 import { b64ToBytes } from '../sim/sim.js';
 import { MOBS } from '../data/mobs.js';
 
-export const PROTOCOL = 7;
+export const PROTOCOL = 8;
 /** identifies the exact build so two devices on different versions can be told so (see tools/build.mjs) */
 export const BUILD_ID = typeof __BUILD__ === 'undefined' ? 'dev' : __BUILD__;
 export const MAX_PLAYERS = 4;
@@ -142,6 +142,7 @@ export function applyEvent(world, ev, ctx = {}) {
     }
     case 'day': world.day = ev[1]; break;
     case 'market': world.shared.market = ev[1]; break;
+    case 'shop': world.shared.shop = ev[1]; break;
     case 'wx': world.shared.weather = ev[1]; world.shared.storm = ev[2]; break;
     case 'boss': world.shared.bossUp = ev[1] || null; break;
     case 'fx': if (world.hooks.fx) world.hooks.fx(ev[1], ev[2], ev[3], ev[4], ev[5], ev[6]); break;

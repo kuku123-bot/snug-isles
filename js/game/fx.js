@@ -89,7 +89,7 @@ export class FX {
       }
       case 'poof': { this.burst(x, y, a ? 14 : 8, PAL.puff, { speed: 28, up: 6, grav: -10, life: 0.6, size: 2, spread: 6 }); au.play(a ? 'poof' : 'pop', { vol: 0.7 }); break; }
       case 'puff': { this.burst(x, y, 2, PAL.puff, { speed: 8, up: 18, grav: -20, life: 0.9, size: 2 }); break; }
-      case 'coin': { this.pop(x, y, `+${a}`, '#ffd84a', { icon: 'coin', big: a >= 20, life: 1.1 }); au.play('coin'); this.burst(x, y, 6, PAL.gold, { speed: 36, up: 30, life: 0.6 }); break; }
+      case 'coin': { this.pop(x, y, a < 0 ? `${a}` : `+${a}`, a < 0 ? '#ff9fb0' : '#ffd84a', { icon: 'coin', big: Math.abs(a) >= 20, life: 1.1 }); au.play('coin'); this.burst(x, y, 6, PAL.gold, { speed: 36, up: 30, life: 0.6 }); break; }
       case 'heart': { this.burst(x, y, 4, PAL.heart, { speed: 14, up: 30, grav: -30, life: 1.0, size: 2 }); au.play('squee', { vol: 0.6 }); break; }
       case 'emote': { this.emotes.set(a, { e: b, t: 0 }); au.play('emote'); break; }
       case 'door': au.play(a ? 'dooropen' : 'doorclose', { vol: 0.7 }); break;
@@ -136,6 +136,8 @@ export class FX {
         au.play('firework', { vol: 0.8 });
         break;
       }
+      case 'glow': { this.burst(x, y, 7, PAL.gold, { speed: 22, up: 26, life: 0.7, size: 2, grav: -6 }); break; }
+      case 'beaconspawn': { this.ring(x, y, 12, '#fff0b0', 0.6); this.burst(x, y - 4, 12, PAL.star, { speed: 26, up: 30, life: 0.9, size: 2, grav: -8 }); au.play('plant', { vol: 0.35 }); break; }
       case 'ding': { this.burst(x, y - 6, 14, PAL.gold, { speed: 50, up: 30, life: 0.9, size: 2 }); this.pop(x, y - 14, 'Treasure!', '#ffe066', { big: true, life: 1.2 }); au.play('research', { vol: 0.5 }); break; }
       case 'bosswarn': { this.pop(x, y, '!', '#ff6b7a', { big: true, life: 0.9, vy: -8 }); au.play('warn'); break; }
       case 'bossspawn': { this.shake = Math.max(this.shake, 5); this.ring(x, y, 70, '#ff6b7a', 1.0); this.burst(x, y, 30, PAL.ember, { speed: 90, up: 30, life: 1.2, spread: 20 }); au.play('bossspawn'); break; }

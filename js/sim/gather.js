@@ -12,6 +12,7 @@ import { ensureState } from './machines.js';
 import { hatchEgg } from './pets.js';
 import { standUp } from './furniture.js';
 import { throwBomb } from './bombs.js';
+import { beaconAt } from './beacon.js';
 import { paceOf, paceEase } from '../data/difficulty.js';
 import { invCount, invRemove } from './inventory.js';
 
@@ -41,18 +42,20 @@ export function rollNodeDrops(sim, def, p, mult = 1) {
   return out;
 }
 
-export function depleteNode(sim, t, nd, regrowBonus = 0) {
+export function depleteNode(sim, t, nd, regrowBonus = 0, speedUp = 1) { // speedUp: a lighthouse nearby makes it grow back that many times faster
   const w = sim.world;
   if (nd.respawn > 0) {
-    t.t = (nd.respawn / ((w.settings.resourceRespawn || 1) * paceOf(w.settings))) * (1 - Math.min(0.6, regrowBonus)) * (0.85 + sim.rng.next() * 0.3);
+    t.t = (nd.respawn / ((w.settings.resourceRespawn || 1) * paceOf(w.settings) * speedUp)) * (1 - Math.min(0.6, regrowBonus)) * (0.85 + sim.rng.next() * 0.3);
     w.patchThing(t.id, { dep: 1, hp: nd.hp });
   } else w.removeThing(t.id);
 }
 
 export function breakNode(sim, t, p) {
   const w = sim.world, nd = NODES[t.type];
-  const items = rollNodeDrops(sim, nd, p);
+  const lh = beaconAt(sim, t.x, t.y); // a lighthouse nearby: more from everything, and it grows back sooner
+  const items = rollNodeDrops(sim, nd, p, 1 + lh.yield);
   const cx = (t.x + 0.5) * TILE, cy = (t.y + 0.7) * TILE;
+  if (lh.yield > 0) w.fx('glow', cx, cy - 4, 0);
   for (const it of items) sim.spawnDrop(it.id, it.n, cx, cy);
   const st = p ? calcStats(w, p) : null;
   if (nd.coins) { // a treasure of coins that pops out in a few pieces
@@ -61,7 +64,7 @@ export function breakNode(sim, t, p) {
   }
   if (p) { addXp(w, p, nd.xp * st.gatherXp); sim.bump(nd.tree ? 'chop' : nd.plant ? 'pick' : 'mine'); }
   w.fx('break', cx, cy, nd.fx, nd.tree ? 1 : 0);
-  depleteNode(sim, t, nd, st ? st.regrow : 0);
+  depleteNode(sim, t, nd, st ? st.regrow : 0, lh.regrow);
 }
 
 // ------------------------------------------------------------------ target picking

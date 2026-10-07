@@ -46,7 +46,7 @@ export const hasViews = (def) => !!authoredTurns(def);
  *   flat - laid down like a picture (rugs): the picture itself turns
  */
 const BOX = new Set(['workbench', 'research_table', 'library', 'furnace', 'blast_furnace', 'magma_furnace', 'sewing_station', 'kitchen', 'alchemy_table', 'forge', 'arcane_altar', 'prism_workshop',
-  'star_forge', 'market_stall', 'anvil', 'chest', 'large_chest', 'vault', 'chicken_coop', 'cow_shed', 'drill_iron', 'drill_steel', 'drill_solar', 'drill_void', 'slime_altar', 'bone_altar',
+  'star_forge', 'market_stall', 'marketplace', 'anvil', 'chest', 'large_chest', 'vault', 'chicken_coop', 'cow_shed', 'drill_iron', 'drill_steel', 'drill_solar', 'drill_void', 'slime_altar', 'bone_altar',
   'magma_altar', 'void_altar', 'counter', 'sink', 'fridge', 'bathtub', 'fireplace', 'piano', 'aquarium', 'crate']);
 export function autoKind(def) {
   if (!def || def.hidden || (def.kind !== 'thing' && def.kind !== 'flat')) return null;

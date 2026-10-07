@@ -66,7 +66,7 @@ for (const name of engines) {
     // the Seaside branch has its own page
     await press('.btab:has-text("Seaside")');
     const sea = await page.evaluate(() => [...document.querySelectorAll('.tbox')].map((b) => b.textContent));
-    ok(sea.length === 13 && sea.some((t) => /Driftwood/.test(t)) && sea.some((t) => /Fishing/.test(t)) && sea.some((t) => /Hot Springs/.test(t)), `Seaside & Fishing shows its 13 boxes (${sea.length})`);
+    ok(sea.length === 15 && sea.some((t) => /Driftwood/.test(t)) && sea.some((t) => /Fishing/.test(t)) && sea.some((t) => /Hot Springs/.test(t)) && sea.some((t) => /Lighthouse/.test(t)), `Seaside & Fishing shows its 15 boxes, lighthouses included (${sea.length})`);
     // scroll inside the tree works (it is bigger than the window for the long branches)
     await press('.btab:has-text("Tools")');
     const scrolls = await page.evaluate(() => { const t = document.querySelector('.tree'); return { sw: t.scrollWidth, cw: t.clientWidth, sh: t.scrollHeight, ch: t.clientHeight }; });

@@ -1,4 +1,6 @@
 // Player commands (host-side validation + execution). The same entry point serves local play and remote players.
+import { ensureShop, doBuy, doRestock, marketNear, sellBonusOf } from './shop.js';
+import { beaconInfo } from './beacon.js';
 import { TILE, clamp } from '../util.js';
 import { ITEMS, fuelValue } from '../data/items.js';
 import { BUILD, FLOOR_IDS, WALLDECO_IDS } from '../data/build.js';
@@ -102,6 +104,8 @@ export function exec(sim, pid, cmd) {
     case 'inv': return doInv(sim, p, cmd);
     case 'drop': return doDrop(sim, p, cmd);
     case 'sell': return doSell(sim, p, cmd);
+    case 'buy': return doBuy(sim, p, cmd);
+    case 'restock': return doRestock(sim, p);
     case 'door': return doDoor(sim, p, cmd);
     case 'warp': return doWarp(sim, p, cmd);
     case 'wake': standUp(sim, p, false); return; // the player already stepped out on their own screen (same spot the host would pick)
@@ -428,6 +432,8 @@ function doInteract(sim, p, cmd) {
     case 'research': return uiOpen(sim, p, 'research', t, { tier: d.conf.tier });
     case 'processor': return uiOpen(sim, p, 'processor', t);
     case 'market': return uiOpen(sim, p, 'market', t);
+    case 'shop': ensureShop(sim); return uiOpen(sim, p, 'shop', t);
+    case 'beacon': return beaconInfo(sim, p, t, d);
     case 'bed': return doBed(sim, p, t, d);
     case 'seat': return doSeat(sim, p, t, d);
     case 'farm': {
@@ -576,9 +582,8 @@ function doWarp(sim, p, cmd) {
 // ------------------------------------------------------------------ selling
 function doSell(sim, p, cmd) {
   const w = sim.world;
-  let ok = false;
-  for (const t of w.thingsNear(p.x, p.y - 6, 7 * TILE)) { const d = BUILD[t.type]; if (d && d.behavior === 'market') ok = true; }
-  if (!ok) return sim.toast(p.pid, 'Stand near a Market Stall.', 'warn');
+  const near = marketNear(w, p);
+  if (!near) return sim.toast(p.pid, 'Stand near a Market Stall or a Marketplace.', 'warn');
   const i = cmd.i | 0;
   const s = p.inv[i];
   if (!s) return;
@@ -587,7 +592,7 @@ function doSell(sim, p, cmd) {
   const n = clamp(cmd.n | 0 || s.n, 1, s.n);
   const st = calcStats(w, p);
   const mul = (w.shared.market && w.shared.market[s.id]) || 1;
-  const each = Math.max(1, Math.round(it.sell * mul * st.sellMul));
+  const each = Math.max(1, Math.round(it.sell * mul * st.sellMul * sellBonusOf(near)));
   s.n -= n; if (s.n <= 0) p.inv[i] = null;
   w.coins += each * n;
   sim.bump('sold', n);

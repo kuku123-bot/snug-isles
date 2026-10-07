@@ -48,6 +48,7 @@ T('pastel_palette', 'Pastel Palette', 2, 'home', ['cottage_style'], { clay: 10, 
 T('sharper_tools', 'Sharper Tools', 2, 'craft', ['smelting'], { copper_ingot: 6, plank: 8 }, 'Everyone\'s tools hit 8% harder.', { toolDmg: 0.08 });
 T('fertile_soil', 'Fertile Soil', 2, 'farm', ['gardening'], { plank: 8, petal_yellow: 6, clay: 4 }, 'Crops grow 10% faster.', { cropGrowth: 0.1 });
 T('sea_legs', 'Sea Legs', 2, 'sea', ['fishing'], { fiber: 12, plank: 6, rope: 4 }, 'Everyone gets 20 more energy.', { energy: 20 });
+T('little_lighthouse', 'Little Lighthouse', 2, 'sea', ['fishing', 'lighting'], { stone: 24, plank: 16, coal: 6, rope: 4 }, 'A small lighthouse: resources around it give 30% more, grow back faster, and new ones appear.');
 T('beach_style', 'Seaside Living', 2, 'sea', ['driftwood', 'cottage_style'], { plank: 20, sand: 15, cloth: 6, rope: 4 }, 'Breezy driftwood furniture in shell white and ocean blue.');
 T('beach_decor', 'Beach Decor', 2, 'sea', ['driftwood'], { plank: 12, cloth: 6, sand: 10, rope: 4 }, 'Beach umbrellas, deck chairs and sandcastles.');
 
@@ -66,6 +67,7 @@ T('milling', 'Milling', 3, 'farm', ['mechanics', 'gardening'], { plank: 20, gear
 T('pyrotechnics', 'Pyrotechnics', 3, 'adv', ['explosives'], { coal: 10, paper: 8, petal_pink: 4, copper_ingot: 2 }, 'Mega, frost and fire bombs, and fireworks to light up the sky.');
 T('fortification', 'Fortification', 3, 'adv', ['ironworking', 'archery'], { stone: 40, iron_ingot: 8, arrow: 20 }, 'Arrow turrets and iron fences.');
 T('treasure_hunting', 'Treasure Hunting', 3, 'adv', ['ironworking'], { rope: 4, iron_ingot: 4, paper: 6 }, 'Iron shovels. Buried treasure shows on your map.');
+T('marketplace', 'Marketplace', 3, 'adv', ['trade'], { plank: 24, cloth: 8, copper_ingot: 6, rope: 6 }, 'The Marketplace: buy a fresh random selection of goods every day, and sell for 10% more.');
 T('trade_routes', 'Trade Routes', 3, 'adv', ['trade'], { plank: 20, copper_ingot: 8, rope: 6 }, 'Everything you sell fetches 5% more.', { sell: 0.05 });
 T('land_surveying', 'Land Surveying', 3, 'adv', ['trade'], { paper: 8, copper_ingot: 6, plank: 10 }, 'New lands cost 5% less.', { landDiscount: 0.05 });
 T('interior_comfort', 'Interior Comfort', 3, 'home', ['pastel_palette'], { cloth: 12, plank: 20, petal_pink: 6 }, 'Cozy rooms give 10% stronger bonuses.', { cozy: 0.1 });
@@ -83,7 +85,7 @@ T('vaults', 'Vaults', 4, 'home', ['steelmaking', 'storage'], { steel_ingot: 6, g
 T('goldsmithing', 'Goldsmithing', 4, 'craft', ['ironworking'], { gold_ingot: 10, coal: 15 }, 'Golden tools and armor, gilded walls.');
 T('steelmaking', 'Steelmaking', 4, 'craft', ['ironworking', 'masonry'], { iron_ingot: 20, coal: 30, brick: 20 }, 'Blast furnace and steel ingots.');
 T('forging', 'Master Forging', 4, 'craft', ['steelmaking'], { steel_ingot: 4, brick: 20, coal: 20 }, 'The Master Forge.');
-T('optics', 'Optics', 4, 'craft', ['goldsmithing', 'glassmaking'], { glass: 20, gold_ingot: 6 }, 'Lenses, telescopes, lighthouses and the Observatory.');
+T('optics', 'Optics', 4, 'craft', ['goldsmithing', 'glassmaking'], { glass: 20, gold_ingot: 6 }, 'Lenses, telescopes, the Lighthouse and the Observatory.');
 T('gourmet', 'Gourmet Cooking', 4, 'farm', ['kitchen', 'apiary'], { honey: 5, flour: 10, strawberry: 5, egg: 5 }, 'Cakes, pies and cocoa.');
 T('angling', 'Angling', 4, 'sea', ['fishing', 'ironworking'], { iron_ingot: 6, rope: 10, fish_minnow: 3 }, 'Iron fishing rods.');
 T('bountiful', 'Bountiful Harvest', 4, 'farm', ['gourmet'], { honey: 3, fertilizer: 6, gold_ingot: 2 }, '10% more from every resource you gather.', { drop: 0.1 });
@@ -120,6 +122,7 @@ T('sky_garden', 'Sky Garden', 7, 'home', ['prism_style', 'garden_design'], { cry
 T('crystal_craft', 'Crystal Crafting', 7, 'craft', ['magma_smelting'], { crystal_shard: 20, gold_ingot: 10 }, 'Crystal bars, tools, armor and the Prism Workshop.');
 T('solar_power', 'Solar Power', 7, 'craft', ['crystal_craft', 'heavy_drilling'], { crystal_bar: 6, copper_ingot: 20, lens: 4 }, 'Solar drills need no fuel.');
 T('crystal_angling', 'Crystal Angling', 7, 'sea', ['crystal_craft', 'angling'], { crystal_bar: 4, rope: 6, fish_salmon: 2 }, 'Crystal fishing rods.');
+T('grand_lighthouse', 'Grand Lighthouse', 7, 'sea', ['crystal_angling', 'optics'], { crystal_bar: 6, lens: 4, gold_ingot: 6 }, 'The brightest light of all: two and a half times the resources in a wide circle.');
 T('prism_defense', 'Prism Defense', 7, 'adv', ['crystal_craft', 'arcane_defense'], { prism_core: 2, crystal_bar: 8 }, 'Prism turrets.');
 
 // ------------------------------------------------------------- TIER 8
@@ -133,7 +136,7 @@ T('world_heart', 'Heart of the Isles', 8, 'adv', ['celestial_style', 'void_drill
 const ICONS = {
   carpentry: 'i_plank', cottage_style: 't_cottage_chair', lighting: 't_torch', storage: 't_large_chest', bridges: 'f_bridge_rope', stonecraft: 'i_pickaxe_stone', weaving: 't_sewing_station',
   gardening: 't_farm_plot', cooking: 't_campfire', fishing: 'i_rod_wood', masonry: 'i_brick', glassmaking: 'i_glass', smelting: 't_furnace', metalworking: 't_anvil', kitchen: 't_kitchen',
-  apiary: 't_beehive', alchemy: 't_alchemy_table', archery: 'i_bow_wood', trade: 't_market_stall', swift_feet: 'i_boots_cloth', modern_style: 't_modern_sofa', frostcraft: 'i_ice_shard',
+  apiary: 't_beehive', alchemy: 't_alchemy_table', archery: 'i_bow_wood', trade: 't_market_stall', swift_feet: 'i_boots_cloth', modern_style: 't_modern_sofa', frostcraft: 'i_ice_shard', little_lighthouse: 't_little_lighthouse', grand_lighthouse: 't_grand_lighthouse', marketplace: 't_marketplace',
   desertcraft: 't_plant_cactus', thrifty_builder: 'ui_hammer', ironworking: 'i_iron_ingot', mechanics: 'i_gear', automation: 't_drill_iron', sturdy_bags: 'ui_bag', irrigation: 't_sprinkler',
   husbandry: 't_chicken_coop', milling: 't_windmill', fortification: 't_turret_arrow', treasure_hunting: 'i_shovel_iron', elegant_style: 't_chandelier', garden_design: 't_fountain',
   vaults: 't_vault', goldsmithing: 'i_gold_ingot', steelmaking: 't_blast_furnace', forging: 't_forge', optics: 'i_lens', gourmet: 'i_strawberry_cake', angling: 'i_rod_iron', bountiful: 'i_pumpkin',

@@ -22,7 +22,7 @@ import { renderText } from '../gfx/bitfont.js';
 import { hex, INK } from '../gfx/pixmap.js';
 import { h } from '../ui/dom.js';
 
-const INTERACTIVE = new Set(['storage', 'station', 'research', 'processor', 'market', 'bed', 'seat', 'farm', 'producer', 'drill', 'turret', 'warp', 'altar', 'piano', 'monument']);
+const INTERACTIVE = new Set(['storage', 'station', 'research', 'processor', 'market', 'shop', 'beacon', 'bed', 'seat', 'farm', 'producer', 'drill', 'turret', 'warp', 'altar', 'piano', 'monument']);
 const SWING_DUR = { 0: 0.26, 1: 0.3, 2: 0.18, 3: 0.2, 4: 0.3, 5: 0.25 };
 
 export class Game {

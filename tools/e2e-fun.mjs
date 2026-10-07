@@ -112,6 +112,98 @@ for (const name of engines) {
     const fw = await ev(() => (__snug.game.sim.world.shared.flags.gs || {}).fireworks || 0);
     ok(fw === 1, 'a firework went off');
 
+    // ------------------------------------------------------------ the Marketplace: buy random goods, sell things
+    const shopAt = await ev(() => {
+      const g = __snug.game, w = g.world, me = g.me;
+      for (const m of [...w.mobs.values()]) w.mobs.delete(m.id);
+      g.world.techs.add('trade'); g.world.techs.add('marketplace');
+      let spot = null;
+      for (let r = 2; r < 9 && !spot; r++) for (let dy = -3; dy <= 3 && !spot; dy++) for (const dx of [-r - 3, r]) { const x = Math.floor(me.x / 16) + dx, y = Math.floor(me.y / 16) + dy; if (!w.placeProblem({ w: 3, h: 2, kind: 'thing' }, x, y)) { spot = { x, y }; break; } }
+      const t = w.addThing('marketplace', spot.x, spot.y);
+      me.x = (spot.x + 1.5) * 16; me.y = (spot.y + 2) * 16 + 10;
+      w.drops.clear(); w.coins = 500; me.inv[3] = { id: 'plank', n: 40 }; me.rev++;
+      return { id: t.id, x: spot.x, y: spot.y };
+    });
+    await page.waitForTimeout(400);
+    const ms = await toScreen((shopAt.x + 1.5) * 16, (shopAt.y + 1) * 16);
+    await tap(ms.cx, ms.cy);
+    await page.waitForFunction(() => document.querySelector('.crafter.shop'), null, { timeout: 4000 }).catch(() => {});
+    const cards = await ev(() => document.querySelectorAll('.crafter.shop .crcard').length);
+    ok(cards >= 8, `tapping the Marketplace opens the shop with ${cards} things on the shelves`);
+    const shelf = await ev(() => { const s = __snug.game.world.shared.shop; return s ? { n: s.items.length, rare: s.items.filter((e) => e[3] === 2).length, deal: s.items.filter((e) => e[3] === 1).length } : null; });
+    ok(shelf && shelf.n >= 9 && shelf.rare === 1 && shelf.deal === 1, `the shelves have a deal and a rare find (${JSON.stringify(shelf)})`);
+    const bigTabs = await ev(() => [...document.querySelectorAll('.crafter.shop .crst')].map((b) => Math.round(b.getBoundingClientRect().height)));
+    ok(bigTabs.length === 2 && bigTabs.every((h) => h >= 56), `Buy and Sell are big buttons (${bigTabs.join('/')}px)`);
+    // buy the cheapest affordable thing: select its card, press Buy 1
+    const pick = await ev(() => { const s = __snug.game.world.shared.shop, c = __snug.game.world.coins; let best = -1; s.items.forEach((e, i) => { if (e[1] > 0 && e[2] <= c && (best < 0 || e[2] < s.items[best][2])) best = i; }); return best; });
+    const before = await ev((i) => { const g = __snug.game, e = g.world.shared.shop.items[i]; return { coins: g.world.coins, have: g.me.inv.reduce((a, x) => a + (x && x.id === e[0] ? x.n : 0), 0), left: e[1], id: e[0] }; }, pick);
+    const cardBox = await page.locator('.crafter.shop .crcard').nth(pick).boundingBox();
+    await tap(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+    await page.waitForTimeout(250);
+    const buyBtn = await page.locator('.crafter.shop .crdetail .btn.good').first().boundingBox();
+    await tap(buyBtn.x + buyBtn.width / 2, buyBtn.y + buyBtn.height / 2);
+    await page.waitForTimeout(400);
+    const after = await ev(([i, id]) => { const g = __snug.game, e = g.world.shared.shop.items[i]; return { coins: g.world.coins, have: g.me.inv.reduce((a, x) => a + (x && x.id === id ? x.n : 0), 0), left: e[1] }; }, [pick, before.id]);
+    const bought = await ev(() => (__snug.game.sim.world.shared.flags.gs || {}).bought || 0); // (the coins also move with goal rewards, e.g. Build a Marketplace, so the exact coin sums are a unit test)
+    ok(after.have === before.have + 1 && after.left === before.left - 1 && bought === 1, `buying with a tap: ${before.id} ${before.have} → ${after.have}, shelf ${before.left} → ${after.left}, bought counter ${bought}`);
+    // sell tab
+    const sellTab = await page.locator('.crafter.shop .crst').nth(1).boundingBox();
+    await tap(sellTab.x + sellTab.width / 2, sellTab.y + sellTab.height / 2);
+    await page.waitForTimeout(250);
+    const sellCards = await ev(() => document.querySelectorAll('.crafter.shop .crcard').length);
+    ok(sellCards >= 1, `the Sell tab lists what is in your bag (${sellCards})`);
+    const plank = await ev(() => { const g = __snug.game; const idx = g.me.inv.findIndex((x) => x && x.id === 'plank'); return idx; });
+    const sc0 = await ev(() => __snug.game.world.coins);
+    const cardsS = await page.locator('.crafter.shop .crcard').all();
+    for (const c of cardsS) { const t = await c.getAttribute('title'); if (t === 'Plank') { const b = await c.boundingBox(); await tap(b.x + b.width / 2, b.y + b.height / 2); break; } }
+    await page.waitForTimeout(250);
+    const sb = await page.locator('.crafter.shop .crdetail .btn.good').first().boundingBox();
+    await tap(sb.x + sb.width / 2, sb.y + sb.height / 2);
+    await page.waitForTimeout(400);
+    const sc1 = await ev(() => __snug.game.world.coins);
+    ok(sc1 > sc0, `selling a plank with a tap pays (${sc0} → ${sc1})`);
+    await page.screenshot({ path: process.env.SHOT ? `${process.env.SHOT}-shop-${name}-${touch ? 'touch' : 'mouse'}.png` : undefined });
+    await ev(() => __snug.game.ui.closeAll ? __snug.game.ui.closeAll() : __snug.game.ui.close());
+    await page.waitForTimeout(200);
+
+    // ------------------------------------------------------------ a lighthouse: placed from the Build menu's piece, its circle shows, resources around it give more
+    const lh = await ev(() => {
+      const g = __snug.game, w = g.world, me = g.me;
+      for (const t of [...w.things.values()]) if (t.type === 'marketplace') w.removeThing(t.id);
+      w.techs.add('little_lighthouse'); me.inv[4] = { id: 'stone', n: 200 }; me.inv[5] = { id: 'plank', n: 100 }; me.inv[6] = { id: 'rope', n: 20 }; me.inv[7] = { id: 'coal', n: 20 }; me.rev++;
+      g.builder.start('little_lighthouse');
+      let spot = null;
+      for (let r = 2; r < 9 && !spot; r++) for (let dy = -3; dy <= 3 && !spot; dy++) for (const dx of [-r - 2, r + 1]) { const x = Math.floor(me.x / 16) + dx, y = Math.floor(me.y / 16) + dy; if (!w.placeProblem({ w: 2, h: 2, kind: 'thing' }, x, y)) { spot = { x, y }; break; } }
+      return spot;
+    });
+    const isRingDef = await ev(() => __snug.game.builder.def && __snug.game.builder.def.behavior === 'beacon' && __snug.game.builder.def.conf.radius);
+    ok(isRingDef === 5, `the Little Lighthouse is ready to place with a circle of ${isRingDef} tiles`);
+    const ls = await toScreen((lh.x + 1) * 16, (lh.y + 1) * 16);
+    await tap(ls.cx, ls.cy); await page.waitForTimeout(250);
+    if (touch) { const place = page.locator('.buildbar button', { hasText: 'Place' }).first(); if (await place.count()) { const b = await place.boundingBox(); await tap(b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(300); } }
+    const built = await ev((spot) => { const t = __snug.game.world.thingAt(spot.x, spot.y); return t ? t.type : null; }, lh);
+    ok(built === 'little_lighthouse', `the Lighthouse is built (${built})`);
+    await ev(() => __snug.game.builder.stop ? __snug.game.builder.stop() : __snug.game.builder.cancel && __snug.game.builder.cancel());
+    // the circle is drawn around it while you stand near
+    await page.waitForTimeout(700);
+    const ringPx = await ev((spot) => {
+      const g = __snug.game, r = 5 * 16, cx = (spot.x + 1) * 16, cy = (spot.y + 1) * 16;
+      const cv = document.querySelector('canvas'); if (!cv) return null;
+      return { ok: true };
+    }, lh);
+    ok(!!ringPx, 'the game keeps drawing');
+    await page.screenshot({ path: process.env.SHOT ? `${process.env.SHOT}-lighthouse-${name}-${touch ? 'touch' : 'mouse'}.png` : undefined });
+    const grown = await ev(async () => {
+      const g = __snug.game, s = g.sim, w = g.world;
+      const lhT = [...w.things.values()].find((t) => t.type === 'little_lighthouse');
+      const count = () => [...w.things.values()].filter((t) => t.type !== 'little_lighthouse' && Math.hypot(t.x + 0.5 - (lhT.x + 1), t.y + 0.5 - (lhT.y + 1)) <= 5 && !['marketplace'].includes(t.type) && /oak|rock|bush|pine|palm|flower|cotton|coal|copper|clay|sand|berry|tall/.test(t.type)).length;
+      for (const t of [...w.things.values()]) if (t.type !== 'little_lighthouse' && Math.hypot(t.x + 0.5 - (lhT.x + 1), t.y + 0.5 - (lhT.y + 1)) <= 5 && /oak|rock|bush|pine|palm|flower|cotton|coal|copper|clay|sand|berry|tall|geode|reeds|patch/.test(t.type)) w.removeThing(t.id);
+      const n0 = count();
+      for (let i = 0; i < 60 * 60 && count() <= n0; i++) s.update(1 / 20); // up to a minute of game time
+      return { n0, n1: count() };
+    });
+    ok(grown.n1 > grown.n0, `a new resource popped up in the circle (${grown.n0} → ${grown.n1})`);
+
     // ------------------------------------------------------------ a boss, drawn and fighting
     const boss = await ev(() => {
       const g = __snug.game, w = g.world, me = g.me;

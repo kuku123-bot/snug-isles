@@ -437,7 +437,74 @@ S.statue_angel = () => { const pm = new Pixmap(16, 34); pm.rect(3, 28, 10, 5, ST
 S.tent = () => { const pm = new Pixmap(32, 32); pm.poly([[1, 29], [31, 29], [16, 3]], R('#ff9fc0')[2]); pm.poly([[1, 29], [16, 29], [16, 3]], R('#ffc0d8')[1]); pm.poly([[16, 29], [31, 29], [16, 3]], R('#e0709a')[3]); for (const x of [6, 11, 21, 26]) pm.line(x, 29, 16, 3 + Math.abs(x - 16) * 0.2, R('#e0709a')[3]); pm.poly([[11, 29], [21, 29], [16, 13]], hex('#3a2a40')); pm.poly([[11, 29], [16, 29], [16, 13]], hex('#4a3a50')); pm.rect(15, 0, 2, 5, DWOOD[2]); pm.poly([[17, 0], [23, 2], [17, 4]], hex('#ffd84a')); return fin(pm, [16, 30, 15, 1.6]); };
 S.hammock = () => { const pm = new Pixmap(32, 20); for (const x of [2, 28]) { pm.rect(x, 3, 3, 16, DWOOD[2]); pm.rect(x, 3, 1, 16, DWOOD[1]); } for (let x = 5; x < 28; x++) { const y = 8 + Math.round(Math.sin((x - 5) / 22 * Math.PI) * 4); pm.rect(x, y, 1, 3, R('#7fb0ff')[2]); pm.set(x, y, R('#7fb0ff')[1]); pm.set(x, y + 2, R('#7fb0ff')[3]); } pm.rect(9, 9, 6, 3, hex('#fff6e0')); return fin(pm, [16, 19, 14]); };
 S.swing = () => { const pm = new Pixmap(32, 34); pm.line(2, 31, 8, 3, DWOOD[2]); pm.line(3, 31, 9, 3, DWOOD[3]); pm.line(30, 31, 24, 3, DWOOD[2]); pm.line(29, 31, 23, 3, DWOOD[3]); pm.rect(7, 2, 18, 3, DWOOD[2]); pm.rect(7, 2, 18, 1, DWOOD[1]); pm.line(11, 5, 11, 20, hex('#e0c288')); pm.line(21, 5, 21, 20, hex('#e0c288')); pm.rect(9, 20, 14, 3, WOOD[2]); pm.rect(9, 20, 14, 1, WOOD[1]); return fin(pm, [16, 33, 14, 1.4]); };
-S.lighthouse = () => { const pm = new Pixmap(32, 64); pm.poly([[6, 62], [26, 62], [22, 18], [10, 18]], R('#ffffff')[2]); for (const [y0, y1] of [[22, 32], [42, 52]]) pm.poly([[6 + (62 - y1) * 0.2, y1], [26 - (62 - y1) * 0.2, y1], [26 - (62 - y0) * 0.2, y0], [6 + (62 - y0) * 0.2, y0]], R('#e0504a')[2]); pm.poly([[6, 62], [14, 62], [14, 18], [10, 18]], withAlpha(hex('#ffffff'), 90)); pm.rect(12, 50, 8, 12, DWOOD[2]); pm.frame(12, 50, 8, 12, DWOOD[4]); pm.rect(7, 12, 18, 7, IRON[3]); pm.rect(9, 5, 14, 8, hex('#fff0b0')); pm.frame(9, 5, 14, 8, IRON[3]); pm.rect(12, 7, 8, 4, WHITE); pm.poly([[7, 5], [25, 5], [16, -3]], R('#e0504a')[2]); pm.poly([[7, 5], [16, 5], [16, -3]], R('#f2706a')[1]); return fin(pm, [16, 63, 12, 1.8]); };
+// lighthouses: the beam sweeps (f 0 = left, 1 = glow, 2 = right)
+function beam(pm, f, x0, x1, y, strong) { // (drawn after the outline, so the rays stay soft and warm; f 1 = both sides, short)
+  const warm = hex('#fff2a8');
+  const ray = (base, dir, len) => {
+    for (let k = 0; k < len; k++) {
+      const a = Math.round((strong ? 215 : 175) * (1 - k / (len + 2)));
+      pm.set(base + dir * k, y, withAlpha(warm, a)); pm.set(base + dir * k, y + 1, withAlpha(warm, Math.round(a * 0.7)));
+      if (k < len * 0.7) pm.set(base + dir * k, y - 1, withAlpha(warm, Math.round(a * 0.55)));
+      if (k > 3 && k % 2 === 0) { pm.set(base + dir * k, y + 2, withAlpha(warm, Math.round(a * 0.35))); pm.set(base + dir * k, y - 2, withAlpha(warm, Math.round(a * 0.3))); }
+    }
+  };
+  if (f === 0) ray(x0 - 1, -1, x0);
+  else if (f === 2) ray(x1 + 1, 1, pm.w - 1 - x1);
+  else { ray(x0 - 1, -1, 6); ray(x1 + 1, 1, 6); }
+}
+S.little_lighthouse = (f = 0) => {
+  const pm = new Pixmap(32, 46), stone = R('#f4f1e8'), blue = R('#4aa3df');
+  pm.poly([[7, 44], [25, 44], [21, 17], [11, 17]], stone[2]);
+  pm.poly([[7, 44], [13, 44], [13, 17], [11, 17]], stone[1]); pm.poly([[25, 44], [21, 44], [20, 17], [21, 17]], stone[3]);
+  for (const [y0, y1] of [[24, 31], [36, 42]]) pm.poly([[7 + (44 - y1) * 0.22, y1], [25 - (44 - y1) * 0.22, y1], [25 - (44 - y0) * 0.22, y0], [7 + (44 - y0) * 0.22, y0]], blue[2]);
+  pm.rect(13, 34, 6, 10, DWOOD[2]); pm.frame(13, 34, 6, 10, DWOOD[4]); pm.set(17, 39, hex('#ffd84a'));
+  pm.rect(8, 13, 16, 5, IRON[3]); pm.hline(8, 13, 16, IRON[1]);
+  pm.rect(10, 5, 12, 9, hex('#fff0b0')); pm.frame(10, 5, 12, 9, IRON[3]); pm.rect(13, 7, 6, 5, f === 1 ? WHITE : hex('#fff6c8'));
+  pm.poly([[8, 5], [24, 5], [16, -3]], blue[2]); pm.poly([[8, 5], [16, 5], [16, -3]], blue[1]);
+  fin(pm, [16, 45, 11, 1.6]); beam(pm, f, 10, 22, 9, false);
+  return pm;
+};
+S.lighthouse = (f = 0) => {
+  const pm = new Pixmap(32, 64);
+  pm.poly([[6, 62], [26, 62], [22, 18], [10, 18]], R('#ffffff')[2]);
+  for (const [y0, y1] of [[22, 32], [42, 52]]) pm.poly([[6 + (62 - y1) * 0.2, y1], [26 - (62 - y1) * 0.2, y1], [26 - (62 - y0) * 0.2, y0], [6 + (62 - y0) * 0.2, y0]], R('#e0504a')[2]);
+  pm.poly([[6, 62], [14, 62], [14, 18], [10, 18]], R('#ffffff')[1]); pm.poly([[26, 62], [21, 62], [20, 18], [22, 18]], R('#ffffff')[3]);
+  pm.rect(12, 50, 8, 12, DWOOD[2]); pm.frame(12, 50, 8, 12, DWOOD[4]);
+  pm.rect(7, 12, 18, 7, IRON[3]);
+  pm.rect(9, 5, 14, 8, hex('#fff0b0')); pm.frame(9, 5, 14, 8, IRON[3]); pm.rect(12, 7, 8, 4, f === 1 ? WHITE : hex('#fff6c8'));
+  pm.poly([[7, 5], [25, 5], [16, -3]], R('#e0504a')[2]); pm.poly([[7, 5], [16, 5], [16, -3]], R('#f2706a')[1]);
+  fin(pm, [16, 63, 12, 1.8]); beam(pm, f, 9, 23, 9, true);
+  return pm;
+};
+S.grand_lighthouse = (f = 0) => {
+  const pm = new Pixmap(48, 84), stone = R('#efe7f8'), gold = R('#ffd84a'), crys = R('#e08ae8');
+  pm.poly([[8, 82], [40, 82], [33, 26], [15, 26]], stone[2]);
+  pm.poly([[8, 82], [18, 82], [18, 26], [15, 26]], stone[1]);
+  pm.poly([[40, 82], [34, 82], [31, 26], [33, 26]], stone[3]);
+  for (const [y0, y1] of [[30, 38], [48, 56], [66, 74]]) pm.poly([[8 + (82 - y1) * 0.2, y1], [40 - (82 - y1) * 0.2, y1], [40 - (82 - y0) * 0.2, y0], [8 + (82 - y0) * 0.2, y0]], gold[2]);
+  for (const y of [34, 52, 70]) pm.hline(14, y, 20, gold[0]);
+  pm.rect(18, 66, 12, 16, DWOOD[2]); pm.frame(18, 66, 12, 16, DWOOD[4]); pm.rect(21, 69, 6, 4, hex('#9fd8ff')); pm.set(27, 76, gold[1]);
+  pm.rect(12, 20, 24, 7, gold[3]); pm.hline(12, 20, 24, gold[1]); for (const x of [14, 20, 26, 32]) pm.vline(x, 21, 5, gold[4]);
+  pm.rect(13, 8, 22, 13, hex('#fff6d8')); pm.frame(13, 8, 22, 13, gold[3]);
+  pm.poly([[24, 9], [29, 14], [24, 20], [19, 14]], f === 1 ? hex('#ffffff') : crys[1]); pm.poly([[24, 9], [29, 14], [24, 20]], crys[3]);
+  pm.poly([[11, 8], [37, 8], [24, -1]], gold[2]); pm.poly([[11, 8], [24, 8], [24, -1]], gold[1]); pm.circle(24, -2, 2, WHITE);
+  fin(pm, [24, 83, 18, 2]); beam(pm, f, 13, 35, 14, true);
+  return pm;
+};
+S.marketplace = () => {
+  const pm = new Pixmap(48, 42), green = R('#4fbf6a'), white = R('#ffffff');
+  for (const x of [3, 43]) pm.rect(x, 9, 3, 31, DWOOD[2]);
+  // big striped awning with a scalloped edge
+  for (let x = 0; x < 48; x += 6) { const c = ((x / 6) % 2) ? white : green; pm.rect(x, 1, 6, 9, c[2]); pm.hline(x, 1, 6, c[0]); pm.hline(x, 9, 6, c[3]); pm.poly([[x, 10], [x + 6, 10], [x + 3, 13]], c[2]); }
+  // hanging sign
+  pm.rect(18, 14, 12, 7, WOOD[2]); pm.frame(18, 14, 12, 7, DWOOD[4]); pm.circle(24, 17.5, 2.2, hex('#ffd84a')); pm.set(23, 16, WHITE); pm.vline(20, 13, 1, DWOOD[4]); pm.vline(28, 13, 1, DWOOD[4]);
+  box(pm, 2, 26, 44, 14, 4, WOOD, { planks: true });
+  // goods on the counter
+  for (const [x, c] of [[6, '#ff4f6d'], [10, '#ffe066'], [14, '#7ed07a'], [34, '#ff9f4a'], [38, '#a77bff']]) { pm.circle(x + 0.5, 24, 2, hex(c)); pm.set(x - 1, 23, WHITE); }
+  pm.rect(19, 22, 5, 5, R('#a8703f')[2]); pm.frame(19, 22, 5, 5, R('#a8703f')[4]); pm.rect(25, 23, 6, 4, R('#e0508a')[2]); pm.set(26, 23, WHITE);
+  pm.circle(24, 33, 2.4, hex('#ffd84a')); pm.set(23, 32, WHITE);
+  return fin(pm, [24, 41, 21]);
+};
 S.counter = () => { const pm = new Pixmap(16, 16); box(pm, 0, 3, 16, 12, 4, R('#f4ecd8')); pm.rect(2, 9, 12, 4, R('#e8dcc0')[2]); pm.frame(2, 9, 12, 4, R('#a89870')[2]); pm.rect(7, 10, 2, 1, GOLD[2]); pm.rect(11, 0, 3, 4, hex('#cfeeff')); pm.set(11, 0, WHITE); return fin(pm, [8, 15.2, 7]); };
 S.sink = () => { const pm = S.counter(); pm.rect(3, 3, 8, 3, IRON[3]); pm.rect(4, 3, 6, 2, hex('#8fd8ff')); pm.rect(11, 0, 2, 4, IRON[2]); pm.rect(10, 0, 3, 1, IRON[1]); return pm; };
 S.fridge = () => { const pm = new Pixmap(16, 30); box(pm, 1, 2, 14, 27, 3, R('#cfeeff')); pm.hline(2, 13, 12, R('#8ac0e0')[3]); pm.rect(11, 6, 2, 5, IRON[3]); pm.rect(11, 16, 2, 6, IRON[3]); pm.rect(3, 5, 3, 3, hex('#ff8fb3')); pm.set(4, 6, WHITE); pm.set(5, 7, hex('#ffe066')); return fin(pm, [8, 29, 7]); };
@@ -606,7 +673,7 @@ export function registerStructures(book) {
   const add = (name, pm) => book.add(name, pm);
   for (const [id, fn] of Object.entries(S)) {
     // animated families
-    if (['campfire', 'torch', 'brazier', 'candelabra', 'lava_lamp', 'star_lantern', 'warp_pad', 'fountain', 'fireplace', 'cauldron', 'crystal_ball', 'mushroom_lamp', 'star_orb', 'portal_ring', 'fairy_ring', 'forge', 'arcane_altar', 'prism_workshop', 'star_forge', 'alchemy_table', 'world_heart'].includes(id)) {
+    if (['campfire', 'torch', 'brazier', 'candelabra', 'lava_lamp', 'star_lantern', 'warp_pad', 'fountain', 'fireplace', 'cauldron', 'crystal_ball', 'mushroom_lamp', 'star_orb', 'portal_ring', 'fairy_ring', 'forge', 'arcane_altar', 'prism_workshop', 'star_forge', 'alchemy_table', 'world_heart', 'lighthouse', 'little_lighthouse', 'grand_lighthouse'].includes(id)) {
       for (let f = 0; f < 3; f++) add(`t_${id}_a${f}`, fn(f));
       add(`t_${id}`, fn(0));
     } else if (['furnace', 'blast_furnace', 'magma_furnace'].includes(id)) { add(`t_${id}`, fn(false)); add(`t_${id}_on`, fn(true)); }

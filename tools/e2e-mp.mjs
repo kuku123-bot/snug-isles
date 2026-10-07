@@ -246,12 +246,15 @@ console.log('turned stations and windows: the other screen shows them turned and
     return null;
   });
   await guest.waitForTimeout(500);
+  let seen = null;
+  for (let attempt = 0; attempt < 5 && !(seen && seen.kitchen); attempt++) { // (the game does not build on top of someone, a wandering critter or the host's pet: try again a moment later)
   await host.evaluate(([x, y]) => { const g = __snug.game; g.cmd({ c: 'build', bid: 'kitchen', tx: x + 1, ty: y + 1, rot: 1 }); g.cmd({ c: 'build', bid: 'chest', tx: x + 5, ty: y + 1, rot: 2 }); g.cmd({ c: 'build', bid: 'wall_plank', tx: x + 3, ty: y }); g.cmd({ c: 'build', bid: 'window_plank', tx: x + 4, ty: y, rot: 3 }); g.cmd({ c: 'build', bid: 'floor_plank', tx: x + 6, ty: y + 3, rot: 1 }); }, spot);
   await guest.waitForTimeout(900);
-  const seen = await guest.evaluate(([x, y]) => {
+  seen = await guest.evaluate(([x, y]) => {
     const w = __snug.game.world, k = [...w.things.values()].find((t) => t.type === 'kitchen' && t.x === x + 1 && t.y === y + 1), c = [...w.things.values()].find((t) => t.type === 'chest' && t.x === x + 5);
     return { kitchen: k ? { rot: k.rot, w: k.w, h: k.h } : null, chest: c ? c.rot : -1, window: w.wallRot[w.idx(x + 4, y)], floor: w.floorRot[w.idx(x + 6, y + 3)], below: !!w.thingAt(x + 1, y + 2), beside: !!w.thingAt(x + 2, y + 1), solidBelow: (w.solid[w.idx(x + 1, y + 2)] & 1) === 1, solidBeside: (w.solid[w.idx(x + 2, y + 1)] & 1) === 1 };
   }, spot);
+  }
   ok(seen.kitchen && seen.kitchen.rot === 1 && seen.kitchen.w === 1 && seen.kitchen.h === 2, `the guest sees the kitchen on its side (${JSON.stringify(seen.kitchen)})`);
   ok(seen.below && seen.solidBelow && !seen.beside && !seen.solidBeside, 'and cannot walk through its second tile, but can walk beside it');
   ok(seen.chest === 2 && seen.window === 3 && seen.floor === 1, `the chest, the window and the floor tile are turned for the guest too (${seen.chest}/${seen.window}/${seen.floor})`);

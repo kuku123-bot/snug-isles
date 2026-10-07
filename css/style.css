@@ -342,3 +342,11 @@ textarea.sdp { width: 100%; height: 90px; border: 3px solid var(--ink); border-r
 .crdetail { min-width: 250px; max-width: 320px; flex: 0 1 300px; }
 @media (max-width: 900px) { .crafter { flex-wrap: wrap; } .crrail { flex-direction: row; width: 100%; max-height: none; overflow-x: auto; } .crst { flex: none; width: 92px; } .crst.on { transform: translateY(-2px); box-shadow: 0 3px 0 var(--ink), 0 -4px 0 var(--pink); } }
 .goalcard { margin-top: 6px; }
+
+/* Marketplace */
+.shop .crcard { min-height: 116px; }
+.shopprice { display: inline-flex; align-items: center; gap: 3px; font-size: 14px; font-weight: 700; color: var(--ink); background: #fff4c2; border: 2px solid var(--ink2); border-radius: 999px; padding: 0 8px 0 5px; }
+.shopprice.sold { background: var(--paper3); color: var(--ink2); padding: 0 8px; }
+.shoptag { position: absolute; left: -4px; top: -6px; font-size: 11px; font-weight: 700; color: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 0 5px; transform: rotate(-6deg); text-shadow: 0 1px 0 var(--ink); }
+.shoptag.deal { background: #3fb83a; } .shoptag.rare { background: #a050d8; }
+.shopcoins { gap: 6px; }

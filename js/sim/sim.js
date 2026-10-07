@@ -14,6 +14,7 @@ import { invAdd } from './inventory.js';
 import { updateMobs, spawnTick, updateProjectiles, hurtPlayer } from './combat.js';
 import { updateBombs } from './bombs.js';
 import { updateMachines, MACHINE_BEHAVIORS } from './machines.js';
+import { newDayShop } from './shop.js';
 import { depleteNode } from './gather.js';
 import { exec as execCommand } from './commands.js';
 import { standUp, exitSpot, exitFrom } from './furniture.js';
@@ -28,6 +29,7 @@ export class Sim {
     this.depleted = new Set(); // ids of depleted nodes awaiting regrowth
     this.bombs = []; // bombs that have been thrown and are waiting for their fuse (not saved)
     this.machineIds = new Set(); // ids of things that tick (processors, farms, drills...)
+    this.beaconIds = new Set(); // ids of lighthouses (sim/beacon.js)
     this.acc = { slow: 0, cozy: 0, spawn: 0, weather: 0, doors: 0, goals: 0 };
     this.openDoors = new Map(); // tile idx -> seconds since someone was near
     this.sleepFade = 0;
@@ -164,19 +166,20 @@ export class Sim {
 
   // ------------------------------------------------------------------ regrowth of nodes
   _thingChanged(t, why) {
-    if (why === 'add') { const d = BUILD[t.type]; if (d && MACHINE_BEHAVIORS.has(d.behavior)) this.machineIds.add(t.id); }
-    if (why === 'remove') { this.depleted.delete(t.id); this.machineIds.delete(t.id); }
+    if (why === 'add') { const d = BUILD[t.type]; if (d && MACHINE_BEHAVIORS.has(d.behavior)) this.machineIds.add(t.id); if (d && d.behavior === 'beacon') this.beaconIds.add(t.id); }
+    if (why === 'remove') { this.depleted.delete(t.id); this.machineIds.delete(t.id); this.beaconIds.delete(t.id); }
     else if (t.dep && NODES[t.type] && NODES[t.type].respawn) this.depleted.add(t.id);
     else this.depleted.delete(t.id);
   }
   /** register depleted nodes after loading a save */
   rebuildDepleted() {
     this.depleted.clear();
-    this.machineIds.clear();
+    this.machineIds.clear(); this.beaconIds.clear();
     for (const t of this.world.things.values()) {
       if (t.dep && NODES[t.type] && NODES[t.type].respawn) this.depleted.add(t.id);
       const d = BUILD[t.type];
       if (d && MACHINE_BEHAVIORS.has(d.behavior)) this.machineIds.add(t.id);
+      if (d && d.behavior === 'beacon') this.beaconIds.add(t.id);
     }
   }
   breakNodeAfterDrill(t, nd) { depleteNode(this, t, nd, 0); }
@@ -434,6 +437,7 @@ export class Sim {
     for (const id of ['wood', 'stone', 'berries', 'fiber', 'copper_ingot', 'iron_ingot', 'gold_ingot', 'honey', 'egg', 'milk', 'plank', 'glass', 'brick']) m[id] = Math.round((0.8 + r.next() * 0.7) * 100) / 100;
     w.shared.market = m;
     w.emit(['market', m]);
+    newDayShop(this); // the Marketplace puts out the new day's goods
   }
 
   bump(key, n = 1) { bump(this, key, n); }

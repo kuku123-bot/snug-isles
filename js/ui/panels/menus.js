@@ -63,7 +63,7 @@ export function helpPanel(g, data, ui) {
     row('Moving items', 'Drag an item in the bag onto another slot or onto the hotbar. (Tap an item, then tap where it goes, works too.)'),
     row('Critters', 'Bunnies, chicks and other wild critters can be hunted: hit one with a sword or pickaxe while aimed at it. Pets you hatched can never be hurt.'),
     h('div', { class: 'sep' }), h('b', { style: 'font-size:18px' }, 'Tips'),
-    h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall to buy new lands (follow the glowing price tags).'),
+    h('div', { class: 'small' }, '• Chop trees and mine rocks, craft a Workbench, then sell goods at a Market Stall (or a Marketplace) to buy new lands (follow the glowing price tags).'),
     h('div', { class: 'small' }, '• Build a Research Table to unlock a huge tech tree: new tools, furniture sets, automation and more. Pick a branch, tap a box to read about it: yellow boxes are ready, green ones are done.'),
     h('div', { class: 'small' }, '• Screen suddenly too big or too small? Pause menu (or Settings) → Fix zoom.'),
     h('div', { class: 'small' }, '• Every level gives a skill point for the Skills tree: tap a box and press Learn. New boxes open up as you learn the ones before them.'),
@@ -71,6 +71,8 @@ export function helpPanel(g, data, ui) {
     h('div', { class: 'small' }, '• Lost? The NEXT card (top left) shows the one thing to do now, and the pink arrow points at it. Menu → Guide arrow turns the arrow off.'),
     h('div', { class: 'small' }, '• Research Explosives for bombs: tap with a bomb in your hand to throw it. Bombs break rocks, hurt monsters and open cracked boulders (treasure inside!). They never hurt you or your buildings. Frost bombs freeze monsters, fire bombs burn them, and fireworks are just for fun.'),
     h('div', { class: 'small' }, '• Bosses: build an altar (Spore, Sun, Frost, Bone, Magma, Crystal, Void, or the Slime Altar), put the offering in your bag and press E. Watch for the red ! - it means an attack is coming. A shiny Golden Slime now and then runs from you: catch it for treasure!'),
+    h('div', { class: 'small' }, '• Lighthouses: everything growing inside the glowing circle gives more, grows back faster, and now and then a new resource pops up. Little Lighthouse (Seaside research), Lighthouse (Optics) and Grand Lighthouse (crystal age). The circle shows while you stand near one.'),
+    h('div', { class: 'small' }, '• Marketplace (research Trade, then Marketplace): press E to buy a fresh random selection every day, or sell your things for 10% more. "New goods" costs a few coins if you want another look.'),
     h('div', { class: 'small' }, '• Game too slow or too fast? Pause menu → World rules → Game pace.'),
     h('div', { class: 'small' }, '• Every slot holds up to 9999. The Pack Mule skill adds bag slots and Warehouse Keeper makes every chest bigger, for both of you.'),
     h('div', { class: 'small' }, '• Nearby chests count as part of your bag when crafting and building. Machines next to a chest load themselves.'));

@@ -72,6 +72,8 @@ G('fish1', 'farm', 'i_fish_minnow', 'Catch a fish', 'Research Fishing, craft a r
 G('hatch', 'farm', 'i_pet_egg', 'Hatch a pet', 'Mystery eggs hide in chests and buried treasure. Use one to meet your new buddy!', { coins: 100, xp: 60 }, (c) => gs('hatched')(c) >= 1);
 G('dig1', 'farm', 'i_shovel_stone', 'Dig up buried treasure', 'Look for an X on the ground and use a shovel.', { coins: 25, xp: 18 }, (c) => gs('dug')(c) >= 1);
 G('sell1', 'farm', 'i_coin', 'Sell something', 'Build a Market Stall (Trade tech) and sell your goods.', { coins: 25, xp: 18 }, (c) => gs('sold')(c) >= 1);
+G('shop', 'farm', 't_marketplace', 'Build a Marketplace', 'Research Marketplace (after Trade). It sells a fresh random selection of goods every day!', { coins: 120, xp: 80 }, built('marketplace'));
+G('buy1', 'farm', 'i_coin', 'Buy something at the Marketplace', 'Stand near it, press E and pick something from the Buy tab.', { coins: 80, xp: 50 }, (c) => gs('bought')(c) >= 1);
 G('honey', 'farm', 'i_honey', 'Collect honey', 'Beehives need flowers nearby.', { coins: 60, xp: 40 }, made('honey'));
 G('cake', 'farm', 'i_strawberry_cake', 'Bake a cake', 'Research Gourmet Cooking, then cook a strawberry cake in the kitchen.', { coins: 150, xp: 80 }, made('strawberry_cake'));
 G('koi', 'farm', 'i_fish_koi', 'Catch a Golden Koi', 'A very rare fish. Better rods and luck help.', { coins: 300, xp: 150 }, (c) => gs('koi')(c) >= 1);
@@ -99,11 +101,14 @@ G('boss4', 'adv', 'i_boss_token', 'Defeat the Void Eye', 'The last guardian.', {
 // ---- growing the isles
 G('lands3', 'grow', 'ui_map', 'Own 3 lands', '', { coins: 40, xp: 30 }, (c) => c.lands >= 3, (c) => [Math.min(c.lands, 3), 3]);
 G('lands6', 'grow', 'ui_map', 'Own 6 lands', '', { coins: 90, xp: 60 }, (c) => c.lands >= 6, (c) => [Math.min(c.lands, 6), 6]);
+G('lighthouse1', 'grow', 't_little_lighthouse', 'Build a Little Lighthouse', 'Research Little Lighthouse in the Seaside branch. Resources around it give more, grow back faster, and new ones pop up!', { coins: 150, xp: 100 }, (c) => (c.things.little_lighthouse || 0) + (c.things.lighthouse || 0) + (c.things.grand_lighthouse || 0) >= 1);
+G('lighthouse2', 'grow', 't_lighthouse', 'Build a Lighthouse', 'Research Optics: a taller lighthouse with a much wider glow.', { coins: 600, xp: 300 }, (c) => (c.things.lighthouse || 0) + (c.things.grand_lighthouse || 0) >= 1);
 G('bridge', 'grow', 'f_bridge_rope', 'Build a bridge', 'Research Bridges to cross the water.', { coins: 40, xp: 30 }, (c) => c.bridges >= 1);
 G('biomes3', 'grow', 'ui_sun', 'Own lands in 3 different biomes', 'Desert, tundra, swamp… each has its own treasures.', { coins: 150, xp: 100 }, (c) => c.biomes.size >= 3, (c) => [Math.min(c.biomes.size, 3), 3]);
 G('lands12', 'grow', 'ui_map', 'Own 12 lands', '', { coins: 250, xp: 150 }, (c) => c.lands >= 12, (c) => [Math.min(c.lands, 12), 12]);
 G('biomes5', 'grow', 'ui_sun', 'Own lands in 5 different biomes', '', { coins: 400, xp: 250 }, (c) => c.biomes.size >= 5, (c) => [Math.min(c.biomes.size, 5), 5]);
 G('lands25', 'grow', 'ui_map', 'Own 25 lands', '', { coins: 800, xp: 400 }, (c) => c.lands >= 25, (c) => [Math.min(c.lands, 25), 25]);
+G('grand_lh', 'grow', 't_grand_lighthouse', 'Build a Grand Lighthouse', 'The brightest light of all: double resources in a wide circle.', { coins: 900, xp: 450 }, built('grand_lighthouse'));
 G('biomes8', 'grow', 'ui_sun', 'Own a land in every biome', 'From meadow all the way to the starlit void.', { coins: 1500, xp: 800 }, (c) => c.biomes.size >= Object.keys(BIOMES).length, (c) => [Math.min(c.biomes.size, Object.keys(BIOMES).length), Object.keys(BIOMES).length]);
 G('lands50', 'grow', 'ui_map', 'Own 50 lands', '', { coins: 2500, xp: 1200 }, (c) => c.lands >= 50, (c) => [Math.min(c.lands, 50), 50]);
 G('heart', 'grow', 't_world_heart', 'Build the Heart of the Isles', 'The final monument. You made it!', { coins: 5000, xp: 3000 }, built('world_heart'));
@@ -111,7 +116,7 @@ G('heart', 'grow', 't_world_heart', 'Build the Heart of the Isles', 'The final m
 export const GOAL_BY_ID = Object.fromEntries(GOALS.map((g) => [g.id, g]));
 
 /** the suggested order for a brand-new player; after that, cheapest-reward first */
-const PATH = ['chop', 'mine', 'craft1', 'workbench', 'research_table', 'tech1', 'land1', 'floor', 'walls', 'door', 'window', 'bed', 'light', 'chest', 'cozy10', 'lvl3', 'furnace', 'copper', 'plant', 'harvest', 'sleep', 'fish1', 'kill1', 'dig1', 'sell1', 'tech5', 'pick_stone', 'furn10', 'bomb1', 'boulder', 'boss1', 'firework', 'lands3', 'boss_mush', 'boss_pharaoh'];
+const PATH = ['chop', 'mine', 'craft1', 'workbench', 'research_table', 'tech1', 'land1', 'floor', 'walls', 'door', 'window', 'bed', 'light', 'chest', 'cozy10', 'lvl3', 'furnace', 'copper', 'plant', 'harvest', 'sleep', 'fish1', 'kill1', 'dig1', 'sell1', 'tech5', 'pick_stone', 'furn10', 'shop', 'buy1', 'lighthouse1', 'bomb1', 'boulder', 'boss1', 'firework', 'lands3', 'boss_mush', 'boss_pharaoh'];
 export function nextGoal(done) {
   for (const id of PATH) if (!done.has(id)) return GOAL_BY_ID[id];
   let best = null;
@@ -141,6 +146,7 @@ export const AIM = {
   drill: { ui: 'build' }, plant: { find: { things: ['farm_plot'] }, ui: 'build' }, harvest: { find: { things: ['farm_plot'] } }, fish1: { find: { water: true } }, koi: { find: { water: true } },
   dig1: { find: { dig: true } }, sell1: { find: { things: ['market_stall'] }, ui: 'build' }, honey: { find: { things: ['beehive'] } }, cake: { find: { things: ['kitchen'] } },
   bomb1: { find: { things: ['workbench'] }, ui: 'craft' }, boulder: { find: { nodes: ['cracked_boulder'] } }, firework: { ui: 'craft' }, golden: { find: { mobs: 'golden_slime' } },
+  shop: { ui: 'build' }, buy1: { find: { things: ['marketplace'] } }, lighthouse1: { ui: 'build' }, lighthouse2: { ui: 'build' }, grand_lh: { ui: 'build' },
   boss_mush: { find: { altar: 'mushroom_mother' }, ui: 'build' }, boss_pharaoh: { find: { altar: 'sand_pharaoh' }, ui: 'build' }, boss_yeti: { find: { altar: 'frost_yeti' }, ui: 'build' }, boss_colossus: { find: { altar: 'crystal_colossus' }, ui: 'build' },
   kill1: { find: { mobs: true } }, kill25: { find: { mobs: true } }, kill150: { find: { mobs: true } },
   boss1: { find: { altar: 'slime_king' }, ui: 'build' }, boss2: { find: { altar: 'bone_lord' }, ui: 'build' }, boss3: { find: { altar: 'magma_titan' }, ui: 'build' }, boss4: { find: { altar: 'void_eye' }, ui: 'build' },

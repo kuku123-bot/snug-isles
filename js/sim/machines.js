@@ -1,4 +1,5 @@
 // Machines: furnaces/mills, farms, animal pens/bees/traps, drills, turrets. Host-side ticking.
+import { beaconTick } from './beacon.js';
 import { TILE } from '../util.js';
 import { BUILD } from '../data/build.js';
 import { NODES } from '../data/nodes.js';
@@ -12,7 +13,7 @@ import { lootFish } from './loot.js';
 import { calcStats, techFx, skillFx } from './player.js';
 import { rollNodeDrops } from './gather.js';
 
-export const MACHINE_BEHAVIORS = new Set(['processor', 'farm', 'producer', 'drill', 'turret', 'sprinkler']);
+export const MACHINE_BEHAVIORS = new Set(['processor', 'farm', 'producer', 'drill', 'turret', 'sprinkler', 'beacon']);
 
 export function newState(behavior, conf) {
   switch (behavior) {
@@ -104,6 +105,7 @@ export function updateMachines(sim, dt) {
       case 'producer': producerTick(sim, t, d, dt); break;
       case 'drill': drillTick(sim, t, d, dt); break;
       case 'turret': turretTick(sim, t, d, dt); break;
+      case 'beacon': beaconTick(sim, t, d, dt); break;
     }
   }
 }
