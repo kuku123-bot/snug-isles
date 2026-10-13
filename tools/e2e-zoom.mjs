@@ -13,6 +13,7 @@ for (const [name, eng] of [['chromium', chromium], ['webkit', webkit]]) {
   console.log(`\n== ${name} (iPad-like, touch)`);
   const browser = await eng.launch();
   const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(() => { try { localStorage.setItem('snug.devnet', '1'); } catch (e) { /* ignore */ } });
   const page = await ctx.newPage();
   const errs = []; page.on('pageerror', (e) => { if (!/WebSocket port 1 blocked/.test(e.message)) errs.push(e.message); }); // (WebKit refuses the deliberately dead localhost port)
   // a fake visual viewport so the "snap back if zoomed" safety net can be exercised

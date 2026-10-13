@@ -1,12 +1,12 @@
 // Gameplay smoke tests driven through real input events. node tools/e2e.mjs [engine]
-import { chromium, webkit } from 'playwright';
+import { chromium, webkit, firefox } from 'playwright';
 import { startServer } from './serve.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const engine = process.argv[2] || 'chromium';
 const { server, url } = await startServer(path.join(ROOT, 'dist'));
-const browser = await (engine === 'webkit' ? webkit : chromium).launch();
+const browser = await ({ webkit, firefox, chromium }[engine] || chromium).launch();
 const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, acceptDownloads: true });
 const page = await ctx.newPage();
 const logs = []; let failed = 0;

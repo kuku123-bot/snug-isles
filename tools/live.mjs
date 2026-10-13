@@ -1,8 +1,8 @@
 // Smoke-test the DEPLOYED site in a real browser. node tools/live.mjs [engine] [url]
-import { chromium, webkit } from 'playwright';
+import { chromium, webkit, firefox } from 'playwright';
 const engine = process.argv[2] || 'chromium';
 const url = process.argv[3] || 'https://kuku123-bot.github.io/snug-isles/';
-const browser = await (engine === 'webkit' ? webkit : chromium).launch();
+const browser = await ({ webkit, firefox, chromium }[engine] || chromium).launch();
 const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
 const logs = []; let failed = 0;

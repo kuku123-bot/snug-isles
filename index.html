@@ -4,7 +4,19 @@
 <meta charset="utf-8">
 <title>Snug Isles</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="description" content="A cozy two-player island crafting and building game for iPad and Mac.">
+<meta name="description" content="Snug Isles is a cozy island crafting and building game you can play with a friend. Gather, research, automate, decorate and grow your isles. Free in your browser on iPad, Mac, PC and phones.">
+<link rel="canonical" href="__SITE__">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Snug Isles">
+<meta property="og:description" content="A cozy island crafting and building game you can play with a friend. Free in your browser.">
+<meta property="og:url" content="__SITE__">
+<meta property="og:image" content="__SITE__og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Snug Isles">
+<meta name="twitter:description" content="A cozy island crafting and building game you can play with a friend. Free in your browser.">
+<meta name="twitter:image" content="__SITE__og.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,9 +37,17 @@
   <div id="toasts"></div>
   <div id="tip" class="hidden"></div>
   <div id="loading"><div class="load-card"><div class="load-title">Snug Isles</div><div class="load-bar"><i></i></div><div class="load-sub">Painting the islands…</div></div></div>
-  <div id="rotate" class="hidden"><div>Turn your iPad sideways for the best view</div></div>
+  <div id="rotate" class="hidden"><div class="rot-card"><div class="rot-phone"></div><div class="rot-text">Turn your device sideways for the best view</div><button id="rotate-go" type="button">Play anyway</button></div></div>
 </div>
-<noscript>This game needs JavaScript.</noscript>
+<noscript>Snug Isles needs JavaScript to run. Please turn it on in your browser settings.</noscript>
+<div id="oldbrowser" style="display:none;position:fixed;inset:0;z-index:999;background:#3388dc;color:#fff;font:600 18px/1.4 system-ui,sans-serif;align-items:center;justify-content:center;text-align:center;padding:24px"><div style="max-width:420px"><div style="font-size:28px;margin-bottom:10px">Snug Isles</div>Your browser is a little too old to run this game. Please update it, or open the game in a recent Safari, Chrome, Edge or Firefox.</div></div>
+<script>
+// the game needs modern browser features; say so politely instead of showing a blank page
+(function () {
+  var ok = 'noModule' in HTMLScriptElement.prototype && !!window.indexedDB && !!window.Promise && !!window.fetch && !!document.createElement('canvas').getContext && typeof Map !== 'undefined' && typeof Uint8Array !== 'undefined' && !!Array.prototype.flatMap && !!Object.fromEntries;
+  if (!ok) document.getElementById('oldbrowser').style.display = 'flex';
+})();
+</script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 // In-game menus: pause, settings, help, rules editor, emote wheel, fainted overlay.
+import { BUILD_ID } from '../../net/protocol.js';
 import { h, ic, clear, itemIc } from '../dom.js';
 import { optionsEditor } from '../options.js';
 import { sanitizeSettings } from '../../data/difficulty.js';
@@ -14,11 +15,24 @@ export function pausePanel(g, data, ui) {
     b('How to play', 'ui_book', () => ui.open('help')),
     b('Settings', 'ui_gear', () => ui.open('settings')),
     b('Fix zoom', 'ui_plus', () => openZoomFix(g.app)),
+    b('About & privacy', 'ui_book', () => ui.open('about')),
     g.mode !== 'client' ? b('World rules', 'ui_sword', () => ui.open('rules')) : null,
     b(g.mode === 'solo' ? 'Play together' : g.mode === 'host' ? 'Invite / players' : 'Connection', 'ui_people', () => ui.open('mp'), 'blue'),
     g.mode !== 'client' ? b('Save now', 'ui_bag', () => { g.save().then(() => g.toast('Saved!', 'good')); }) : null,
     b(g.mode === 'client' ? 'Leave world' : 'Save & quit to title', 'ui_cross', () => { g.app.quitToTitle(); }, 'red'));
   return { title: g.saveName || 'Paused', icon: 'ui_gear', body, onClose: () => { if (g.mode === 'solo') g.paused = false; }, sig: () => '' };
+}
+
+export function aboutPanel(g, data, ui) {
+  const link = (href, label) => h('a', { href, target: '_blank', rel: 'noopener', class: 'btn small', style: 'text-decoration:none;justify-content:flex-start' }, label);
+  const body = h('div', { class: 'col', style: 'min-width:min(86vw,380px);gap:10px' },
+    h('div', { style: 'font-size:22px;font-weight:700' }, 'Snug Isles'),
+    h('div', { class: 'small' }, `Version ${BUILD_ID}`),
+    h('div', { class: 'small' }, 'All the art, music, sounds and code are original, made just for this game. It is inspired by the cozy crafting genre and is not connected to any other game or company.'),
+    h('div', { class: 'small' }, 'Your islands are saved on this device only. There are no accounts and nothing is tracked.'),
+    link('privacy.html', 'Privacy'),
+    link('https://github.com/kuku123-bot/snug-isles/issues', 'Report a problem or say hello'));
+  return { title: 'About', icon: 'ui_book', body, sig: () => '' };
 }
 
 export function settingsPanel(g, data, ui) {

@@ -26,6 +26,7 @@ export async function build({ dev = false, outdir = DIST, version } = {}) {
   // static files
   const copy = (src, dst) => { fs.mkdirSync(path.dirname(path.join(outdir, dst)), { recursive: true }); fs.cpSync(path.join(ROOT, src), path.join(outdir, dst), { recursive: true }); };
   copy('css', 'css'); copy('assets', 'assets');
+  if (fs.existsSync(path.join(ROOT, 'static'))) for (const f of fs.readdirSync(path.join(ROOT, 'static'))) copy(path.join('static', f), f); // robots.txt, the share picture, the legal pages
   // content hash for cache-busting
   const h = crypto.createHash('sha1');
   const walk = (d) => { for (const f of fs.readdirSync(d).sort()) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walk(p) : h.update(fs.readFileSync(p)); } };
@@ -33,6 +34,8 @@ export async function build({ dev = false, outdir = DIST, version } = {}) {
   const hash = (version || h.digest('hex').slice(0, 10));
   let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   html = html.replace('href="css/style.css"', `href="css/style.css?v=${hash}"`).replace('src="app.js"', `src="app.js?v=${hash}"`);
+  const SITE = process.env.SITE_URL || 'https://kuku123-bot.github.io/snug-isles/'; // the public address (set SITE_URL when the game gets its own domain)
+  html = html.split('__SITE__').join(SITE);
   fs.writeFileSync(path.join(outdir, 'index.html'), html);
   // icons + manifest
   const icons = await makeIcons(path.join(outdir, 'icons'));

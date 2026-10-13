@@ -84,8 +84,12 @@ export class App {
   }
   checkOrientation() {
     const portrait = window.innerHeight > window.innerWidth;
-    const touch = navigator.maxTouchPoints > 0;
-    document.getElementById('rotate').classList.toggle('hidden', !(portrait && touch && this.game));
+    const touch = navigator.maxTouchPoints > 0 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const phone = Math.min(window.innerWidth, window.innerHeight) < 600; // upright, a phone cannot show the game properly: cover it (with a way to play anyway)
+    const el = document.getElementById('rotate');
+    el.classList.toggle('hidden', !(portrait && touch && this.game) || (phone && this.playUpright));
+    el.classList.toggle('block', phone);
+    if (!el._wired) { el._wired = true; const go = document.getElementById('rotate-go'); if (go) go.addEventListener('click', () => { this.playUpright = true; this.checkOrientation(); }); }
   }
   /**
    * Picture style: 'smooth' / 'soft' show the art canvas through the rounding shader (js/render/smooth.js), 'pixel' is the plain pixelated canvas.

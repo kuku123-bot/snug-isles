@@ -14,12 +14,15 @@ export function makeCode(n = 5) {
 const ICE = [
   { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'stun:stun.nextcloud.com:443' },
 ];
-/** Optional relay for very strict networks: ?turn=turn:host:3478&turnuser=…&turncred=… (remembered on this device). */
+// The address bar may only change which servers are used when the game is run from this very computer (developing and testing): on the public site a
+// link must never be able to point the game at somebody else's connection server.
+const fromThisComputer = () => { try { return ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname) || localStorage.getItem('snug.devnet') === '1'; } catch (e) { return false; } }; // (snug.devnet: set by the test tools on the deployed site; a link cannot set it)
+/** Optional relay for very strict networks: ?turn=turn:host:3478&turnuser=…&turncred=… (only from this computer; remembered on this device). */
 function turnServer() {
   try {
     const q = new URLSearchParams(location.search);
-    if (q.get('turn')) localStorage.setItem('snug.turn', JSON.stringify({ urls: q.get('turn'), username: q.get('turnuser') || undefined, credential: q.get('turncred') || undefined }));
-    if (q.get('turn') === '') localStorage.removeItem('snug.turn');
+    if (q.get('turn') && fromThisComputer()) localStorage.setItem('snug.turn', JSON.stringify({ urls: q.get('turn'), username: q.get('turnuser') || undefined, credential: q.get('turncred') || undefined }));
+    if (q.get('turn') === '' && fromThisComputer()) localStorage.removeItem('snug.turn');
     const t = JSON.parse(localStorage.getItem('snug.turn') || 'null');
     return t && t.urls ? t : null;
   } catch (e) { return null; }
@@ -29,7 +32,7 @@ function iceServers() { const t = turnServer(); return t ? [...ICE, t] : ICE; }
 export function peerOptions() {
   const q = new URLSearchParams(location.search);
   const o = { debug: +(q.get('peerdebug') || 0), config: { iceServers: iceServers(), iceCandidatePoolSize: 2 } };
-  if (q.get('peerhost')) { o.host = q.get('peerhost'); o.port = +q.get('peerport') || 9000; o.path = q.get('peerpath') || '/'; o.secure = q.get('peersecure') === '1'; }
+  if (q.get('peerhost') && fromThisComputer()) { o.host = q.get('peerhost'); o.port = +q.get('peerport') || 9000; o.path = q.get('peerpath') || '/'; o.secure = q.get('peersecure') === '1'; }
   return o;
 }
 

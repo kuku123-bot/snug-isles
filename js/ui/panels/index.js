@@ -4,7 +4,7 @@ import { buildPanel } from './build.js';
 import { techPanel, skillsPanel } from './tech.js';
 import { mapPanel } from './map.js';
 import { chestPanel, processorPanel, marketPanel, warpPanel, landBuyPanel } from './stations.js';
-import { pausePanel, settingsPanel, helpPanel, rulesPanel, emotePanel, deadPanel, lostPanel } from './menus.js';
+import { pausePanel, settingsPanel, helpPanel, rulesPanel, emotePanel, deadPanel, lostPanel, aboutPanel } from './menus.js';
 import { shopPanel } from './shop.js';
 import { mpPanel } from './mp.js';
 import { goalsPanel } from './goals.js';
@@ -27,6 +27,7 @@ export const PANELS = {
   pause: pausePanel,
   settings: settingsPanel,
   help: helpPanel,
+  about: aboutPanel,
   rules: rulesPanel,
   emote: emotePanel,
   dead: deadPanel,

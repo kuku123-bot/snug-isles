@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Snug Isles · Privacy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="index, follow">
+<style>
+  :root { --ink: #3a2848; --paper: #fff4dc; --sky: #3388dc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--sky); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 28px auto; padding: 26px 26px 34px; background: var(--paper); border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 6px 0 var(--ink); }
+  h1 { margin: 0 0 4px; font-size: 32px; } h2 { margin: 26px 0 6px; font-size: 21px; }
+  p, li { margin: 6px 0; } ul { padding-left: 22px; }
+  a { color: #1a5fb4; } .back { display: inline-block; margin-bottom: 14px; font-weight: 700; }
+  .small { font-size: 14px; opacity: .75; }
+  @media (max-width: 640px) { main { margin: 0; border-radius: 0; border-width: 0; box-shadow: none; padding: 18px 16px 30px; } }
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="./">← Back to Snug Isles</a>
+<h1>Privacy</h1>
+<p class="small">Last updated: October 2026</p>
+
+<p><b>The short version:</b> Snug Isles has no accounts, no ads and no analytics, and it does not collect or sell any personal information. Your islands are saved on your own device. The only time anything leaves your device is when you choose to play with a friend.</p>
+
+<h2>What stays on your device</h2>
+<ul>
+  <li>Your worlds, your character, your settings and the name you pick are saved in your browser's own storage (IndexedDB and localStorage). They never go to a Snug Isles server, because there isn't one.</li>
+  <li>If you clear your browser's site data, or uninstall the app, your saved islands are deleted. Use the <i>Save a backup file</i> button on each world's card on the title screen if you want a copy.</li>
+  <li>The game works offline once it has loaded: a small helper (a service worker) keeps a copy of the game's files in your browser.</li>
+  <li>We do not use cookies, tracking pixels, fingerprinting or third-party scripts. The fonts, pictures and sounds are part of the game itself.</li>
+</ul>
+
+<h2>Playing together</h2>
+<p>Playing with a friend is optional, and only people you give an invite link or code to can ask to join (and you approve each one). To connect your two devices the game uses:</p>
+<ul>
+  <li><b>A direct connection</b> between the two devices (WebRTC). Your friend's device can see your device's IP address, as with any video call or online game, and the other way round.</li>
+  <li><b>A public meeting-point server (PeerJS)</b> and <b>public STUN servers</b> (run by Google, Cloudflare and Nextcloud) so the two devices can find each other. These servers see connection details such as IP addresses, and they never see your game.</li>
+  <li><b>A backup route over public MQTT servers</b> (HiveMQ, EMQX and the Mosquitto test server), used when a direct connection is not possible. What passes through is encrypted with a key that only comes from your invite, so those servers can see that a connection exists but not what is in it.</li>
+  <li>Your friend sees the player name you chose and what you do in the game.</li>
+</ul>
+<p>Snug Isles does not store any of this; it is simply how internet connections work. See the privacy policies of those services for how they handle connection logs.</p>
+
+<h2>Where the game is hosted</h2>
+<p>The game files are served by GitHub Pages. GitHub, like any web host, may keep ordinary server logs (such as IP addresses) as described in its own privacy statement. We do not receive those logs.</p>
+
+<h2>Children</h2>
+<p>The game does not ask for, collect or share any personal information from anyone, including children. There is no chat: players only use emotes. Parents who play with a child may still want to supervise who the child plays with.</p>
+
+<h2>Changes</h2>
+<p>If this changes, for example when purchases are added, this page will be updated and the date above will change.</p>
+
+<h2>Questions</h2>
+<p>Ask on <a href="https://github.com/kuku123-bot/snug-isles/issues">the project page</a>.</p>
+</main>
+</body>
+</html>
