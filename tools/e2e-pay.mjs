@@ -20,7 +20,7 @@ for (const name of engines) {
   for (const [label, touch] of [['mouse', false], ['touch', true]]) {
     console.log(`\n== ${name} · ${label}`);
     const browser = await eng.launch();
-    const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch });
+    const ctx = await browser.newContext({ viewport: { width: 1180, height: 820 }, deviceScaleFactor: 2, hasTouch: touch, isMobile: touch, serviceWorkers: 'block' }); // (a service worker would hide the pretend blockchain server from the test)
     const state = { sent: false, usdc: 20_000_000, sol: 1_000_000_000, merchantOpen: true, calls: [] };
     await ctx.route(/publicnode\.com|api\.mainnet-beta\.solana\.com|onfinality\.io/, async (route) => {
       const req = JSON.parse(route.request().postData() || '{}'), m = req.method, p = req.params || [];
@@ -50,6 +50,7 @@ for (const name of engines) {
       const ev = new Event('wallet-standard:register-wallet'); Object.defineProperty(ev, 'detail', { value: reg }); window.dispatchEvent(ev);
     }, BUYER);
     const page = await ctx.newPage();
+    if (process.env.DEBUG_PAY) { page.on('requestfailed', (r) => console.log('   · request failed', r.method(), r.url().slice(0, 80), r.failure() && r.failure().errorText)); page.on('console', (m) => console.log('   · console', m.type(), m.text().slice(0, 160))); page.on('pageerror', (e) => console.log('   · pageerror', e.message.slice(0, 160))); }
     const errs = []; page.on('pageerror', (e) => { if (!/WebSocket port 1 blocked/.test(e.message)) errs.push(e.message); });
     page.on('console', (m) => { if (m.type() === 'error' && !/WebSocket|ERR_|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text()); });
     const boot = async () => { await page.goto(url + '?quick=classic&seed=pay' + name, { waitUntil: 'load' }); await page.waitForFunction(() => window.__snug && window.__snug.game, null, { timeout: 20000 }); await page.waitForTimeout(700); };
@@ -75,7 +76,7 @@ for (const name of engines) {
     ok(/\$3\.00 in USDC/.test(conf) && conf.includes(MERCHANT) && /cannot be undone/.test(conf), 'the confirmation names the price, the network and the full receiving address');
     ok((await page.locator('.supp .btn', { hasText: 'Pay $3.00' }).count()) === 1, 'there is a Pay button, and a Not now');
     await tapEl(page.locator('.supp .btn', { hasText: 'Pay $3.00' }));
-    await page.waitForFunction(() => /It is yours|Thank you/.test((document.querySelector('.supp [role=status]') || {}).textContent || ''), null, { timeout: 15000 });
+    await page.waitForFunction(() => /It is yours|Thank you/.test((document.querySelector('.supp [role=status]') || {}).textContent || ''), null, { timeout: 15000 }).catch(async (e) => { console.log('   · stuck: status =', JSON.stringify(await status()), 'rpc calls =', state.calls.slice(-12).join(','), 'sent =', state.sent, 'paid =', JSON.stringify(await page.evaluate(() => window.__paid))); throw e; });
     const paid = await page.evaluate(() => window.__paid);
     ok(paid && paid.length === 1 && paid[0].chain === 'solana:mainnet' && paid[0].bytes > 200, `the wallet was asked once to pay on Solana (${JSON.stringify(paid)})`);
     ok(await page.locator('.supp .crcard[title="Royal Crown"] .shopprice', { hasText: 'Owned' }).count() === 1, 'the crown now shows Owned');
