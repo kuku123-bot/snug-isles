@@ -6,6 +6,8 @@ import { playerFrame, playerSleep, playerSleepHead, lookKey } from '../gfx/art/p
 import { GROUND_IDS } from '../data/biomes.js';
 import { BUILD } from '../data/build.js';
 import { boostAt } from '../sim/beacon.js';
+import { COS } from '../data/store.js';
+const RAINBOW = ['#ff5f8a', '#ffb347', '#ffe066', '#7ed957', '#5cc7ff', '#a77bff'];
 import { NODES } from '../data/nodes.js';
 import { MOBS } from '../data/mobs.js';
 import { ITEMS } from '../data/items.js';
@@ -476,6 +478,7 @@ export class Renderer {
       const sx = Math.round(slot.x + ox) - 8, sy2 = Math.round(slot.y + oy) - 20 + SIT_DY[view];
       if (hurtS) ctx.globalAlpha = 0.6;
       sp.drawS(ctx, spr, sx, sy2);
+      if ((p.cos | 0) & COS.crown) { const cr = sp.get('cos_crown_on'); if (cr) sp.drawS(ctx, cr, sx + 3, sy2 - 2); }
       ctx.globalAlpha = 1;
       const em = g.fx.emotes.get(p.id);
       if (em) { const a = em.t > 1.8 ? 1 - (em.t - 1.8) / 0.4 : 1; ctx.globalAlpha = Math.max(0, a); const spr2 = sp.get('emote_' + ['heart', 'bang', 'ask', 'note', 'star', 'sweat', 'zzz', 'happy'][(em.e | 0) % 8]); sp.drawS(ctx, spr2, sx + 2, sy2 - 13 - Math.round(Math.sin(em.t * 6) * 1)); ctx.globalAlpha = 1; }
@@ -498,6 +501,7 @@ export class Renderer {
     const hurt = st.hurt > 0 && Math.floor(st.hurt * 18) % 2 === 0;
     if (p.shield > 0 && !hurt && Math.floor(t * 14) % 2 === 0 && p.shield < 3) ctx.globalAlpha = 0.5;
     sp.drawS(ctx, spr, px - 8, dy);
+    if (p.cos) this._cosmetics(ctx, p, g, st, px, dy, px, py, t);
     ctx.globalAlpha = 1;
     if (hurt) { ctx.globalAlpha = 0.6; sp.drawS(ctx, sp.silhouette(flip && dir === 2 ? key + '|f' : key, 0xffffffff), px - 8, dy); ctx.globalAlpha = 1; }
     // held tool: swing arc or resting at side
@@ -510,11 +514,23 @@ export class Renderer {
   }
   _nameTag(ctx, name, x, y, g, p) {
     if (!g.showNames && p.pid === g.localPid) return;
-    if (this.labels) { this.labels.add(name, p.pid === g.localPid ? '#fff6dc' : '#bfeaff', x, y - 3.5, { a: 0.97 }); return; }
-    const spr = g.fx.textSprite(name, p.pid === g.localPid ? '#fff6dc' : '#bfeaff');
+    const cos = p.cos | 0, color = cos & COS.goldname ? '#ffd84a' : p.pid === g.localPid ? '#fff6dc' : '#bfeaff';
+    if (cos & COS.badge) name = '★ ' + name; // a Supporter Badge
+    if (this.labels) { this.labels.add(name, color, x, y - 3.5, { a: 0.97 }); return; }
+    const spr = g.fx.textSprite(name, color);
     ctx.globalAlpha = 0.95;
     ctx.drawImage(spr, Math.round(x - spr.width / 2), Math.round(y - spr.height));
     ctx.globalAlpha = 1;
+  }
+  /** the Supporter Shop things worn on a standing player: the crown on the head, and a rainbow of sparkles behind them while they walk */
+  _cosmetics(ctx, p, g, st, px, dy, wx, wy, t) {
+    const cos = p.cos | 0;
+    if (cos & COS.crown) { const cr = this.sprites.get('cos_crown_on'); if (cr) this.sprites.drawS(ctx, cr, px - 5, dy - 3 + (st.moving ? Math.round(Math.sin(t * 18) * 0.6) : 0)); }
+    if ((cos & COS.trail) && st.moving && t - (st.trailT || 0) > 0.06) {
+      st.trailT = t;
+      const rx = p.rx === undefined ? p.x : p.rx, ry = p.ry === undefined ? p.y : p.ry;
+      g.fx.burst(rx, ry - 1, 1, RAINBOW, { speed: 5, up: 7, life: 0.7, size: 2, grav: -5, spread: 3 });
+    }
   }
   _drawSwing(ctx, p, st, px, py, t) {
     const sp = this.sprites, sw = st.swing;

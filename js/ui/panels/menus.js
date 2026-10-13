@@ -13,6 +13,7 @@ export function pausePanel(g, data, ui) {
     b('Island goals', 'ui_star', () => ui.open('goals')),
     b('Take a photo', 'ui_smile', () => { ui.close(); setTimeout(() => g.photo(), 120); }),
     b('How to play', 'ui_book', () => ui.open('help')),
+    b('Supporter shop', 'cos_badge', () => ui.open('supporter')),
     b('Settings', 'ui_gear', () => ui.open('settings')),
     b('Fix zoom', 'ui_plus', () => openZoomFix(g.app)),
     b('About & privacy', 'ui_book', () => ui.open('about')),
@@ -31,6 +32,7 @@ export function aboutPanel(g, data, ui) {
     h('div', { class: 'small' }, 'All the art, music, sounds and code are original, made just for this game. It is inspired by the cozy crafting genre and is not connected to any other game or company.'),
     h('div', { class: 'small' }, 'Your islands are saved on this device only. There are no accounts and nothing is tracked.'),
     link('privacy.html', 'Privacy'),
+    link('terms.html', 'Terms'),
     link('https://github.com/kuku123-bot/snug-isles/issues', 'Report a problem or say hello'));
   return { title: 'About', icon: 'ui_book', body, sig: () => '' };
 }

@@ -6,6 +6,7 @@ import { mapPanel } from './map.js';
 import { chestPanel, processorPanel, marketPanel, warpPanel, landBuyPanel } from './stations.js';
 import { pausePanel, settingsPanel, helpPanel, rulesPanel, emotePanel, deadPanel, lostPanel, aboutPanel } from './menus.js';
 import { shopPanel } from './shop.js';
+import { supporterPanel } from './supporter.js';
 import { mpPanel } from './mp.js';
 import { goalsPanel } from './goals.js';
 
@@ -22,6 +23,7 @@ export const PANELS = {
   processor: processorPanel,
   market: marketPanel,
   shop: shopPanel,
+  supporter: supporterPanel,
   warp: warpPanel,
   landbuy: landBuyPanel,
   pause: pausePanel,

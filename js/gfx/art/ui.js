@@ -56,11 +56,22 @@ const ICONS = [
     pm.line(10, 7, 4, 13, g[2]); pm.line(11, 8, 5, 14, g[2]); pm.line(10, 8, 5, 13, g[1]);
     pm.rect(3, 13, 2, 2, hex('#ff5f7a')); pm.set(3, 12, hex('#ff5f7a'));
   }),
+  // Supporter Shop pictures
+  icon('cos_badge', (pm) => { const c = R('#ffd84a'); pm.poly([[5, 11], [3, 15.5], [6.4, 14], [8, 15.6], [8, 11]], R('#4aa3df')[2]); pm.poly([[11, 11], [13, 15.5], [9.6, 14], [8, 15.6], [8, 11]], R('#4aa3df')[3]); pm.poly([[8, 0.5], [10.2, 4.8], [15, 5.4], [11.5, 8.6], [12.4, 13.2], [8, 10.9], [3.6, 13.2], [4.5, 8.6], [1, 5.4], [5.8, 4.8]], c[2]); pm.poly([[8, 0.5], [8, 10.9], [3.6, 13.2], [4.5, 8.6], [1, 5.4], [5.8, 4.8]], c[1]); pm.set(7, 3, WHITE); pm.set(6, 5, WHITE); }),
+  icon('cos_name', (pm) => { const g = R('#ffd84a'); pm.rect(1, 5, 14, 8, g[2]); pm.hline(1, 5, 14, g[0]); pm.hline(1, 12, 14, g[3]); pm.hline(3, 8, 7, hex('#7a5a10')); pm.hline(3, 10, 5, hex('#7a5a10')); for (const [x, y] of [[12, 2], [14, 4], [2, 3]]) { pm.set(x, y, WHITE); pm.set(x - 1, y, hex('#fff3a8')); pm.set(x + 1, y, hex('#fff3a8')); pm.set(x, y - 1, hex('#fff3a8')); pm.set(x, y + 1, hex('#fff3a8')); } }),
+  icon('cos_trail', (pm) => { const cols = ['#ff5f8a', '#ffb347', '#ffe066', '#7ed957', '#5cc7ff', '#a77bff']; cols.forEach((c, i) => { for (let x = 1; x < 15; x++) { const y = 12 - i * 1 - Math.round(Math.sin((x / 14) * Math.PI) * 6); pm.set(x, y + 3, hex(c)); pm.set(x, y + 4, hex(c)); } }); for (const [x, y] of [[13, 2], [3, 3]]) { pm.set(x, y, WHITE); pm.set(x - 1, y, hex('#fff3a8')); pm.set(x + 1, y, hex('#fff3a8')); pm.set(x, y - 1, hex('#fff3a8')); pm.set(x, y + 1, hex('#fff3a8')); } }, { noOutline: true }),
+  icon('cos_crown', (pm) => { const g = R('#ffd84a'); pm.poly([[1.5, 12.5], [14.5, 12.5], [15, 4.5], [11, 8], [8, 2], [5, 8], [1, 4.5]], g[2]); pm.poly([[1.5, 12.5], [8, 12.5], [8, 2], [5, 8], [1, 4.5]], g[1]); pm.rect(1, 12, 14, 3, g[3]); pm.hline(1, 12, 14, g[0]); pm.set(8, 7, hex('#ff5f7a')); pm.set(4, 11, hex('#5cc7ff')); pm.set(12, 11, hex('#7ed957')); pm.set(8, 13, hex('#ff5f7a')); pm.set(9, 4, WHITE); }),
+  icon('cos_pack', (pm) => { const r = R('#e0504a'), g = R('#ffd84a'); pm.rect(2, 7, 12, 8, r[2]); pm.rect(1, 5, 14, 3, r[1]); pm.hline(1, 5, 14, r[0]); pm.rect(7, 5, 2, 10, g[2]); pm.poly([[8, 5], [4, 1.5], [5.5, 5]], g[2]); pm.poly([[8, 5], [12, 1.5], [10.5, 5]], g[1]); pm.set(8, 1, WHITE); pm.set(3, 3, WHITE); pm.set(13, 2, WHITE); }),
   icon('ui_sword', (pm) => { const b = R('#cfd6e8'); for (let i = 0; i < 9; i++) { pm.set(5 + i, 10 - i, b[1]); pm.set(6 + i, 10 - i, b[2]); } pm.line(3, 8, 8, 13, hex('#ffd84a')); pm.line(2, 13, 5, 10, hex('#a86f3d')); }),
 ];
 
 export function registerUi(book) {
   for (const [name, make] of ICONS) book.add(name, make());
+  // the little crown worn on the head (cosmetic)
+  const cr = new Pixmap(10, 7), cg = R('#ffd84a');
+  cr.poly([[0.5, 6.5], [9.5, 6.5], [9.8, 1.5], [7, 4], [5, 0.5], [3, 4], [0.2, 1.5]], cg[2]); cr.poly([[0.5, 6.5], [5, 6.5], [5, 0.5], [3, 4], [0.2, 1.5]], cg[1]); cr.hline(0, 6, 10, cg[3]); cr.set(5, 3, hex('#ff5f7a')); cr.set(2, 5, hex('#5cc7ff')); cr.set(7, 5, hex('#7ed957'));
+  cr.outline(null, { amt: 0.62 });
+  book.add('cos_crown_on', cr);
   // missing-sprite marker
   const m = new Pixmap(16, 16).fill(hex('#ff00ff'));
   for (let i = 0; i < 16; i += 2) for (let j = 0; j < 16; j += 2) if (((i + j) / 2) % 2) m.rect(i, j, 2, 2, hex('#2a1f3d'));

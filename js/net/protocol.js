@@ -4,7 +4,7 @@ import { TILE, clamp } from '../util.js';
 import { b64ToBytes } from '../sim/sim.js';
 import { MOBS } from '../data/mobs.js';
 
-export const PROTOCOL = 8;
+export const PROTOCOL = 9;
 /** identifies the exact build so two devices on different versions can be told so (see tools/build.mjs) */
 export const BUILD_ID = typeof __BUILD__ === 'undefined' ? 'dev' : __BUILD__;
 export const MAX_PLAYERS = 4;
@@ -79,7 +79,7 @@ export function buildStateMsg(sim, link) {
   const players = [];
   for (const p of w.players.values()) {
     if (!p.online) continue;
-    players.push([p.pid, r1(p.x), r1(p.y), Math.round(p.hp), p.dead > 0 ? 1 : 0, p.sleeping ? 1 : 0, p.sit ? 1 : 0, p.shield > 0 ? 1 : 0, p.ix ? Math.sign(p.ix) : 0, p.iy ? Math.sign(p.iy) : 0]);
+    players.push([p.pid, r1(p.x), r1(p.y), Math.round(p.hp), p.dead > 0 ? 1 : 0, p.sleeping ? 1 : 0, p.sit ? 1 : 0, p.shield > 0 ? 1 : 0, p.ix ? Math.sign(p.ix) : 0, p.iy ? Math.sign(p.iy) : 0, p.cos | 0]);
   }
   const mobs = [];
   for (const m of w.mobs.values()) {
@@ -174,12 +174,12 @@ export function applyState(world, m, now, localPid) {
   world.time = m.tm;
   const seen = new Set();
   for (const e of m.p) {
-    const [pid, x, y, hp, dead, sleeping, sit, shield, ix, iy] = e;
+    const [pid, x, y, hp, dead, sleeping, sit, shield, ix, iy, cos] = e;
     const p = world.players.get(pid);
     if (!p) continue;
     p.online = true;
     if (pid === localPid) { continue; }
-    p.hp = hp; p.dead = dead ? 1 : 0; p.sleeping = !!sleeping; p.sit = sit ? { id: 0 } : null; p.shield = shield ? 1 : 0; p.ix = ix; p.iy = iy;
+    p.hp = hp; p.dead = dead ? 1 : 0; p.sleeping = !!sleeping; p.sit = sit ? { id: 0 } : null; p.shield = shield ? 1 : 0; p.ix = ix; p.iy = iy; p.cos = cos | 0;
     pushSample(p, now, x, y);
     seen.add(pid);
   }

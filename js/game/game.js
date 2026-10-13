@@ -1,4 +1,5 @@
 // The running game session (solo / host / client). Owns the world mirror, local player control, camera, fx, HUD and UI.
+import { wornMask } from '../pay/owned.js';
 import { TILE, clamp, TAU, hash32 } from '../util.js';
 import { GOAL_BY_ID, rewardOf } from '../data/goals.js';
 import { FX } from './fx.js';
@@ -90,6 +91,13 @@ export class Game {
     this.view.onResize(() => { this.touch && this.touch.layout(); });
     this.hud.refreshAll();
     this.touch.layout();
+    this.announceCosmetics();
+  }
+  /** tell everyone (the host, and through it the partner) what this player wears from the Supporter Shop */
+  announceCosmetics() {
+    const m = wornMask();
+    if (this.me) this.me.cos = m;
+    this.cmd({ c: 'cos', m });
   }
   requestWake() {
     if (this.destroyed || !this.settings.wakeLock || !navigator.wakeLock || (this.wake && !this.wake.released)) return;

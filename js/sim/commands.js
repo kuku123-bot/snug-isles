@@ -1,4 +1,5 @@
 // Player commands (host-side validation + execution). The same entry point serves local play and remote players.
+import { COS_ALL } from '../data/store.js';
 import { ensureShop, doBuy, doRestock, marketNear, sellBonusOf } from './shop.js';
 import { beaconInfo } from './beacon.js';
 import { TILE, clamp } from '../util.js';
@@ -105,6 +106,7 @@ export function exec(sim, pid, cmd) {
     case 'drop': return doDrop(sim, p, cmd);
     case 'sell': return doSell(sim, p, cmd);
     case 'buy': return doBuy(sim, p, cmd);
+    case 'cos': p.cos = (cmd.m | 0) & COS_ALL; return; // what this player wears from the Supporter Shop (only looks: it changes nothing in the game)
     case 'restock': return doRestock(sim, p);
     case 'door': return doDoor(sim, p, cmd);
     case 'warp': return doWarp(sim, p, cmd);
